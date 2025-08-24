@@ -80,8 +80,12 @@ export const useAuthStore = create<AuthState>()(
           await new Promise(resolve => setTimeout(resolve, 1000))
           
           // For demo purposes, accept any email/password combination
+          // Check if this user has logged in before by looking at existing users
+          const existingUsers = JSON.parse(localStorage.getItem('auth-storage') || '{}')
+          const isReturningUser = existingUsers.user && existingUsers.user.email === email
+          
           const user: User = {
-            id: `user_${Date.now()}`,
+            id: isReturningUser ? existingUsers.user.id : `user_${Date.now()}`,
             email,
             name: email.split('@')[0],
             role: 'STUDENT',
@@ -91,7 +95,7 @@ export const useAuthStore = create<AuthState>()(
             interests: ['English', 'Tagalog'],
             nativeLanguage: 'Filipino',
             targetLanguages: ['English', 'Tagalog'],
-            createdAt: new Date().toISOString(),
+            createdAt: isReturningUser ? existingUsers.user.createdAt : new Date().toISOString(),
             password: password // Store password for demo validation
           }
           
@@ -109,6 +113,10 @@ export const useAuthStore = create<AuthState>()(
             timestamp: new Date().toISOString()
           }
           
+          // Track login count for returning users
+          const loginCount = isReturningUser ? (existingUsers.loginCount || 0) + 1 : 1
+          localStorage.setItem('loginCount', loginCount.toString())
+          
           set((state) => ({
             user,
             token,
@@ -117,16 +125,31 @@ export const useAuthStore = create<AuthState>()(
             actionLogs: [...state.actionLogs, actionLog]
           }))
           
-          toast.success(`Welcome back, ${user.name}!`, {
+          const getReturningUserMessage = (name: string, count: number) => {
+            const messages = [
+              `Welcome back, ${name}! This is your ${count}${count === 2 ? 'nd' : count === 3 ? 'rd' : count > 3 ? 'th' : 'st'} time here! 🎉`,
+              `Great to see you again, ${name}! You're becoming a regular! 🌟`,
+              `Welcome back, ${name}! Your dedication to learning is inspiring! 💪`,
+              `Hello again, ${name}! Ready for another amazing learning session? 📚`,
+              `Welcome back, ${name}! You're making great progress! 🚀`
+            ]
+            return messages[(count - 1) % messages.length]
+          }
+          
+          const message = isReturningUser 
+            ? getReturningUserMessage(user.name, loginCount)
+            : `Welcome, ${user.name}! We're excited to have you join us! 🌟`
+          
+          toast.success(message, {
             duration: 3000,
             position: 'top-right',
             style: {
-              background: '#10B981',
+              background: isReturningUser ? '#3B82F6' : '#8B5CF6',
               color: '#fff',
             },
             iconTheme: {
               primary: '#fff',
-              secondary: '#10B981',
+              secondary: isReturningUser ? '#3B82F6' : '#8B5CF6',
             },
           })
           
@@ -186,7 +209,7 @@ export const useAuthStore = create<AuthState>()(
           
           console.log('✅ User state updated in store')
           
-          toast.success(`Welcome to Global Language Training Center, ${newUser.name}!`, {
+          toast.success(`🎓 Welcome to Global Language Training Center, ${newUser.name}! Your learning journey starts now! 🚀`, {
             duration: 4000,
             position: 'top-right',
             style: {
