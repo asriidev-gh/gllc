@@ -265,6 +265,11 @@ export const useAuthStore = create<AuthState>()(
               secondary: '#3B82F6',
             },
           })
+          
+          // Redirect to home page after logout
+          if (typeof window !== 'undefined') {
+            window.location.href = '/'
+          }
         } else {
           set({
             user: null,

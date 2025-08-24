@@ -49,7 +49,7 @@ interface DashboardStats {
 }
 
 export function Dashboard() {
-  const { user } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const router = useRouter()
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
   const [stats, setStats] = useState<DashboardStats>({
@@ -67,6 +67,12 @@ export function Dashboard() {
   const [courseToUnenroll, setCourseToUnenroll] = useState<EnrolledCourse | null>(null)
 
   useEffect(() => {
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      router.push('/')
+      return
+    }
+
     // Simulate loading enrolled courses
     loadEnrolledCourses()
     
@@ -82,7 +88,12 @@ export function Dashboard() {
         setShowWelcomeMessage(false)
       }, 10000)
     }
-  }, [])
+  }, [isAuthenticated, router])
+
+  // Don't render if not authenticated
+  if (!isAuthenticated) {
+    return null
+  }
 
   const loadEnrolledCourses = async () => {
     // Simulate API call
