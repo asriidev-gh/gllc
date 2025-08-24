@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -172,12 +172,44 @@ export default function AssessmentPage() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
   
-  const [currentStep, setCurrentStep] = useState<'intro' | 'language-select' | 'assessment' | 'results'>('intro')
+  const [currentStep, setCurrentStep] = useState<'intro' | 'language-select' | 'assessment' | 'results' | 'history'>('intro')
   const [selectedLanguage, setSelectedLanguage] = useState<string>('')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [timeSpent, setTimeSpent] = useState(0)
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null)
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([])
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [isStartingAssessment, setIsStartingAssessment] = useState(false)
+  const [showRetakeConfirm, setShowRetakeConfirm] = useState(false)
+  const [languageToRetake, setLanguageToRetake] = useState<string>('')
+  
+  // Fetch assessment results on component mount
+  useEffect(() => {
+    const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
+    setAssessmentResults(savedResults)
+    
+    // Check if user came from dashboard with history step
+    const urlParams = new URLSearchParams(window.location.search)
+    const step = urlParams.get('step')
+    if (step === 'history') {
+      setCurrentStep('history')
+    }
+  }, [])
+
+  // Auto-start assessment when language is selected
+  useEffect(() => {
+    if (selectedLanguage && currentStep === 'language-select') {
+      setIsStartingAssessment(true)
+      // Small delay to show the language selection briefly
+      const timer = setTimeout(() => {
+        setCurrentStep('assessment')
+        setIsStartingAssessment(false)
+      }, 1500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [selectedLanguage, currentStep])
   
   const languages = [
     { name: 'English', flag: '🇺🇸', description: 'Global communication language' },
@@ -246,17 +278,22 @@ export default function AssessmentPage() {
       improvements: getImprovements(incorrectAnswers)
     }
 
-    setAssessmentResult(result)
-    setCurrentStep('results')
-    
-    // Save result to localStorage
-    const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
-    savedResults.push({
+    const finalResult = {
       ...result,
       completedAt: new Date().toISOString(),
       timeSpent
-    })
+    }
+    
+    setAssessmentResult(result)
+    setCurrentStep('results')
+    
+    // Save result to localStorage and update state
+    const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
+    savedResults.push(finalResult)
     localStorage.setItem('assessment_results', JSON.stringify(savedResults))
+    
+    // Update the assessment results state
+    setAssessmentResults(prev => [...prev, finalResult])
   }
 
   const getRecommendedCourses = (language: string, level: string): string[] => {
@@ -304,6 +341,61 @@ export default function AssessmentPage() {
     setAnswers({})
     setAssessmentResult(null)
     setTimeSpent(0)
+  }
+
+  const handleExitAssessment = () => {
+    if (Object.keys(answers).length > 0) {
+      // User has answered some questions, show confirmation
+      setShowExitConfirm(true)
+    } else {
+      // No answers yet, exit directly
+      setCurrentStep('intro')
+      setSelectedLanguage('')
+      setCurrentQuestionIndex(0)
+      setAnswers({})
+      setTimeSpent(0)
+    }
+  }
+
+  const confirmExit = () => {
+    setCurrentStep('intro')
+    setSelectedLanguage('')
+    setCurrentQuestionIndex(0)
+    setAnswers({})
+    setTimeSpent(0)
+    setShowExitConfirm(false)
+  }
+
+  const checkPreviousAssessment = (language: string) => {
+    const previousResult = assessmentResults.find(result => result.language === language)
+    if (previousResult) {
+      setLanguageToRetake(language)
+      setShowRetakeConfirm(true)
+      return true
+    }
+    return false
+  }
+
+  const confirmRetake = () => {
+    setShowRetakeConfirm(false)
+    setLanguageToRetake('')
+    // Remove the previous result for this language
+    const updatedResults = assessmentResults.filter(result => result.language !== selectedLanguage)
+    setAssessmentResults(updatedResults)
+    localStorage.setItem('assessment_results', JSON.stringify(updatedResults))
+    // Start the assessment
+    setIsStartingAssessment(true)
+    const timer = setTimeout(() => {
+      setCurrentStep('assessment')
+      setIsStartingAssessment(false)
+    }, 1500)
+    return () => clearTimeout(timer)
+  }
+
+  const cancelRetake = () => {
+    setShowRetakeConfirm(false)
+    setLanguageToRetake('')
+    setSelectedLanguage('')
   }
 
   const goToCourses = () => {
@@ -404,41 +496,147 @@ export default function AssessmentPage() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {languages.map((language, index) => (
               <motion.button
                 key={language.name}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                onClick={() => setSelectedLanguage(language.name)}
-                className={`p-6 rounded-xl border-2 transition-all hover:shadow-lg ${
+                onClick={() => {
+                  if (!checkPreviousAssessment(language.name)) {
+                    setSelectedLanguage(language.name)
+                  }
+                }}
+                className={`p-6 rounded-xl border-2 transition-all hover:shadow-lg relative ${
                   selectedLanguage === language.name
                     ? 'border-blue-600 bg-blue-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
+                {/* Completion indicator */}
+                {assessmentResults.some(result => result.language === language.name) && (
+                  <div className="absolute top-2 right-2">
+                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-4xl mb-3">{language.flag}</div>
                 <h3 className="text-lg font-semibold mb-2">{language.name}</h3>
                 <p className="text-sm text-gray-600">{language.description}</p>
+                
+                {/* Previous result info */}
+                {assessmentResults.some(result => result.language === language.name) && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    {(() => {
+                      const result = assessmentResults.find(r => r.language === language.name)
+                      return result ? (
+                        <div className="text-xs text-gray-500">
+                          <span className="font-medium">Previous: </span>
+                          {result.level.charAt(0).toUpperCase() + result.level.slice(1)} Level ({result.percentage}%)
+                        </div>
+                      ) : null
+                    })()}
+                  </div>
+                )}
               </motion.button>
             ))}
           </div>
 
-          <div className="flex justify-center space-x-4">
+          {/* Auto-start message */}
+          {selectedLanguage && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+            >
+              <div className="flex items-center justify-center space-x-2 text-blue-700">
+                {isStartingAssessment ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
+                    <span className="font-medium">Starting your {selectedLanguage} assessment...</span>
+                  </>
+                ) : (
+                  <>
+                    <Target className="w-5 h-5" />
+                    <span className="font-medium">Assessment will start automatically in a few seconds...</span>
+                  </>
+                )}
+              </div>
+              <p className="text-sm text-blue-600 mt-1">
+                Get ready for your {selectedLanguage} assessment!
+              </p>
+            </motion.div>
+          )}
+
+          {/* Assessment History Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                <Award className="w-5 h-5 mr-2 text-yellow-600" />
+                Your Assessment History
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentStep('history')}
+                className="text-sm"
+              >
+                View All Results
+              </Button>
+            </div>
+            
+            {assessmentResults.length > 0 ? (
+              <div className="space-y-3">
+                {assessmentResults.slice(0, 3).map((result) => (
+                  <div key={result.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        result.level === 'beginner' ? 'bg-green-500' :
+                        result.level === 'intermediate' ? 'bg-yellow-500' : 'bg-red-500'
+                      }`} />
+                      <span className="font-medium text-gray-900">{result.language}</span>
+                      <span className="text-sm text-gray-600 capitalize">({result.level})</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-semibold text-blue-600">
+                        {result.percentage}%
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(result.completedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {assessmentResults.length > 3 && (
+                  <p className="text-sm text-gray-600 text-center pt-2">
+                    +{assessmentResults.length - 3} more results
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-600">No assessments completed yet</p>
+                <p className="text-sm text-gray-500">Complete your first assessment to see your progress!</p>
+              </div>
+            )}
+          </motion.div>
+
+          <div className="flex justify-center mt-8">
             <Button
               variant="outline"
               onClick={() => setCurrentStep('intro')}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
-            </Button>
-            <Button
-              onClick={() => setCurrentStep('assessment')}
-              disabled={!selectedLanguage}
-            >
-              Start Assessment
-              <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         </div>
@@ -453,6 +651,18 @@ export default function AssessmentPage() {
         <Header />
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
         <div className="max-w-3xl mx-auto px-4">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              onClick={handleExitAssessment}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Exit Assessment</span>
+            </Button>
+          </div>
+          
           {/* Progress Bar */}
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
@@ -534,6 +744,105 @@ export default function AssessmentPage() {
           </motion.div>
         </div>
       </div>
+      </>
+    )
+  }
+
+  // Exit Confirmation Modal
+  if (showExitConfirm) {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+          <div className="max-w-md mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl p-8 shadow-lg text-center"
+            >
+              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-yellow-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Exit Assessment?</h2>
+              <p className="text-gray-600 mb-6">
+                You've answered some questions. Are you sure you want to exit? Your progress will be lost.
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1"
+                >
+                  Continue Assessment
+                </Button>
+                <Button
+                  onClick={confirmExit}
+                  className="flex-1 bg-red-600 hover:bg-red-700"
+                >
+                  Exit Assessment
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Retake Assessment Confirmation Modal
+  if (showRetakeConfirm) {
+    const previousResult = assessmentResults.find(result => result.language === languageToRetake)
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+          <div className="max-w-md mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl p-8 shadow-lg text-center"
+            >
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-8 h-8 text-orange-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Retake {languageToRetake} Assessment?</h2>
+              <p className="text-gray-600 mb-4">
+                You've already taken this assessment before. Your previous result will be replaced.
+              </p>
+              {previousResult && (
+                <div className="mb-6 p-3 bg-gray-50 rounded-lg text-left">
+                  <p className="text-sm text-gray-600 mb-1">Previous Result:</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">
+                      {previousResult.level.charAt(0).toUpperCase() + previousResult.level.slice(1)} Level
+                    </span>
+                    <span className="text-sm font-semibold text-blue-600">
+                      {previousResult.percentage}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Completed on {new Date(previousResult.completedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={cancelRetake}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmRetake}
+                  className="flex-1 bg-orange-600 hover:bg-orange-700"
+                >
+                  Retake Assessment
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
       </>
     )
   }
@@ -658,6 +967,10 @@ export default function AssessmentPage() {
                   <BookOpen className="w-4 h-4 mr-2" />
                   Browse {assessmentResult.language} Courses
                 </Button>
+                <Button variant="outline" onClick={() => setCurrentStep('history')} className="w-full">
+                  <Award className="w-4 h-4 mr-2" />
+                  View Assessment History
+                </Button>
                 <Button variant="outline" onClick={restartAssessment} className="w-full">
                   <Target className="w-4 h-4 mr-2" />
                   Take Another Assessment
@@ -667,6 +980,141 @@ export default function AssessmentPage() {
           </div>
         </div>
       </div>
+      </>
+    )
+  }
+
+  if (currentStep === 'history') {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
+          <div className="max-w-6xl mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Assessment History</h1>
+              <p className="text-gray-600">
+                Track your language learning progress and review past assessments
+              </p>
+            </motion.div>
+
+            {assessmentResults.length > 0 ? (
+              <div className="space-y-6">
+                {assessmentResults.map((result, index) => (
+                  <motion.div
+                    key={result.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-4 h-4 rounded-full ${
+                          result.level === 'beginner' ? 'bg-green-500' :
+                          result.level === 'intermediate' ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} />
+                        <h3 className="text-xl font-semibold text-gray-900">{result.language}</h3>
+                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                          result.level === 'beginner' ? 'bg-green-100 text-green-800' :
+                          result.level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {result.level.charAt(0).toUpperCase() + result.level.slice(1)} Level
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-600">{result.percentage}%</div>
+                        <div className="text-sm text-gray-500">
+                          {new Date(result.completedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-gray-900">{result.score}</div>
+                        <div className="text-sm text-gray-600">Score</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-gray-900">{result.maxScore}</div>
+                        <div className="text-sm text-gray-600">Max Score</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-semibold text-gray-900">{result.timeSpent || 0}</div>
+                        <div className="text-sm text-gray-600">Seconds</div>
+                      </div>
+                    </div>
+
+                    {result.strengths && result.strengths.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-gray-900 mb-2">Strengths:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {result.strengths.map((strength, idx) => (
+                            <span key={idx} className="inline-block px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                              {strength}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.improvements && result.improvements.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-gray-900 mb-2">Areas for Improvement:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {result.improvements.map((improvement, idx) => (
+                            <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-800 text-sm rounded-full">
+                              {improvement}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {result.recommendedCourses && result.recommendedCourses.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Recommended Courses:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {result.recommendedCourses.map((course, idx) => (
+                            <span key={idx} className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                              {course}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12 bg-white rounded-xl shadow-lg"
+              >
+                <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Assessments Yet</h3>
+                <p className="text-gray-600 mb-6">
+                  You haven't completed any assessments yet. Start your language learning journey!
+                </p>
+                <Button onClick={() => setCurrentStep('intro')}>
+                  <Target className="w-4 h-4 mr-2" />
+                  Take Your First Assessment
+                </Button>
+              </motion.div>
+            )}
+
+            <div className="text-center mt-8">
+              <Button variant="outline" onClick={() => setCurrentStep('intro')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Assessment
+              </Button>
+            </div>
+          </div>
+        </div>
       </>
     )
   }

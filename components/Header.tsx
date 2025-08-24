@@ -30,7 +30,7 @@ export function Header() {
   const isOnDashboard = pathname === '/dashboard'
 
   // Check if we're on any user workspace page (dashboard, profile, settings, achievements, course learning)
-  const isOnUserWorkspace = ['/dashboard', '/profile', '/settings', '/achievements'].includes(pathname) || pathname.startsWith('/courses/')
+  const isOnUserWorkspace = ['/dashboard', '/profile', '/settings', '/achievements', '/assessment'].includes(pathname) || pathname.startsWith('/courses/')
 
   const handleLogout = () => {
     logout()

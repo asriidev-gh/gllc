@@ -395,6 +395,18 @@ export function Dashboard() {
                   <div className="text-sm text-gray-500">Find your perfect starting level</div>
                 </div>
               </Button>
+              
+              <Button 
+                variant="outline"
+                className="h-16 text-lg justify-start"
+                onClick={() => router.push('/assessment?step=history')}
+              >
+                <Award className="w-6 h-6 mr-3" />
+                <div className="text-left">
+                  <div className="font-semibold">Assessment History</div>
+                  <div className="text-sm text-gray-500">Review your past results</div>
+                </div>
+              </Button>
             </div>
           </div>
         </div>
