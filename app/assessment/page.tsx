@@ -202,9 +202,11 @@ export default function AssessmentPage() {
   // Auto-start assessment when language is selected
   useEffect(() => {
     if (selectedLanguage && currentStep === 'language-select') {
+      console.log('🚀 Auto-start effect triggered for:', selectedLanguage)
       setIsStartingAssessment(true)
       // Small delay to show the language selection briefly
       const timer = setTimeout(() => {
+        console.log('🚀 Starting assessment for:', selectedLanguage)
         setCurrentStep('assessment')
         setIsStartingAssessment(false)
       }, 1500)
@@ -377,6 +379,15 @@ export default function AssessmentPage() {
   const checkPreviousAssessment = (language: string) => {
     console.log('🔍 Checking previous assessment for:', language)
     console.log('🔍 Current assessmentResults:', assessmentResults)
+    console.log('🔍 assessmentResults length:', assessmentResults.length)
+    console.log('🔍 assessmentResults type:', typeof assessmentResults)
+    
+    // Make sure assessmentResults is an array
+    if (!Array.isArray(assessmentResults)) {
+      console.log('🔍 assessmentResults is not an array, resetting to empty array')
+      setAssessmentResults([])
+      return false
+    }
     
     const previousResult = assessmentResults.find(result => result.language === language)
     console.log('🔍 Previous result found:', previousResult)
@@ -387,6 +398,8 @@ export default function AssessmentPage() {
       setShowRetakeConfirm(true)
       return true
     }
+    
+    console.log('🔍 No previous result found for:', language)
     return false
   }
 
@@ -399,18 +412,12 @@ export default function AssessmentPage() {
     setAssessmentResults(updatedResults)
     localStorage.setItem('assessment_results', JSON.stringify(updatedResults))
     
-    // Set the selected language and start assessment
+    // Set the selected language
     setSelectedLanguage(languageToRetake)
     setLanguageToRetake('')
     
-    // Start the assessment
-    setIsStartingAssessment(true)
-    const timer = setTimeout(() => {
-      setCurrentStep('assessment')
-      setIsStartingAssessment(false)
-    }, 1500)
-    
-    return () => clearTimeout(timer)
+    // Don't manually start assessment - let the auto-start effect handle it
+    // The auto-start effect will trigger when selectedLanguage changes
   }
 
   const cancelRetake = () => {
