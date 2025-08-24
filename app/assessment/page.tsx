@@ -15,7 +15,8 @@ import {
   Languages,
   Brain,
   Headphones,
-  MessageCircle
+  MessageCircle,
+  AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
@@ -187,6 +188,7 @@ export default function AssessmentPage() {
   // Fetch assessment results on component mount
   useEffect(() => {
     const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
+    console.log('📊 Initial assessment results loaded:', savedResults)
     setAssessmentResults(savedResults)
     
     // Check if user came from dashboard with history step
@@ -344,11 +346,17 @@ export default function AssessmentPage() {
   }
 
   const handleExitAssessment = () => {
+    console.log('🚪 Exit assessment clicked')
+    console.log('🚪 Current answers:', answers)
+    console.log('🚪 Answers length:', Object.keys(answers).length)
+    
     if (Object.keys(answers).length > 0) {
       // User has answered some questions, show confirmation
+      console.log('🚪 Showing exit confirmation')
       setShowExitConfirm(true)
     } else {
       // No answers yet, exit directly
+      console.log('🚪 No answers, exiting directly')
       setCurrentStep('intro')
       setSelectedLanguage('')
       setCurrentQuestionIndex(0)
@@ -367,8 +375,14 @@ export default function AssessmentPage() {
   }
 
   const checkPreviousAssessment = (language: string) => {
+    console.log('🔍 Checking previous assessment for:', language)
+    console.log('🔍 Current assessmentResults:', assessmentResults)
+    
     const previousResult = assessmentResults.find(result => result.language === language)
+    console.log('🔍 Previous result found:', previousResult)
+    
     if (previousResult) {
+      console.log('🔍 Setting retake confirmation for:', language)
       setLanguageToRetake(language)
       setShowRetakeConfirm(true)
       return true
@@ -377,25 +391,33 @@ export default function AssessmentPage() {
   }
 
   const confirmRetake = () => {
+    console.log('✅ Confirming retake for:', languageToRetake)
     setShowRetakeConfirm(false)
-    setLanguageToRetake('')
+    
     // Remove the previous result for this language
-    const updatedResults = assessmentResults.filter(result => result.language !== selectedLanguage)
+    const updatedResults = assessmentResults.filter(result => result.language !== languageToRetake)
     setAssessmentResults(updatedResults)
     localStorage.setItem('assessment_results', JSON.stringify(updatedResults))
+    
+    // Set the selected language and start assessment
+    setSelectedLanguage(languageToRetake)
+    setLanguageToRetake('')
+    
     // Start the assessment
     setIsStartingAssessment(true)
     const timer = setTimeout(() => {
       setCurrentStep('assessment')
       setIsStartingAssessment(false)
     }, 1500)
+    
     return () => clearTimeout(timer)
   }
 
   const cancelRetake = () => {
+    console.log('❌ Cancelling retake')
     setShowRetakeConfirm(false)
     setLanguageToRetake('')
-    setSelectedLanguage('')
+    // Don't reset selectedLanguage here, let user choose again
   }
 
   const goToCourses = () => {
@@ -504,7 +526,21 @@ export default function AssessmentPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 onClick={() => {
-                  if (!checkPreviousAssessment(language.name)) {
+                  console.log('🖱️ Language clicked:', language.name)
+                  console.log('🖱️ Current assessmentResults state:', assessmentResults)
+                  
+                  // Check if this language has been assessed before
+                  const hasPrevious = assessmentResults.some(result => result.language === language.name)
+                  console.log('🖱️ Has previous assessment:', hasPrevious)
+                  
+                  if (hasPrevious) {
+                    // Show retake confirmation
+                    console.log('🔄 Showing retake confirmation for:', language.name)
+                    setLanguageToRetake(language.name)
+                    setShowRetakeConfirm(true)
+                  } else {
+                    // No previous assessment, proceed normally
+                    console.log('🆕 No previous assessment, setting language to:', language.name)
                     setSelectedLanguage(language.name)
                   }
                 }}
@@ -750,6 +786,7 @@ export default function AssessmentPage() {
 
   // Exit Confirmation Modal
   if (showExitConfirm) {
+    console.log('🚪 Rendering exit confirmation modal')
     return (
       <>
         <Header />
@@ -791,7 +828,11 @@ export default function AssessmentPage() {
 
   // Retake Assessment Confirmation Modal
   if (showRetakeConfirm) {
+    console.log('🔄 Rendering retake confirmation modal')
+    console.log('🔄 Language to retake:', languageToRetake)
+    console.log('🔄 Current assessmentResults:', assessmentResults)
     const previousResult = assessmentResults.find(result => result.language === languageToRetake)
+    console.log('🔄 Previous result found:', previousResult)
     return (
       <>
         <Header />
