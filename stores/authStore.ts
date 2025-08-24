@@ -80,12 +80,20 @@ export const useAuthStore = create<AuthState>()(
           await new Promise(resolve => setTimeout(resolve, 1000))
           
           // For demo purposes, accept any email/password combination
-          // Check if this user has logged in before by looking at existing users
-          const existingUsers = JSON.parse(localStorage.getItem('auth-storage') || '{}')
-          const isReturningUser = existingUsers.user && existingUsers.user.email === email
+          // Check if this user has logged in before by looking at login history
+          const loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '{}')
+          const userLoginHistory = loginHistory[email] || { count: 0, firstLogin: null, lastLogin: null }
+          const isReturningUser = userLoginHistory.count > 0
+          
+          console.log('🔍 Login History Check:', {
+            email,
+            userLoginHistory,
+            isReturningUser,
+            loginCount: userLoginHistory.count
+          })
           
           const user: User = {
-            id: isReturningUser ? existingUsers.user.id : `user_${Date.now()}`,
+            id: isReturningUser ? userLoginHistory.userId || `user_${Date.now()}` : `user_${Date.now()}`,
             email,
             name: email.split('@')[0],
             role: 'STUDENT',
@@ -95,7 +103,7 @@ export const useAuthStore = create<AuthState>()(
             interests: ['English', 'Tagalog'],
             nativeLanguage: 'Filipino',
             targetLanguages: ['English', 'Tagalog'],
-            createdAt: isReturningUser ? existingUsers.user.createdAt : new Date().toISOString(),
+            createdAt: isReturningUser ? userLoginHistory.firstLogin : new Date().toISOString(),
             password: password // Store password for demo validation
           }
           
@@ -114,8 +122,18 @@ export const useAuthStore = create<AuthState>()(
           }
           
           // Track login count for returning users
-          const loginCount = isReturningUser ? (existingUsers.loginCount || 0) + 1 : 1
-          localStorage.setItem('loginCount', loginCount.toString())
+          const newLoginCount = userLoginHistory.count + 1
+          const now = new Date().toISOString()
+          
+          // Update login history
+          loginHistory[email] = {
+            count: newLoginCount,
+            userId: user.id,
+            firstLogin: userLoginHistory.firstLogin || now,
+            lastLogin: now,
+            email: email
+          }
+          localStorage.setItem('loginHistory', JSON.stringify(loginHistory))
           
           set((state) => ({
             user,
@@ -137,8 +155,14 @@ export const useAuthStore = create<AuthState>()(
           }
           
           const message = isReturningUser 
-            ? getReturningUserMessage(user.name, loginCount)
+            ? getReturningUserMessage(user.name, newLoginCount)
             : `Welcome, ${user.name}! We're excited to have you join us! 🌟`
+          
+          console.log('📝 Message Generated:', {
+            isReturningUser,
+            newLoginCount,
+            message
+          })
           
           toast.success(message, {
             duration: 3000,
@@ -245,6 +269,7 @@ export const useAuthStore = create<AuthState>()(
             timestamp: new Date().toISOString()
           }
           
+          // Clear only auth state, preserve user data
           set((state) => ({
             user: null,
             token: null,
@@ -252,6 +277,10 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             actionLogs: [...state.actionLogs, actionLog]
           }))
+          
+          // IMPORTANT: Don't clear user data from localStorage
+          // Keep: loginHistory, enrolled_courses, user preferences
+          // Only clear: auth-storage (handled by Zustand persist)
           
           toast.success('You have been logged out successfully', {
             duration: 3000,
@@ -279,7 +308,7 @@ export const useAuthStore = create<AuthState>()(
           })
         }
         
-        console.log('✅ User logged out, state cleared')
+        console.log('✅ User logged out, auth state cleared, user data preserved')
       },
 
       // Clear auth action
@@ -292,6 +321,30 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false
         })
         console.log('✅ Auth state cleared')
+      },
+
+      // Clear all user data (for account deletion)
+      clearAllUserData: () => {
+        console.log('🗑️ CLEARING ALL USER DATA')
+        
+        // Clear auth state
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false
+        })
+        
+        // Clear user data from localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('loginHistory')
+          localStorage.removeItem('enrolled_courses')
+          localStorage.removeItem('course_notes_*')
+          localStorage.removeItem('course_bookmarks_*')
+          // Keep other localStorage items that might be app-wide
+        }
+        
+        console.log('✅ All user data cleared')
       },
 
       // Check auth status
