@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -26,6 +27,7 @@ interface CourseEnrollmentModalProps {
 }
 
 export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollmentModalProps) {
+  const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [enrollmentStep, setEnrollmentStep] = useState<'confirm' | 'processing' | 'success'>('confirm')
@@ -91,8 +93,8 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
       // Auto-close after showing success
       setTimeout(() => {
         onClose()
-        // Redirect to dashboard to see the new course
-        window.location.href = '/dashboard'
+        // Redirect to course details page instead of dashboard
+        router.push(`/courses/${course.id}`)
       }, 2000)
       
     } catch (error) {
@@ -260,7 +262,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
                   You are now enrolled in <strong>{course.name}</strong>
                 </p>
                 <p className="text-sm text-gray-500">
-                  Redirecting to your dashboard...
+                  Redirecting to course details page...
                 </p>
               </div>
             )}

@@ -235,6 +235,7 @@ export default function CoursesPage() {
     const transformedCourse = {
       id: course.id,
       name: course.title, // This will be the course name displayed
+      title: course.title, // Keep both for compatibility
       language: course.language,
       flag: course.flag,
       level: course.level,

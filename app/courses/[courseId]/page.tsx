@@ -123,15 +123,27 @@ export default function CourseLearningPage() {
   const [duration, setDuration] = useState(0)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      toast.error('Please sign in to access course content')
-      router.push('/login')
-      return
-    }
+    console.log('Course details page - Authentication state:', isAuthenticated)
+    console.log('Course details page - Course ID:', courseId)
+    
+    // Add a small delay to ensure authentication state is properly loaded
+    const timer = setTimeout(() => {
+      console.log('Course details page - Delayed auth check:', isAuthenticated)
+      
+      if (!isAuthenticated) {
+        console.log('Course details page - User not authenticated, redirecting to login')
+        toast.error('Please sign in to access course content')
+        router.push(`/login?redirect=/courses/${courseId}`)
+        return
+      }
 
-    loadCourseData()
-    loadUserData()
-  }, [courseId, isAuthenticated])
+      console.log('Course details page - User authenticated, loading course data')
+      loadCourseData()
+      loadUserData()
+    }, 100)
+
+    return () => clearTimeout(timer)
+  }, [courseId, isAuthenticated, router])
 
   const loadUserData = () => {
     // Load user's notes and bookmarks
@@ -148,18 +160,28 @@ export default function CourseLearningPage() {
 
   const loadCourseData = async () => {
     try {
+      console.log('Loading course data for courseId:', courseId)
       const savedEnrollments = localStorage.getItem('enrolled_courses')
+      console.log('Saved enrollments:', savedEnrollments)
+      
       if (savedEnrollments) {
         const enrollments = JSON.parse(savedEnrollments)
+        console.log('Parsed enrollments:', enrollments)
         const courseData = enrollments.find((enrollment: any) => enrollment.id === courseId)
+        console.log('Found course data:', courseData)
         
         if (courseData) {
           setCourse(courseData)
           generateMockTopics(courseData)
         } else {
+          console.error('Course not found in enrollments. Available IDs:', enrollments.map((e: any) => e.id))
           toast.error('Course not found or you are not enrolled')
           router.push('/courses')
         }
+      } else {
+        console.log('No enrollments found in localStorage')
+        toast.error('No enrollments found')
+        router.push('/courses')
       }
     } catch (error) {
       console.error('Error loading course:', error)

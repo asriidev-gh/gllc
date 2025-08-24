@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield, Play, Flag } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -35,6 +36,7 @@ interface CourseDetailsModalProps {
 }
 
 export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsModalProps) {
+  const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [enrollmentStep, setEnrollmentStep] = useState<'details' | 'processing' | 'success'>('details')
@@ -70,7 +72,8 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
       const existingEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
       const newEnrollment = {
         id: course.id,
-        name: course.name,
+        name: course.name || course.title, // Handle both name and title properties
+        title: course.title, // Keep both for compatibility
         language: course.language,
         flag: course.flag,
         level: course.level,
@@ -102,6 +105,8 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
       localStorage.setItem('enrolled_courses', JSON.stringify(updatedEnrollments))
 
       console.log('Course enrolled successfully:', newEnrollment)
+      console.log('All enrollments after adding:', updatedEnrollments)
+      console.log('Course ID being used for redirect:', course.id)
 
       // Show success
       setEnrollmentStep('success')
@@ -109,8 +114,10 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
       // Auto-close after showing success
       setTimeout(() => {
         onClose()
-        // Redirect to dashboard to see the new course
-        window.location.href = '/dashboard'
+        // Redirect to course details page instead of dashboard
+        console.log('Redirecting to course details page:', `/courses/${course.id}`)
+        console.log('Current authentication state:', useAuthStore.getState().isAuthenticated)
+        router.push(`/courses/${course.id}`)
       }, 2000)
 
     } catch (error) {
@@ -288,7 +295,7 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                   You are now enrolled in <strong>{course.name}</strong>
                 </p>
                 <p className="text-sm text-gray-500">
-                  Redirecting to your dashboard...
+                  Redirecting to course details page...
                 </p>
               </div>
             )}
