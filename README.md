@@ -62,7 +62,6 @@ A comprehensive language learning platform built with Next.js, designed to help 
 gllc/
 ├── app/                    # Next.js 13+ app directory
 │   ├── (auth)/            # Authentication routes
-│   ├── admin/             # Admin panel routes
 │   ├── assessment/        # Language assessment
 │   ├── courses/           # Course management
 │   ├── dashboard/         # User dashboard
@@ -103,8 +102,8 @@ gllc/
 - `/achievements` - User achievements and badges
 - `/courses/[courseId]` - Individual course learning page
 
-### Admin Pages
-- `/admin/audit` - System audit logs
+### User Pages (Requires Authentication)
+- `/audit` - System audit logs
 
 ## 🔐 Authentication
 

@@ -217,7 +217,7 @@ function generateAdminEmailHTML(result: AssessmentResult) {
       
       <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
         <p style="color: #666; font-size: 14px;">
-          Admin Dashboard: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin" style="color: #17a2b8;">View Dashboard</a>
+          Audit Logs: <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/audit" style="color: #17a2b8;">View Logs</a>
         </p>
         <p style="color: #999; font-size: 12px;">
           © 2024 Global Language Training Center. Admin Notification.

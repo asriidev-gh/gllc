@@ -515,7 +515,7 @@ export default function SettingsPage() {
                     </div>
                     <p className="text-gray-600 mb-4">View and monitor your account activity and security events.</p>
                     <Button 
-                      onClick={() => window.location.href = '/admin/audit'}
+                      onClick={() => window.location.href = '/audit'}
                       className="w-full"
                     >
                       <Shield className="w-4 h-4 mr-2" />

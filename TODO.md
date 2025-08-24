@@ -45,7 +45,7 @@
 - Password change now requires correct current password for security
 - Password change prevents using the same password as current
 - Comprehensive action logging system tracks all user activities
-- Admin audit page provides detailed activity monitoring and export capabilities
+- Audit logs page provides detailed activity monitoring and export capabilities
 - Professional toast notifications replace basic browser alerts
 - Enhanced user experience with styled, animated notifications
 - Action logs now persist to localStorage and survive page refreshes
