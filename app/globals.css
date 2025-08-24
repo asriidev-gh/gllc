@@ -1,0 +1,698 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-gray-200;
+  }
+  
+  body {
+    @apply bg-white text-gray-900;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Theme-specific styles */
+  .theme-light {
+    --app-bg: #ffffff;
+    --app-text: #111827;
+    --card-bg: #ffffff;
+    --card-border: #e5e7eb;
+    --primary-color: #3b82f6;
+  }
+
+  .theme-dark {
+    --app-bg: #111827;
+    --app-text: #f9fafb;
+    --card-bg: #1f2937;
+    --card-border: #374151;
+    --primary-color: #60a5fa;
+  }
+
+  .theme-dark body {
+    @apply bg-gray-900 text-gray-100;
+  }
+
+  .theme-dark .bg-white {
+    @apply bg-gray-800;
+  }
+
+  .theme-dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+
+  .theme-dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+
+  .theme-dark .text-gray-600 {
+    @apply text-gray-400;
+  }
+
+  .theme-dark .bg-gray-50 {
+    @apply bg-gray-800;
+  }
+
+  /* Video player slider styles */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .slider::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ffffff;
+    border-radius: 50%;
+    height: 1rem;
+    width: 1rem;
+    cursor: pointer;
+  }
+
+  .slider::-moz-range-track {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0.5rem;
+    height: 0.5rem;
+    border: none;
+  }
+
+  .slider::-moz-range-thumb {
+    background: #ffffff;
+    border-radius: 50%;
+    height: 1rem;
+    width: 1rem;
+    cursor: pointer;
+    border: none;
+  }
+
+  .theme-dark .bg-gray-100 {
+    @apply bg-gray-700;
+  }
+
+  /* Dark theme background overrides */
+  .theme-dark .bg-primary-50 {
+    @apply bg-blue-900;
+  }
+
+  .theme-dark .bg-secondary-50 {
+    @apply bg-purple-900;
+  }
+
+  .theme-dark .bg-accent-50 {
+    @apply bg-orange-900;
+  }
+
+  /* Fix gradient sections by changing them to dark gradients with light text (like the assessment section) */
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] {
+    background: linear-gradient(to right, #1e3a8a, #581c87) !important; /* from-blue-900 to-purple-900 */
+    color: #ffffff !important; /* text-white */
+  }
+
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] h3,
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-gray-900 {
+    color: #ffffff !important; /* text-white for headings */
+  }
+
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] p,
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-gray-600 {
+    color: #e0e7ff !important; /* text-indigo-100 for body text */
+  }
+
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-4xl,
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-2xl,
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-xl,
+  .theme-dark [class*="from-primary-50"][class*="to-secondary-50"] .text-lg {
+    color: #ffffff !important; /* text-white for all large text */
+  }
+
+  .theme-dark .bg-primary-100 {
+    @apply bg-blue-800;
+  }
+
+  .theme-dark .bg-secondary-100 {
+    @apply bg-purple-800;
+  }
+
+  .theme-dark .bg-accent-100 {
+    @apply bg-orange-800;
+  }
+
+  .theme-dark .bg-primary-200 {
+    @apply bg-blue-700;
+  }
+
+  .theme-dark .bg-secondary-200 {
+    @apply bg-purple-700;
+  }
+
+  .theme-dark .bg-accent-200 {
+    @apply bg-orange-700;
+  }
+
+  /* Dark theme form elements */
+  .theme-dark label {
+    @apply text-gray-200;
+  }
+
+  .theme-dark .text-gray-700 {
+    @apply text-gray-300;
+  }
+
+  .theme-dark .text-gray-500 {
+    @apply text-gray-400;
+  }
+
+  .theme-dark .text-gray-900 {
+    @apply text-gray-100;
+  }
+
+  .theme-dark .text-gray-600 {
+    @apply text-gray-300;
+  }
+
+  .theme-dark .text-gray-700 {
+    @apply text-gray-300;
+  }
+
+  .theme-dark select {
+    @apply bg-gray-700 border-gray-600 text-gray-200;
+  }
+
+  .theme-dark select option {
+    @apply bg-gray-700 text-gray-200;
+  }
+
+  .theme-dark input {
+    @apply bg-gray-700 border-gray-600 text-gray-200;
+  }
+
+  .theme-dark input::placeholder {
+    @apply text-gray-400;
+  }
+
+  .theme-dark .bg-blue-50 {
+    @apply bg-blue-900;
+  }
+
+  .theme-dark .border-blue-200 {
+    @apply border-blue-700;
+  }
+
+  /* Dark theme focus states */
+  .theme-dark select:focus {
+    @apply ring-blue-500 border-blue-500;
+  }
+
+  .theme-dark input:focus {
+    @apply ring-blue-500 border-blue-500;
+  }
+
+  /* Dark theme button states */
+  .theme-dark .bg-white {
+    @apply bg-gray-800;
+  }
+
+  .theme-dark .hover\:bg-gray-50:hover {
+    @apply hover:bg-gray-700;
+  }
+
+  .theme-dark .hover\:bg-gray-100:hover {
+    @apply hover:bg-gray-600;
+  }
+
+  .theme-dark .hover\:text-gray-900:hover {
+    @apply hover:text-gray-100;
+  }
+
+  /* Dark theme specific overrides for better readability */
+  .theme-dark .bg-white {
+    @apply bg-gray-800;
+  }
+
+  .theme-dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+
+  .theme-dark .shadow-sm {
+    @apply shadow-gray-900;
+  }
+
+  /* Dark theme scrollbar */
+  .theme-dark ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+
+  .theme-dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
+
+  .theme-dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+
+  /* Color scheme variations */
+  .color-scheme-green {
+    --primary-color: #10b981;
+  }
+
+  .color-scheme-purple {
+    --primary-color: #8b5cf6;
+  }
+
+  .color-scheme-orange {
+    --primary-color: #f59e0b;
+  }
+
+  .color-scheme-blue {
+    --primary-color: #3b82f6;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-600 hover:bg-secondary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  /* Dark theme button overrides */
+  .theme-dark .btn-outline {
+    @apply border-gray-600 hover:bg-gray-700 text-gray-300;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors duration-200;
+  }
+
+  /* Dark theme card and input overrides */
+  .theme-dark .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .theme-dark .input-field {
+    @apply bg-gray-700 border-gray-600 text-gray-200;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-primary {
+    @apply bg-primary-100 text-primary-800;
+  }
+
+  .badge-secondary {
+    @apply bg-secondary-100 text-secondary-800;
+  }
+
+  .badge-success {
+    @apply bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply bg-warning-100 text-warning-800;
+  }
+
+  .badge-error {
+    @apply bg-error-100 text-error-800;
+  }
+
+  /* Dark theme badge overrides */
+  .theme-dark .badge-primary {
+    @apply bg-blue-900 text-blue-200;
+  }
+
+  .theme-dark .badge-secondary {
+    @apply bg-purple-900 text-purple-200;
+  }
+
+  .theme-dark .badge-success {
+    @apply bg-green-900 text-green-200;
+  }
+
+  .theme-dark .badge-warning {
+    @apply bg-yellow-900 text-yellow-200;
+  }
+
+  .theme-dark .badge-error {
+    @apply bg-red-900 text-red-200;
+  }
+
+  /* Language-specific color coding */
+  .lang-tagalog { @apply bg-red-100 text-red-800; }
+  .lang-english { @apply bg-blue-100 text-blue-800; }
+  .lang-korean { @apply bg-green-100 text-green-800; }
+  .lang-japanese { @apply bg-purple-100 text-purple-800; }
+  .lang-chinese { @apply bg-orange-100 text-orange-800; }
+
+  /* Dark theme language colors */
+  .theme-dark .lang-tagalog { @apply bg-red-900 text-red-200; }
+  .theme-dark .lang-english { @apply bg-blue-900 text-blue-200; }
+  .theme-dark .lang-korean { @apply bg-green-900 text-green-200; }
+  .theme-dark .lang-japanese { @apply bg-purple-900 text-purple-200; }
+  .theme-dark .lang-chinese { @apply bg-orange-900 text-orange-200; }
+
+  /* Difficulty levels */
+  .level-beginner { @apply bg-success-100 text-success-800; }
+  .level-intermediate { @apply bg-warning-100 text-warning-800; }
+  .level-advanced { @apply bg-error-100 text-error-800; }
+
+  /* Dark theme difficulty levels */
+  .theme-dark .level-beginner { @apply bg-success-900 text-success-200; }
+  .theme-dark .level-intermediate { @apply bg-warning-900 text-warning-200; }
+  .theme-dark .level-advanced { @apply bg-error-900 text-error-200; }
+
+  /* Progress indicators */
+  .progress-bar {
+    @apply w-full bg-gray-200 rounded-full h-2;
+  }
+
+  .progress-fill {
+    @apply bg-primary-600 h-2 rounded-full transition-all duration-300 ease-out;
+  }
+
+  /* Dark theme progress indicators */
+  .theme-dark .progress-bar {
+    @apply bg-gray-700;
+  }
+
+  /* Animation classes */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .bounce-gentle {
+    animation: bounceGentle 2s infinite;
+  }
+
+  /* Responsive grid */
+  .grid-auto-fit {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .grid-auto-fill {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent;
+  }
+
+  /* Dark theme gradient text */
+  .theme-dark .gradient-text {
+    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  .glass-effect {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20;
+  }
+
+  /* Dark theme glass effect */
+  .theme-dark .glass-effect {
+    @apply bg-gray-800/80 backdrop-blur-sm border border-gray-600/20;
+  }
+
+  /* Dark theme white background overrides */
+  .theme-dark .bg-white\/60 {
+    @apply bg-gray-800/60;
+  }
+
+  .theme-dark .bg-white\/80 {
+    @apply bg-gray-800/80;
+  }
+
+  .theme-dark .border-white\/20 {
+    @apply border-gray-600/20;
+  }
+
+  .theme-dark .hover\:bg-white\/80:hover {
+    @apply hover:bg-gray-700/80;
+  }
+
+  /* Dark theme primary colors for stats */
+  .theme-dark .text-primary-600 {
+    @apply text-blue-400;
+  }
+
+  .theme-dark .text-secondary-600 {
+    @apply text-purple-400;
+  }
+
+  .theme-dark .text-accent-600 {
+    @apply text-orange-400;
+  }
+
+  .theme-dark .text-primary-800 {
+    @apply text-blue-300;
+  }
+
+  .theme-dark .text-secondary-800 {
+    @apply text-purple-300;
+  }
+
+  .theme-dark .text-accent-800 {
+    @apply text-orange-300;
+  }
+
+  /* Dark theme text overrides for gradient backgrounds - using attribute selectors to avoid circular dependency */
+  .theme-dark [class*="from-primary-50"] [class*="to-secondary-50"] .text-gray-900 {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] [class*="to-secondary-50"] .text-gray-600 {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  .theme-dark [class*="from-primary-50"] [class*="to-secondary-50"] .text-gray-700 {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  /* Dark theme gradient section text overrides */
+  .theme-dark .gradient-section-text h3 {
+    @apply text-gray-100;
+  }
+
+  .theme-dark .gradient-section-text p {
+    @apply text-gray-200;
+  }
+
+  .theme-dark .gradient-section-text .text-gray-600 {
+    @apply text-gray-200;
+  }
+
+  .theme-dark .gradient-section-text .text-gray-900 {
+    @apply text-gray-100;
+  }
+
+  /* Comprehensive dark theme text overrides for all gradient backgrounds - using direct color values */
+  .theme-dark [class*="from-primary-50"] .text-gray-900 {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-gray-600 {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-gray-700 {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  .theme-dark [class*="from-primary-50"] h3 {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] p {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  /* Dark theme support for stats and numbers in gradient sections - using direct color values */
+  .theme-dark [class*="from-primary-50"] .text-4xl {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-2xl {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-xl {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-lg {
+    color: #f3f4f6; /* text-gray-100 */
+  }
+
+  /* Additional dark theme support for any remaining text in gradient sections - using direct color values */
+  .theme-dark [class*="from-primary-50"] .text-sm {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  .theme-dark [class*="from-primary-50"] .text-base {
+    color: #e5e7eb; /* text-gray-200 */
+  }
+
+  /* Specific fix for "Our Impact in Numbers" section - using the same approach as the assessment section */
+
+  /* Using the same approach as the assessment section - dark gradient with light text */
+
+  /* Dark theme blob animations */
+  .theme-dark .animate-blob {
+    @apply opacity-50;
+  }
+
+  /* Dark theme badge styling */
+  .theme-dark .bg-primary-100 {
+    @apply bg-blue-900;
+  }
+
+  .theme-dark .text-primary-800 {
+    @apply text-blue-200;
+  }
+
+  /* Dark theme support for achievement sections */
+  .theme-dark .bg-primary-50 .text-primary-800 {
+    @apply text-blue-200;
+  }
+
+  .theme-dark .bg-primary-50 {
+    @apply bg-blue-900;
+  }
+
+  /* Dark theme success colors */
+  .theme-dark .text-success-600 {
+    @apply text-green-400;
+  }
+
+  .theme-dark .bg-success-100 {
+    @apply bg-green-900;
+  }
+
+  .theme-dark .text-success-800 {
+    @apply text-green-200;
+  }
+
+  /* Dark theme warning colors */
+  .theme-dark .text-warning-600 {
+    @apply text-yellow-400;
+  }
+
+  .theme-dark .bg-warning-100 {
+    @apply bg-yellow-900;
+  }
+
+  .theme-dark .text-warning-800 {
+    @apply text-yellow-200;
+  }
+
+  /* Dark theme error colors */
+  .theme-dark .text-error-600 {
+    @apply text-red-400;
+  }
+
+  .theme-dark .bg-error-100 {
+    @apply bg-red-900;
+  }
+
+  .theme-dark .text-error-800 {
+    @apply text-red-200;
+  }
+}

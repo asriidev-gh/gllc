@@ -1,0 +1,366 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  role          UserRole  @default(STUDENT)
+  age           Int?
+  grade         String?
+  school        String?
+  interests     String[]
+  nativeLanguage String   @default("Filipino")
+  targetLanguages String[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Progress tracking
+  enrollments   Enrollment[]
+  progress      Progress[]
+  examResults   ExamResult[]
+  achievements  Achievement[]
+  studySessions StudySession[]
+
+  // Social features
+  friends      Friendship[] @relation("UserFriends")
+  friendsOf    Friendship[] @relation("FriendsUser")
+  studyGroups  StudyGroupMember[]
+
+  @@map("users")
+}
+
+model Course {
+  id              String    @id @default(cuid())
+  title           String
+  description     String
+  language        String
+  level           CourseLevel
+  category        CourseCategory
+  thumbnail       String?
+  duration        Int       // in minutes
+  isPublished     Boolean   @default(false)
+  isFree          Boolean   @default(false)
+  price           Decimal?  @db.Decimal(10, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  lessons        Lesson[]
+  enrollments    Enrollment[]
+  tags           CourseTag[]
+  exams          Exam[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  content     String   // Markdown content
+  videoUrl    String?  // YouTube URL
+  duration    Int      // in minutes
+  order       Int
+  courseId    String
+  isPublished Boolean   @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    Progress[]
+  exercises   Exercise[]
+
+  @@map("lessons")
+}
+
+model Exercise {
+  id          String    @id @default(cuid())
+  lessonId    String
+  type        ExerciseType
+  question    String
+  options     String[]  // For multiple choice
+  correctAnswer String
+  explanation String?
+  difficulty  ExerciseDifficulty
+  points      Int       @default(10)
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  attempts    ExerciseAttempt[]
+
+  @@map("exercises")
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  enrolledAt DateTime @default(now())
+  completedAt DateTime?
+  progress  Int      @default(0) // 0-100
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  completed Boolean  @default(false)
+  completedAt DateTime?
+  timeSpent Int      @default(0) // in seconds
+  score     Int?     // 0-100
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("progress")
+}
+
+model Exam {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  courseId    String
+  language    String
+  level       CourseLevel
+  duration    Int       // in minutes
+  totalPoints Int
+  isPublished Boolean   @default(false)
+  isAI        Boolean   @default(false) // AI-generated exam
+  createdAt   DateTime  @default(now())
+
+  // Relationships
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions   ExamQuestion[]
+  results     ExamResult[]
+
+  @@map("exams")
+}
+
+model ExamQuestion {
+  id          String    @id @default(cuid())
+  examId      String
+  question    String
+  type        QuestionType
+  options     String[]  // For multiple choice
+  correctAnswer String
+  explanation String?
+  points      Int       @default(10)
+  order       Int
+
+  // Relationships
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@map("exam_questions")
+}
+
+model ExamResult {
+  id        String   @id @default(cuid())
+  userId    String
+  examId    String
+  score     Int
+  totalPoints Int
+  percentage Float
+  timeSpent Int      // in seconds
+  completedAt DateTime @default(now())
+  answers   Json     // Store user answers
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@map("exam_results")
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  type        AchievementType
+  title       String
+  description String
+  icon        String?
+  earnedAt    DateTime @default(now())
+
+  // Relationships
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("achievements")
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  startTime DateTime @default(now())
+  endTime   DateTime?
+  duration  Int      // in minutes
+  courseId  String?
+  lessonId  String?
+
+  // Relationships
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_sessions")
+}
+
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  courseId    String?
+  maxMembers  Int      @default(10)
+  isPrivate   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relationships
+  members     StudyGroupMember[]
+
+  @@map("study_groups")
+}
+
+model StudyGroupMember {
+  id          String   @id @default(cuid())
+  groupId     String
+  userId      String
+  role        GroupRole @default(MEMBER)
+  joinedAt    DateTime @default(now())
+
+  // Relationships
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@map("study_group_members")
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  status    FriendshipStatus @default(PENDING)
+  createdAt DateTime @default(now())
+
+  // Relationships
+  user      User     @relation("UserFriends", fields: [userId], references: [id], onDelete: Cascade)
+  friend    User     @relation("FriendsUser", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@map("friendships")
+}
+
+model CourseTag {
+  id       String @id @default(cuid())
+  courseId String
+  tag      String
+
+  // Relationships
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, tag])
+  @@map("course_tags")
+}
+
+model ExerciseAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  exerciseId  String
+  answer      String
+  isCorrect   Boolean
+  timeSpent   Int      // in seconds
+  attemptedAt DateTime @default(now())
+
+  // Relationships
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@map("exercise_attempts")
+}
+
+// Enums
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum CourseCategory {
+  TAGALOG
+  ENGLISH
+  KOREAN
+  JAPANESE
+  CHINESE
+  SPANISH
+  FRENCH
+  GERMAN
+  OTHER
+}
+
+enum ExerciseType {
+  MULTIPLE_CHOICE
+  FILL_IN_BLANK
+  TRUE_FALSE
+  MATCHING
+  SPEAKING
+  WRITING
+}
+
+enum ExerciseDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  FILL_IN_BLANK
+  TRUE_FALSE
+  MATCHING
+  ESSAY
+}
+
+enum AchievementType {
+  FIRST_LESSON
+  COURSE_COMPLETION
+  PERFECT_SCORE
+  STREAK_7_DAYS
+  STREAK_30_DAYS
+  SOCIAL_LEARNER
+  LANGUAGE_MASTER
+}
+
+enum GroupRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
