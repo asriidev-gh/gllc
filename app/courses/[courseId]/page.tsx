@@ -441,20 +441,33 @@ export default function CourseLearningPage() {
   }
 
   const findNextLesson = (currentLessonId: string): VideoLesson | null => {
-    // Flatten all lessons from all topics
-    const allLessons = topics.flatMap(topic => topic.lessons)
+    // Flatten all lessons from all topics and sort by order
+    const allLessons = topics
+      .flatMap(topic => topic.lessons)
+      .sort((a, b) => a.order - b.order)
+    
     const currentIndex = allLessons.findIndex(lesson => lesson.id === currentLessonId)
     
     if (currentIndex === -1 || currentIndex === allLessons.length - 1) {
       return null // No next lesson available
     }
     
-    // Find the next unlocked lesson
-    for (let i = currentIndex + 1; i < allLessons.length; i++) {
-      const nextLesson = allLessons[i]
-      if (!nextLesson.isLocked) {
-        return nextLesson
-      }
+    // Simply return the next lesson in sequence, regardless of topic
+    const nextLesson = allLessons[currentIndex + 1]
+    
+    // Debug logging
+    console.log('Lesson progression:', {
+      currentLesson: allLessons[currentIndex]?.title,
+      currentIndex,
+      nextLesson: nextLesson?.title,
+      nextIndex: currentIndex + 1,
+      totalLessons: allLessons.length,
+      allLessonTitles: allLessons.map(l => ({ id: l.id, title: l.title, order: l.order, topic: topics.find(t => t.lessons.includes(l))?.title }))
+    })
+    
+    // Ensure the next lesson is unlocked (should be unlocked if previous was completed)
+    if (nextLesson && !nextLesson.isLocked) {
+      return nextLesson
     }
     
     return null
@@ -632,7 +645,7 @@ export default function CourseLearningPage() {
                   {/* Debug info - remove in production */}
                   {process.env.NODE_ENV === 'development' && currentLesson && (
                     <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
-                      Lesson: {currentLesson.title} | Watched: {currentLesson.isWatched ? 'Yes' : 'No'} | Skipped: {currentLesson.isSkipped ? 'Yes' : 'No'}
+                      Lesson {currentLesson.order}: {currentLesson.title} | Watched: {currentLesson.isWatched ? 'Yes' : 'No'} | Skipped: {currentLesson.isSkipped ? 'Yes' : 'No'}
                     </div>
                   )}
                   
