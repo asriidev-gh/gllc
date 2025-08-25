@@ -66,6 +66,7 @@ export function Dashboard() {
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false)
   const [courseToUnenroll, setCourseToUnenroll] = useState<EnrolledCourse | null>(null)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [achievementDetails, setAchievementDetails] = useState<any[]>([])
 
   useEffect(() => {
     // Check if user is authenticated
@@ -142,46 +143,207 @@ export function Dashboard() {
     return streak
   }
 
-  // Calculate achievements based on actual user progress
-  const calculateAchievements = (courses: EnrolledCourse[], completedLessons: number, totalLessons: number): number => {
+  // Calculate achievements based on actual user progress and return detailed breakdown
+  const calculateAchievements = (courses: EnrolledCourse[], completedLessons: number, totalLessons: number): { count: number, details: any[] } => {
     let achievementCount = 0
+    const achievements = []
     
     // Achievement 1: First Course Enrollment
-    if (courses.length >= 1) achievementCount++
+    if (courses.length >= 1) {
+      achievementCount++
+      achievements.push({
+        id: 'first_course',
+        title: 'First Steps',
+        description: 'Enrolled in your first course',
+        icon: '📚',
+        unlocked: true,
+        category: 'Course Enrollment'
+      })
+    }
     
     // Achievement 2: Multiple Course Enrollments
-    if (courses.length >= 3) achievementCount++
+    if (courses.length >= 3) {
+      achievementCount++
+      achievements.push({
+        id: 'multiple_courses',
+        title: 'Course Collector',
+        description: `Enrolled in ${courses.length} courses`,
+        icon: '🎯',
+        unlocked: true,
+        category: 'Course Enrollment'
+      })
+    }
     
     // Achievement 3: First Lesson Completion
-    if (completedLessons >= 1) achievementCount++
+    if (completedLessons >= 1) {
+      achievementCount++
+      achievements.push({
+        id: 'first_lesson',
+        title: 'Lesson Learner',
+        description: 'Completed your first lesson',
+        icon: '✅',
+        unlocked: true,
+        category: 'Lesson Completion'
+      })
+    }
     
     // Achievement 4: Lesson Completion Milestones
-    if (completedLessons >= 5) achievementCount++
-    if (completedLessons >= 10) achievementCount++
-    if (completedLessons >= 25) achievementCount++
+    if (completedLessons >= 5) {
+      achievementCount++
+      achievements.push({
+        id: 'five_lessons',
+        title: 'Getting Started',
+        description: 'Completed 5 lessons',
+        icon: '🚀',
+        unlocked: true,
+        category: 'Lesson Completion'
+      })
+    }
+    if (completedLessons >= 10) {
+      achievementCount++
+      achievements.push({
+        id: 'ten_lessons',
+        title: 'Steady Progress',
+        description: 'Completed 10 lessons',
+        icon: '📈',
+        unlocked: true,
+        category: 'Lesson Completion'
+      })
+    }
+    if (completedLessons >= 25) {
+      achievementCount++
+      achievements.push({
+        id: 'twenty_five_lessons',
+        title: 'Lesson Master',
+        description: 'Completed 25 lessons',
+        icon: '👑',
+        unlocked: true,
+        category: 'Lesson Completion'
+      })
+    }
     
     // Achievement 5: Course Progress Milestones
     if (totalLessons > 0) {
       const progressPercentage = (completedLessons / totalLessons) * 100
-      if (progressPercentage >= 25) achievementCount++
-      if (progressPercentage >= 50) achievementCount++
-      if (progressPercentage >= 75) achievementCount++
-      if (progressPercentage >= 100) achievementCount++
+      if (progressPercentage >= 25) {
+        achievementCount++
+        achievements.push({
+          id: 'progress_25',
+          title: 'Quarter Way There',
+          description: '25% course progress achieved',
+          icon: '🎯',
+          unlocked: true,
+          category: 'Progress Milestones'
+        })
+      }
+      if (progressPercentage >= 50) {
+        achievementCount++
+        achievements.push({
+          id: 'progress_50',
+          title: 'Halfway Point',
+          description: '50% course progress achieved',
+          icon: '🎯',
+          unlocked: true,
+          category: 'Progress Milestones'
+        })
+      }
+      if (progressPercentage >= 75) {
+        achievementCount++
+        achievements.push({
+          id: 'progress_75',
+          title: 'Almost There',
+          description: '75% course progress achieved',
+          icon: '🎯',
+          unlocked: true,
+          category: 'Progress Milestones'
+        })
+      }
+      if (progressPercentage >= 100) {
+        achievementCount++
+        achievements.push({
+          id: 'progress_100',
+          title: 'Course Champion',
+          description: '100% course progress achieved',
+          icon: '🏆',
+          unlocked: true,
+          category: 'Progress Milestones'
+        })
+      }
     }
     
     // Achievement 6: Learning Streak
     const streak = calculateLearningStreak()
-    if (streak >= 3) achievementCount++
-    if (streak >= 7) achievementCount++
-    if (streak >= 14) achievementCount++
-    if (streak >= 30) achievementCount++
+    if (streak >= 3) {
+      achievementCount++
+      achievements.push({
+        id: 'streak_3',
+        title: 'Getting in the Habit',
+        description: '3-day learning streak',
+        icon: '🔥',
+        unlocked: true,
+        category: 'Learning Streaks'
+      })
+    }
+    if (streak >= 7) {
+      achievementCount++
+      achievements.push({
+        id: 'streak_7',
+        title: 'Week Warrior',
+        description: '7-day learning streak',
+        icon: '🔥',
+        unlocked: true,
+        category: 'Learning Streaks'
+      })
+    }
+    if (streak >= 14) {
+      achievementCount++
+      achievements.push({
+        id: 'streak_14',
+        title: 'Fortnight Fighter',
+        description: '14-day learning streak',
+        icon: '🔥',
+        unlocked: true,
+        category: 'Learning Streaks'
+      })
+    }
+    if (streak >= 30) {
+      achievementCount++
+      achievements.push({
+        id: 'streak_30',
+        title: 'Monthly Master',
+        description: '30-day learning streak',
+        icon: '🔥',
+        unlocked: true,
+        category: 'Learning Streaks'
+      })
+    }
     
     // Achievement 7: Language Diversity
     const uniqueLanguages = new Set(courses.map(course => course.language))
-    if (uniqueLanguages.size >= 2) achievementCount++
-    if (uniqueLanguages.size >= 3) achievementCount++
+    if (uniqueLanguages.size >= 2) {
+      achievementCount++
+      achievements.push({
+        id: 'languages_2',
+        title: 'Bilingual Beginner',
+        description: `Learning ${uniqueLanguages.size} languages`,
+        icon: '🌍',
+        unlocked: true,
+        category: 'Language Diversity'
+      })
+    }
+    if (uniqueLanguages.size >= 3) {
+      achievementCount++
+      achievements.push({
+        id: 'languages_3',
+        title: 'Polyglot in Progress',
+        description: `Learning ${uniqueLanguages.size} languages`,
+        icon: '🌍',
+        unlocked: true,
+        category: 'Language Diversity'
+      })
+    }
     
-    return achievementCount
+    return { count: achievementCount, details: achievements }
   }
 
   const loadEnrolledCourses = async () => {
@@ -242,7 +404,7 @@ export function Dashboard() {
     
     // Calculate real learning streak and achievements
     const streakDays = calculateLearningStreak()
-    const achievements = calculateAchievements(courses, completedLessons, totalLessons)
+    const achievementsData = calculateAchievements(courses, completedLessons, totalLessons)
     
     setStats({
       totalCourses: courses.length,
@@ -251,16 +413,14 @@ export function Dashboard() {
       totalTimeSpent: `${Math.floor(totalTimeSpent)}h ${Math.round((totalTimeSpent % 1) * 60)}m`,
       averageRating: Math.round(averageRating * 10) / 10,
       streakDays,
-      achievements
+      achievements: achievementsData.count
     })
+    
+    // Store achievement details for display
+    setAchievementDetails(achievementsData.details)
   }
 
-  // Debug function to clear enrollments and test fresh enrollment
-  const clearEnrollments = () => {
-    localStorage.removeItem('enrolled_courses')
-    setEnrolledCourses([])
-    console.log('Enrollments cleared')
-  }
+
 
   // Function to unenroll from a specific course
   const unenrollFromCourse = (courseId: string) => {
@@ -518,13 +678,6 @@ export function Dashboard() {
                 <p className="text-sm text-gray-500">Total Achievements</p>
                 <p className="text-2xl font-bold text-secondary-600">{stats.achievements} 🏆</p>
               </div>
-              {/* Debug button - remove in production */}
-              <button
-                onClick={clearEnrollments}
-                className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Clear Enrollments (Debug)
-              </button>
             </div>
           </div>
         </div>
@@ -874,6 +1027,50 @@ export function Dashboard() {
                 </div>
                 <p className="text-gray-500">No recent activity yet</p>
                 <p className="text-sm text-gray-400 mt-1">Start learning to see your activity here!</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Achievements Breakdown */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm border">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Your Achievements</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {achievementDetails.length} of 20+ possible achievements unlocked
+            </p>
+          </div>
+          <div className="p-6">
+            {achievementDetails.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {achievementDetails.map((achievement, index) => (
+                  <motion.div
+                    key={achievement.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="text-2xl">{achievement.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 text-sm">{achievement.title}</h3>
+                        <p className="text-xs text-gray-600 mt-1">{achievement.description}</p>
+                        <span className="inline-block mt-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          {achievement.category}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Trophy className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No achievements unlocked yet</p>
+                <p className="text-sm text-gray-400 mt-1">Start learning to earn your first achievement!</p>
               </div>
             )}
           </div>
