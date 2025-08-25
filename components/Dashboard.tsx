@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { 
   BookOpen, 
+  Bug,
   Play, 
   Clock, 
   Star, 
@@ -16,7 +17,16 @@ import {
   Award,
   BarChart3,
   Users,
-  X
+  X,
+  Download,
+  Filter,
+  Globe,
+  GraduationCap,
+  Heart,
+  Languages,
+  Lightbulb,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
@@ -75,6 +85,9 @@ export function Dashboard() {
   const [achievementDetails, setAchievementDetails] = useState<any[]>([])
   const [showAllActivities, setShowAllActivities] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>('')
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [selectedCourseForModal, setSelectedCourseForModal] = useState<EnrolledCourse | null>(null)
 
   useEffect(() => {
     // Check if user is authenticated
@@ -359,9 +372,72 @@ export function Dashboard() {
     return { count: achievementCount, details: achievements }
   }
 
+  // Function to clean up and validate course progress data
+  const cleanupCourseProgressData = () => {
+    try {
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const userProgress = localStorage.getItem(userProgressKey)
+      if (!userProgress) return
+      
+      const progressData = JSON.parse(userProgress)
+      let hasChanges = false
+      
+      // Clean up each course's progress data
+      Object.keys(progressData).forEach(courseId => {
+        const courseProgress = progressData[courseId]
+        
+        // Reset completion status if no lessons have been started
+        if (courseProgress.completedLessons === 0 || courseProgress.totalLessons === 0) {
+          if (courseProgress.isCompleted || courseProgress.completionDate) {
+            console.log(`Cleaning up course ${courseId}: resetting completion status`)
+            courseProgress.isCompleted = false
+            courseProgress.completionDate = undefined
+            hasChanges = true
+          }
+        }
+        
+        // Ensure completion status matches actual progress
+        if (courseProgress.totalLessons > 0 && courseProgress.completedLessons > 0) {
+          const shouldBeCompleted = courseProgress.completedLessons >= courseProgress.totalLessons
+          if (courseProgress.isCompleted !== shouldBeCompleted) {
+            console.log(`Fixing completion status for course ${courseId}: ${courseProgress.isCompleted} -> ${shouldBeCompleted}`)
+            courseProgress.isCompleted = shouldBeCompleted
+            if (shouldBeCompleted && !courseProgress.completionDate) {
+              courseProgress.completionDate = new Date().toISOString()
+            }
+            hasChanges = true
+          }
+        }
+        
+        // Additional check: if course has no lessons data, reset everything
+        if (!courseProgress.lessons || Object.keys(courseProgress.lessons).length === 0) {
+          if (courseProgress.isCompleted || courseProgress.completionDate || courseProgress.completedLessons > 0) {
+            console.log(`Course ${courseId} has no lesson data, resetting all progress`)
+            courseProgress.isCompleted = false
+            courseProgress.completionDate = undefined
+            courseProgress.completedLessons = 0
+            courseProgress.totalLessons = 0
+            hasChanges = true
+          }
+        }
+      })
+      
+      // Save cleaned up data if changes were made
+      if (hasChanges) {
+        localStorage.setItem(userProgressKey, JSON.stringify(progressData))
+        console.log('Course progress data cleaned up and saved')
+      }
+    } catch (error) {
+      console.error('Error cleaning up course progress data:', error)
+    }
+  }
+
   const loadEnrolledCourses = async () => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Clean up any corrupted progress data first
+    cleanupCourseProgressData()
     
     // Load real enrolled courses from localStorage
     const savedEnrollments = localStorage.getItem('enrolled_courses')
@@ -388,9 +464,40 @@ export function Dashboard() {
           const totalLessons = courseProgress.totalLessons || enrollment.totalLessons || 0
           const completedLessons = courseProgress.completedLessons || enrollment.completedLessons || 0
           const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
-          const isCompleted = courseProgress.isCompleted || false
+          // Determine completion status: only if explicitly marked as completed OR if there are actual lessons and all are done
+          let isCompleted = courseProgress.isCompleted || (totalLessons > 0 && completedLessons > 0 && completedLessons >= totalLessons)
+          
+          // If course is completed but no completion date, set it to now
+          let completionDate = courseProgress.completionDate
+          if (isCompleted && !completionDate && completedLessons > 0) {
+            completionDate = new Date().toISOString()
+            console.log('Course completed but no date, setting to now:', completionDate)
+          }
+          
+          // Additional safety check: if no lessons have been started, course cannot be completed
+          if (completedLessons === 0) {
+            isCompleted = false
+            completionDate = undefined
+            console.log('Course has no completed lessons, marking as not completed')
+          }
           const assessmentScore = courseProgress.assessmentScore || null
           const assessmentCompleted = courseProgress.assessmentCompleted || false
+          
+          console.log('Course progress data:', {
+            courseId: enrollment.id,
+            totalLessons,
+            completedLessons,
+            progressPercentage,
+            isCompleted,
+            courseProgress,
+            enrollment: {
+              id: enrollment.id,
+              name: enrollment.name,
+              title: enrollment.title,
+              totalLessons: enrollment.totalLessons,
+              completedLessons: enrollment.completedLessons
+            }
+          })
           
           // Calculate actual time spent based on lesson progress
           let actualTimeSpent = '0h 0m'
@@ -402,6 +509,19 @@ export function Dashboard() {
             actualTimeSpent = `${hours}h ${minutes}m`
           }
           
+          // Final validation: ensure course data is consistent
+          const finalIsCompleted = isCompleted && completedLessons > 0
+          const finalCompletionDate = finalIsCompleted ? completionDate : undefined
+          
+          console.log('Final course data:', {
+            courseId: enrollment.id,
+            name: enrollment.name || enrollment.title,
+            totalLessons,
+            completedLessons,
+            isCompleted: finalIsCompleted,
+            completionDate: finalCompletionDate
+          })
+          
           return {
             id: enrollment.id,
             name: enrollment.name || enrollment.title || 'Unknown Course', // Fallback to title if name doesn't exist
@@ -411,16 +531,16 @@ export function Dashboard() {
             progress: progressPercentage,
             totalLessons,
             completedLessons,
-            currentLesson: enrollment.currentLesson || 1,
+            currentLesson: finalIsCompleted ? totalLessons : (enrollment.currentLesson || 1),
             rating: enrollment.rating,
             lastAccessed: enrollment.lastAccessed || 'Just now',
             timeSpent: actualTimeSpent,
             certificate: enrollment.certificate || false,
             // Enhanced progress data
-            isCompleted,
+            isCompleted: finalIsCompleted,
             assessmentScore,
             assessmentCompleted,
-            completionDate: courseProgress.completionDate
+            completionDate: finalCompletionDate
           }
         })
         
@@ -463,6 +583,79 @@ export function Dashboard() {
   }
 
 
+
+  // Function to debug course progress data
+  const debugCourseProgress = (courseId: string) => {
+    try {
+      console.log('=== DEBUGGING COURSE PROGRESS ===')
+      console.log('Course ID:', courseId)
+      
+      // Check enrollment data
+      const savedEnrollments = localStorage.getItem('enrolled_courses')
+      if (savedEnrollments) {
+        const enrollments = JSON.parse(savedEnrollments)
+        const enrollment = enrollments.find((e: any) => e.id === courseId)
+        console.log('Enrollment data:', enrollment)
+      }
+      
+      // Check user progress data
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const userProgress = localStorage.getItem(userProgressKey)
+      if (userProgress) {
+        const progressData = JSON.parse(userProgress)
+        const courseProgress = progressData[courseId]
+        console.log('User progress data:', courseProgress)
+      }
+      
+      // Check course-specific progress
+      const courseProgress = localStorage.getItem(`course_progress_${courseId}`)
+      if (courseProgress) {
+        console.log('Course-specific progress:', JSON.parse(courseProgress))
+      }
+      
+      console.log('=== END DEBUG ===')
+    } catch (error) {
+      console.error('Error debugging course progress:', error)
+    }
+  }
+
+  // Function to reset a specific course's progress
+  const resetCourseProgress = (courseId: string) => {
+    try {
+      // Reset progress data for this course
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const userProgress = localStorage.getItem(userProgressKey)
+      if (userProgress) {
+        const progressData = JSON.parse(userProgress)
+        if (progressData[courseId]) {
+          // Reset completion status but keep basic structure
+          progressData[courseId] = {
+            ...progressData[courseId],
+            isCompleted: false,
+            completionDate: undefined,
+            completedLessons: 0,
+            assessmentCompleted: false,
+            assessmentScore: null,
+            assessmentDate: undefined,
+            finalScore: undefined,
+            lastUpdated: new Date().toISOString()
+          }
+          localStorage.setItem(userProgressKey, JSON.stringify(progressData))
+        }
+      }
+      
+      // Remove course-specific progress
+      localStorage.removeItem(`course_progress_${courseId}`)
+      
+      // Refresh the courses list
+      loadEnrolledCourses()
+      
+      toast.success('Course progress reset successfully')
+    } catch (error) {
+      console.error('Error resetting course progress:', error)
+      toast.error('Failed to reset course progress')
+    }
+  }
 
   // Function to unenroll from a specific course
   const unenrollFromCourse = (courseId: string) => {
@@ -521,6 +714,173 @@ export function Dashboard() {
     
     // Navigate to the course learning page
     router.push(`/courses/${course.id}`)
+  }
+
+  const showCertificate = (course: EnrolledCourse) => {
+    setSelectedCourseForModal(course)
+    setShowCertificateModal(true)
+  }
+
+  const showAssessment = (course: EnrolledCourse) => {
+    setSelectedCourseForModal(course)
+    setShowAssessmentModal(true)
+  }
+
+  const downloadCertificatePDF = async (course: EnrolledCourse) => {
+    try {
+      // Dynamically import heavy libraries only when needed
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ])
+
+      // Create a temporary certificate element
+      const certificateElement = document.createElement('div')
+      certificateElement.innerHTML = `
+        <div style="
+          width: 1200px; 
+          height: 800px; 
+          background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+          border: 3px solid #f59e0b;
+          border-radius: 20px;
+          padding: 60px;
+          text-align: center;
+          font-family: 'Arial', sans-serif;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        ">
+          <div style="font-size: 80px; margin-bottom: 30px;">🏆</div>
+          <h1 style="
+            font-size: 48px; 
+            font-weight: bold; 
+            color: #1f2937; 
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+          ">
+            Certificate of Completion
+          </h1>
+          <p style="
+            font-size: 24px; 
+            color: #6b7280; 
+            margin-bottom: 30px;
+          ">
+            This is to certify that
+          </p>
+          <h2 style="
+            font-size: 36px; 
+            font-weight: bold; 
+            color: #2563eb; 
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+          ">
+            ${course.name}
+          </h2>
+          <p style="
+            font-size: 24px; 
+            color: #6b7280; 
+            margin-bottom: 30px;
+          ">
+            has successfully completed the course
+          </p>
+          <h3 style="
+            font-size: 32px; 
+            font-weight: bold; 
+            color: #1f2937; 
+            margin-bottom: 30px;
+          ">
+            ${course.name}
+          </h3>
+          <p style="
+            font-size: 20px; 
+            color: #6b7280; 
+            margin-bottom: 30px;
+          ">
+            with a final score of 
+            <span style="
+              font-weight: bold; 
+              color: #059669;
+              font-size: 24px;
+            ">
+              ${course.assessmentScore || 'N/A'}%
+            </span>
+          </p>
+          <div style="
+            font-size: 18px; 
+            color: #9ca3af;
+            margin-top: 40px;
+          ">
+            Completed on: ${course.completionDate ? 
+              new Date(course.completionDate).toLocaleDateString() : 
+              'Date not available'
+            }
+          </div>
+          <div style="
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            font-size: 14px;
+            color: #9ca3af;
+          ">
+            Global Language Training Center
+          </div>
+        </div>
+      `
+      
+      // Add to DOM temporarily
+      document.body.appendChild(certificateElement)
+      
+      // Capture the certificate content
+      const canvas = await html2canvas(certificateElement.firstElementChild as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#fefce8'
+      })
+      
+      // Remove temporary element
+      document.body.removeChild(certificateElement)
+      
+      const imgData = canvas.toDataURL('image/png')
+      
+      // Create PDF
+      const pdf = new jsPDF('landscape', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      
+      // Calculate dimensions to fit the certificate properly
+      const imgWidth = pdfWidth - 20 // 10mm margin on each side
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      // Center the image on the page
+      const x = (pdfWidth - imgWidth) / 2
+      const y = (pdfHeight - imgHeight) / 2
+      
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight)
+      
+      // Add metadata
+      pdf.setProperties({
+        title: `Certificate - ${course.name}`,
+        subject: 'Course Completion Certificate',
+        author: 'Global Language Training Center',
+        creator: 'Global Language Training Center'
+      })
+      
+      // Generate filename
+      const filename = `certificate_${course.name.replace(/\s+/g, '_')}_${user?.name || 'student'}_${user?.email || 'student'}_${new Date().toISOString().split('T')[0]}.pdf`
+      
+      // Download the PDF
+      pdf.save(filename)
+      
+      toast.success('Certificate downloaded successfully!')
+      
+      // Record certificate download activity
+      if (user?.email) {
+        recordLearningActivityUtil(user.email, 'certificate_downloaded', course.name)
+      }
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    }
   }
 
   // Record learning activity for streak calculation
@@ -909,36 +1269,28 @@ export function Dashboard() {
                             <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
                               {course.level}
                             </span>
-                            {course.isCompleted && (
-                              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Completed
-                              </span>
-                            )}
                             {course.certificate && (
-                              <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
+                              <button
+                                onClick={() => showCertificate(course)}
+                                className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center hover:bg-yellow-200 transition-colors cursor-pointer"
+                                title="Click to view certificate"
+                              >
                                 <Award className="w-3 h-3 mr-1" />
                                 Certificate
-                              </span>
+                              </button>
                             )}
                           </div>
                           
                           <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
                             <span className="flex items-center">
-                              <BookOpen className="w-4 h-4 mr-1" />
-                              {course.isCompleted ? (
-                                `All ${course.totalLessons} lessons completed`
-                              ) : (
-                                `Lesson ${course.currentLesson} of ${course.totalLessons}`
-                              )}
+                              <Clock className="w-4 h-4 mr-2" />
+                              <span className="font-medium">
+                                {course.totalLessons > 0 ? `${Math.floor(course.totalLessons * 15 / 60)}h ${course.totalLessons * 15 % 60}m` : 'Duration N/A'}
+                              </span>
                             </span>
                             <span className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {course.lastAccessed}
-                            </span>
-                            <span className="flex items-center">
-                              <Star className="w-4 h-4 mr-1 text-yellow-400 fill-current" />
-                              {course.rating}
+                              <Star className="w-4 h-4 mr-2 text-yellow-400 fill-current" />
+                              <span className="font-medium">{course.rating}</span>
                             </span>
                           </div>
                           
@@ -961,7 +1313,7 @@ export function Dashboard() {
                           {/* Enhanced Progress Information */}
                           <div className="mb-4 space-y-2">
                                                       {/* Course Completion Status */}
-                          {course.isCompleted && (
+                          {course.isCompleted && course.certificate && (
                             <div className="flex items-center space-x-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                               <CheckCircle className="w-4 h-4 text-green-600" />
                               <span className="text-green-700 font-medium">🎉 Course Completed!</span>
@@ -975,7 +1327,11 @@ export function Dashboard() {
                             
                             {/* Assessment Status */}
                             {course.assessmentCompleted && (
-                              <div className="flex items-center space-x-2 text-sm">
+                              <button
+                                onClick={() => showAssessment(course)}
+                                className="flex items-center space-x-2 text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
+                                title="Click to view assessment details"
+                              >
                                 <Target className="w-4 h-4 text-blue-600" />
                                 <span className="text-blue-700 font-medium">Assessment: {course.assessmentScore}%</span>
                                 <span className={`px-2 py-1 text-xs rounded-full ${
@@ -985,7 +1341,7 @@ export function Dashboard() {
                                 }`}>
                                   {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
                                 </span>
-                              </div>
+                              </button>
                             )}
                             
                             {/* Lesson Progress Details */}
@@ -996,7 +1352,11 @@ export function Dashboard() {
                               </span>
                               <span className="flex items-center">
                                 <Clock className="w-3 h-3 mr-1" />
-                                {course.timeSpent} spent
+                                {course.completedLessons > 0 ? `${Math.floor(course.completedLessons * 15 / 60)}h ${course.completedLessons * 15 % 60}m` : '0m'} of {Math.floor(course.totalLessons * 15 / 60)}h {course.totalLessons * 15 % 60}m
+                              </span>
+                              <span className="flex items-center">
+                                <TrendingUp className="w-3 h-3 mr-1" />
+                                {course.progress}% complete
                               </span>
                             </div>
                           </div>
@@ -1007,15 +1367,15 @@ export function Dashboard() {
                         <Button
                           onClick={() => continueLearning(course)}
                           className={`px-6 py-2 ${
-                            course.isCompleted 
+                            course.isCompleted && course.certificate
                               ? 'bg-green-600 hover:bg-green-700' 
                               : 'bg-primary-600 hover:bg-primary-700'
                           }`}
                         >
-                          {course.isCompleted ? (
+                          {course.isCompleted && course.certificate ? (
                             <>
                               <Target className="w-4 h-4 mr-2" />
-                              Retake
+                              Retake Course
                             </>
                           ) : (
                             <>
@@ -1023,6 +1383,24 @@ export function Dashboard() {
                               Continue
                             </>
                           )}
+                        </Button>
+                        <Button
+                          onClick={() => debugCourseProgress(course.id)}
+                          variant="outline"
+                          className="px-4 py-2 text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors"
+                          title="Debug course progress data (check console)"
+                        >
+                          <Bug className="w-4 h-4 mr-1" />
+                          Debug
+                        </Button>
+                        <Button
+                          onClick={() => resetCourseProgress(course.id)}
+                          variant="outline"
+                          className="px-4 py-2 text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-colors"
+                          title="Reset course progress (keeps enrollment)"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-1" />
+                          Reset Progress
                         </Button>
                         <Button
                           onClick={() => showUnenrollConfirmation(course)}
@@ -1180,6 +1558,171 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Certificate Modal */}
+      {showCertificateModal && selectedCourseForModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Certificate Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Certificate of Completion</h2>
+                <Button
+                  onClick={() => setShowCertificateModal(false)}
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Certificate Content */}
+            <div className="p-8">
+              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-8 text-center">
+                <div className="text-6xl mb-4">🏆</div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                  Certificate of Completion
+                </h1>
+                <p className="text-lg text-gray-600 mb-6">
+                  This is to certify that
+                </p>
+                <h2 className="text-2xl font-bold text-blue-600 mb-4">
+                  {selectedCourseForModal.name}
+                </h2>
+                <p className="text-lg text-gray-600 mb-6">
+                  has successfully completed the course
+                </p>
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                  {selectedCourseForModal.name}
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  with a final score of <span className="font-semibold text-green-600">
+                    {selectedCourseForModal.assessmentScore || 'N/A'}%
+                  </span>
+                </p>
+                <div className="text-sm text-gray-500">
+                  Completed on: {selectedCourseForModal.completionDate ? 
+                    new Date(selectedCourseForModal.completionDate).toLocaleDateString() : 
+                    'Date not available'
+                  }
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4 mt-6">
+                <Button 
+                  onClick={() => setShowCertificateModal(false)}
+                  variant="outline"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={() => downloadCertificatePDF(selectedCourseForModal)}
+                  className="bg-primary-600 hover:bg-primary-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assessment Modal */}
+      {showAssessmentModal && selectedCourseForModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+            {/* Assessment Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Assessment Results</h2>
+                <Button
+                  onClick={() => setShowAssessmentModal(false)}
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Assessment Content */}
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="text-6xl mb-4">
+                  {selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70 ? '🏆' : '📚'}
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Final Score: {selectedCourseForModal.assessmentScore}%
+                </h3>
+                <p className="text-gray-600">
+                  {selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70 
+                    ? 'Congratulations! You passed the assessment!' 
+                    : 'Keep studying to improve your score!'
+                  }
+                </p>
+                <div className={`mt-4 px-4 py-2 rounded-full text-sm font-medium ${
+                  selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70 ? 'PASSED' : 'NOT PASSED'}
+                </div>
+              </div>
+              
+              {/* Assessment Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-gray-900 mb-3">Assessment Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Course:</span>
+                    <span className="ml-2 font-medium">{selectedCourseForModal.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Score:</span>
+                    <span className="ml-2 font-medium">{selectedCourseForModal.assessmentScore}%</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className={`ml-2 font-medium ${
+                      selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}>
+                      {selectedCourseForModal.assessmentScore && selectedCourseForModal.assessmentScore >= 70 ? 'Passed' : 'Not Passed'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Passing Score:</span>
+                    <span className="ml-2 font-medium">70%</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4">
+                <Button 
+                  onClick={() => setShowAssessmentModal(false)}
+                  variant="outline"
+                >
+                  Close
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setShowAssessmentModal(false)
+                    router.push(`/courses/${selectedCourseForModal.id}`)
+                  }}
+                  className="bg-primary-600 hover:bg-primary-700"
+                >
+                  Go to Course
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Unenroll Confirmation Dialog */}
       {showUnenrollConfirm && courseToUnenroll && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1189,7 +1732,7 @@ export function Dashboard() {
               Are you sure you want to unenroll from <strong>{courseToUnenroll.name}</strong>?
               This action cannot be undone.
             </p>
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-center space-x-3">
               <Button variant="outline" onClick={() => setShowUnenrollConfirm(false)}>
                 Cancel
               </Button>
@@ -1203,3 +1746,4 @@ export function Dashboard() {
     </div>
   )
 }
+

@@ -330,6 +330,8 @@ const CourseLearningPage = () => {
     return () => clearTimeout(timer)
   }, [courseId, isAuthenticated, router])
 
+  // Remove the problematic useEffect that was causing infinite loops
+
   const loadUserData = () => {
     // Load user's notes and bookmarks
     const savedNotes = localStorage.getItem(`course_notes_${courseId}`)
@@ -441,9 +443,10 @@ const CourseLearningPage = () => {
       
       // Recalculate course totals
       const courseLessons = Object.keys(userProgress[courseId].lessons)
-      userProgress[courseId].totalLessons = courseLessons.length
+      // Don't update totalLessons here - it should be set from the course structure
+      // userProgress[courseId].totalLessons = courseLessons.length
       userProgress[courseId].completedLessons = courseLessons.filter(lessonId => 
-        userProgress[courseId].lessons[lessonId]?.isWatched
+        userProgress[courseId].lessons[lessonId]?.isWatched || userProgress[courseId].lessons[lessonId]?.isSkipped
       ).length
       userProgress[courseId].lastUpdated = new Date().toISOString()
       
@@ -557,13 +560,15 @@ const CourseLearningPage = () => {
       setCurrentLesson(mockTopics[0].lessons[0])
     }
     
-    // Update lesson locks based on completion status
-    updateLessonLocks()
+    // Update lesson locks based on completion status - call after a brief delay to ensure state is set
+    setTimeout(() => {
+      updateLessonLocksFromSavedProgress()
+    }, 50)
     
     // Calculate progress
     const totalLessons = mockTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = mockTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
+      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
     )
     setProgress({
       totalLessons,
@@ -576,11 +581,28 @@ const CourseLearningPage = () => {
       badgeEarned: progress.badgeEarned,
       finalScore: progress.finalScore
     })
+    
+    // Initialize user progress with correct total lessons if not already set
+    if (user?.email) {
+      const userProgressKey = `user_course_progress_${user.email}`
+      const userProgress = localStorage.getItem(userProgressKey)
+      if (userProgress) {
+        const progressData = JSON.parse(userProgress)
+        if (progressData[courseId] && progressData[courseId].totalLessons !== totalLessons) {
+          // Update total lessons if they don't match
+          progressData[courseId].totalLessons = totalLessons
+          progressData[courseId].isCompleted = false
+          progressData[courseId].completionDate = undefined
+          localStorage.setItem(userProgressKey, JSON.stringify(progressData))
+          console.log('Updated course total lessons in user progress:', totalLessons)
+        }
+      }
+    }
   }
 
   const selectLesson = (lesson: VideoLesson) => {
     // Allow access to completed/skipped lessons, only block genuinely locked lessons
-    if (lesson.isLocked && !lesson.isWatched) {
+    if (lesson.isLocked && !lesson.isWatched && !lesson.isSkipped) {
       toast.error('This lesson is locked. Complete previous lessons first.')
       return
     }
@@ -595,6 +617,59 @@ const CourseLearningPage = () => {
     }
   }
 
+  const updateLessonLocksFromSavedProgress = () => {
+    // Load saved lesson progress to ensure we have the latest state
+    const savedProgress = loadLessonProgress(courseId)
+    
+    // Flatten all lessons and sort by order
+    const allLessons = topics
+      .flatMap(topic => topic.lessons)
+      .sort((a, b) => a.order - b.order)
+    
+    console.log('Updating lesson locks from saved progress:', allLessons.map(l => ({ 
+      id: l.id, 
+      title: l.title, 
+      order: l.order, 
+      isWatched: l.isWatched, 
+      isSkipped: l.isSkipped,
+      isLocked: l.isLocked 
+    })))
+    
+    // Check if any locks need updating to avoid unnecessary state changes
+    const needsUpdate = allLessons.some(lesson => {
+      if (lesson.order === 1) return false // First lesson is always unlocked
+      
+      const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
+      const shouldBeUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
+      const isCurrentlyUnlocked = !lesson.isLocked
+      
+      return shouldBeUnlocked !== isCurrentlyUnlocked
+    })
+    
+    if (!needsUpdate) {
+      console.log('No lesson lock updates needed')
+      return
+    }
+    
+    console.log('Updating lesson locks...')
+    setTopics(prev => prev.map(topic => ({
+      ...topic,
+      lessons: topic.lessons.map(lesson => {
+        // First lesson is always unlocked
+        if (lesson.order === 1) return { ...lesson, isLocked: false }
+        
+        // Find the previous lesson by order (across all topics)
+        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
+        // A lesson is unlocked if the previous lesson is watched OR skipped
+        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
+        
+        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
+        
+        return { ...lesson, isLocked: !isUnlocked }
+      })
+    })))
+  }
+
   const updateLessonLocks = () => {
     // Flatten all lessons and sort by order
     const allLessons = topics
@@ -606,6 +681,7 @@ const CourseLearningPage = () => {
       title: l.title, 
       order: l.order, 
       isWatched: l.isWatched, 
+      isSkipped: l.isSkipped,
       isLocked: l.isLocked 
     })))
     
@@ -617,9 +693,10 @@ const CourseLearningPage = () => {
         
         // Find the previous lesson by order (across all topics)
         const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-        const isUnlocked = previousLesson && previousLesson.isWatched
+        // A lesson is unlocked if the previous lesson is watched OR skipped
+        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
         
-        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed = ${isUnlocked}, will be locked = ${!isUnlocked}`)
+        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
         
         return { ...lesson, isLocked: !isUnlocked }
       })
@@ -637,6 +714,7 @@ const CourseLearningPage = () => {
       title: l.title, 
       order: l.order, 
       isWatched: l.isWatched, 
+      isSkipped: l.isSkipped,
       isLocked: l.isLocked 
     })))
     
@@ -648,9 +726,10 @@ const CourseLearningPage = () => {
         
         // Find the previous lesson by order (across all topics)
         const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-        const isUnlocked = previousLesson && previousLesson.isWatched
+        // A lesson is unlocked if the previous lesson is watched OR skipped
+        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
         
-        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed = ${isUnlocked}, will be locked = ${!isUnlocked}`)
+        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
         
         return { ...lesson, isLocked: !isUnlocked }
       })
@@ -690,7 +769,7 @@ const CourseLearningPage = () => {
     // Recalculate progress with updated topics
     const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = updatedTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
+      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
     )
     setProgress({
       totalLessons,
@@ -838,7 +917,7 @@ const CourseLearningPage = () => {
     // Recalculate progress with updated topics
     const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = updatedTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
+      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
     )
     setProgress({
       totalLessons,
