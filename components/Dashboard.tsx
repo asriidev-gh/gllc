@@ -37,6 +37,11 @@ interface EnrolledCourse {
   lastAccessed: string
   timeSpent: string
   certificate?: boolean
+  // Enhanced progress properties
+  isCompleted?: boolean
+  assessmentScore?: number | null
+  assessmentCompleted?: boolean
+  completionDate?: string
 }
 
 interface DashboardStats {
@@ -367,11 +372,25 @@ export function Dashboard() {
         const enrollments = JSON.parse(savedEnrollments)
         console.log('Raw enrollments from localStorage:', enrollments)
         
+        // Load enhanced progress data for each course
+        const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+        const userProgress = localStorage.getItem(userProgressKey)
+        const progressData = userProgress ? JSON.parse(userProgress) : {}
+        
         courses = enrollments.map((enrollment: any) => {
           console.log('Processing enrollment:', enrollment)
           console.log('Enrollment properties:', Object.keys(enrollment))
           console.log('enrollment.name:', enrollment.name)
           console.log('enrollment.title:', enrollment.title)
+          
+          // Get enhanced progress data for this course
+          const courseProgress = progressData[enrollment.id] || {}
+          const totalLessons = courseProgress.totalLessons || enrollment.totalLessons || 0
+          const completedLessons = courseProgress.completedLessons || enrollment.completedLessons || 0
+          const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+          const isCompleted = courseProgress.isCompleted || false
+          const assessmentScore = courseProgress.assessmentScore || null
+          const assessmentCompleted = courseProgress.assessmentCompleted || false
           
           return {
             id: enrollment.id,
@@ -379,18 +398,23 @@ export function Dashboard() {
             language: enrollment.language,
             flag: enrollment.flag,
             level: enrollment.level,
-            progress: enrollment.progress || 0,
-            totalLessons: enrollment.totalLessons,
-            completedLessons: enrollment.completedLessons || 0,
+            progress: progressPercentage,
+            totalLessons,
+            completedLessons,
             currentLesson: enrollment.currentLesson || 1,
             rating: enrollment.rating,
             lastAccessed: enrollment.lastAccessed || 'Just now',
             timeSpent: enrollment.timeSpent || '0h 0m',
-            certificate: enrollment.certificate || false
+            certificate: enrollment.certificate || false,
+            // Enhanced progress data
+            isCompleted,
+            assessmentScore,
+            assessmentCompleted,
+            completionDate: courseProgress.completionDate
           }
         })
         
-        console.log('Processed courses for dashboard:', courses)
+        console.log('Processed courses for dashboard with enhanced progress:', courses)
       } catch (error) {
         console.error('Error loading enrolled courses:', error)
         courses = []
@@ -399,7 +423,7 @@ export function Dashboard() {
     
     setEnrolledCourses(courses)
     
-    // Calculate stats from real data
+    // Calculate stats from enhanced data
     const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
     const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0)
     const totalTimeSpent = courses.reduce((sum, course) => {
@@ -913,6 +937,49 @@ export function Dashboard() {
                               ></div>
                             </div>
                           </div>
+                          
+                          {/* Enhanced Progress Information */}
+                          <div className="mb-4 space-y-2">
+                            {/* Course Completion Status */}
+                            {course.isCompleted && (
+                              <div className="flex items-center space-x-2 text-sm">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                <span className="text-green-700 font-medium">Course Completed!</span>
+                                {course.completionDate && (
+                                  <span className="text-gray-500">
+                                    on {new Date(course.completionDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            
+                            {/* Assessment Status */}
+                            {course.assessmentCompleted && (
+                              <div className="flex items-center space-x-2 text-sm">
+                                <Target className="w-4 h-4 text-blue-600" />
+                                <span className="text-blue-700 font-medium">Assessment: {course.assessmentScore}%</span>
+                                <span className={`px-2 py-1 text-xs rounded-full ${
+                                  (course.assessmentScore || 0) >= 70 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Lesson Progress Details */}
+                            <div className="flex items-center space-x-4 text-xs text-gray-600">
+                              <span className="flex items-center">
+                                <BookOpen className="w-3 h-3 mr-1" />
+                                {course.completedLessons}/{course.totalLessons} lessons
+                              </span>
+                              <span className="flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {course.timeSpent} spent
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
@@ -933,9 +1000,7 @@ export function Dashboard() {
                           <X className="w-4 h-4 mr-1" />
                           Unenroll
                         </Button>
-                        <p className="text-xs text-gray-500 text-right mt-2">
-                          {course.timeSpent} spent
-                        </p>
+
                       </div>
                     </div>
                   </motion.div>
