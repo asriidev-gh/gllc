@@ -396,6 +396,37 @@ export default function CourseLearningPage() {
     })))
   }
 
+  const updateLessonLocksDirectly = (currentTopics: CourseTopic[]): CourseTopic[] => {
+    // Flatten all lessons and sort by order
+    const allLessons = currentTopics
+      .flatMap(topic => topic.lessons)
+      .sort((a, b) => a.order - b.order)
+    
+    console.log('Updating lesson locks:', allLessons.map(l => ({ 
+      id: l.id, 
+      title: l.title, 
+      order: l.order, 
+      isWatched: l.isWatched, 
+      isLocked: l.isLocked 
+    })))
+    
+    return currentTopics.map(topic => ({
+      ...topic,
+      lessons: topic.lessons.map(lesson => {
+        // First lesson is always unlocked
+        if (lesson.order === 1) return { ...lesson, isLocked: false }
+        
+        // Find the previous lesson by order (across all topics)
+        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
+        const isUnlocked = previousLesson && previousLesson.isWatched
+        
+        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed = ${isUnlocked}, will be locked = ${!isUnlocked}`)
+        
+        return { ...lesson, isLocked: !isUnlocked }
+      })
+    }))
+  }
+
   const togglePlayPause = () => {
     setIsPlaying(!isPlaying)
     if (currentLesson) {
@@ -488,30 +519,66 @@ export default function CourseLearningPage() {
     return null
   }
 
+  const findNextLessonFromTopics = (currentLessonId: string, currentTopics: CourseTopic[]): VideoLesson | null => {
+    // Flatten all lessons from all topics and sort by order
+    const allLessons = currentTopics
+      .flatMap(topic => topic.lessons)
+      .sort((a, b) => a.order - b.order)
+    
+    const currentIndex = allLessons.findIndex(lesson => lesson.id === currentLessonId)
+    
+    if (currentIndex === -1 || currentIndex === allLessons.length - 1) {
+      return null // No next lesson available
+    }
+    
+    // Simply return the next lesson in sequence, regardless of topic
+    const nextLesson = allLessons[currentIndex + 1]
+    
+    // Debug logging
+    console.log('Lesson progression:', {
+      currentLesson: allLessons[currentIndex]?.title,
+      currentIndex,
+      nextLesson: nextLesson?.title,
+      nextIndex: currentIndex + 1,
+      totalLessons: allLessons.length,
+      allLessonTitles: allLessons.map(l => ({ id: l.id, title: l.title, order: l.order, topic: currentTopics.find(t => t.lessons.includes(l))?.title }))
+    })
+    
+    // Ensure the next lesson is unlocked (should be unlocked if previous was completed)
+    if (nextLesson && !nextLesson.isLocked) {
+      return nextLesson
+    }
+    
+    return null
+  }
+
   const skipLesson = (lessonId: string) => {
-    // Mark lesson as watched (skipped)
-    setTopics(prev => prev.map(topic => ({
+    // Mark lesson as watched (skipped) and get updated topics
+    const updatedTopics = topics.map(topic => ({
       ...topic,
       lessons: topic.lessons.map(lesson => 
         lesson.id === lessonId 
           ? { ...lesson, isWatched: true, isSkipped: true }
           : lesson
       )
-    })))
+    }))
+    
+    // Update topics state
+    setTopics(updatedTopics)
     
     // Debug: Log the lesson state after marking as watched
     console.log('After marking lesson as watched:', {
       lessonId,
       currentLesson: currentLesson?.title,
-      topics: topics.map(topic => ({
+      updatedTopics: updatedTopics.map(topic => ({
         title: topic.title,
         lessons: topic.lessons.map(l => ({ id: l.id, title: l.title, order: l.order, isWatched: l.isWatched, isLocked: l.isLocked }))
       }))
     })
     
-    // Recalculate progress
-    const totalLessons = topics.reduce((sum, topic) => sum + topic.lessons.length, 0)
-    const completedLessons = topics.reduce((sum, topic) => 
+    // Recalculate progress with updated topics
+    const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
+    const completedLessons = updatedTopics.reduce((sum, topic) => 
       sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
     setProgress({
@@ -531,15 +598,15 @@ export default function CourseLearningPage() {
       recordLearningActivity(user.email, 'lesson_skipped', `${currentLesson.title} - ${course.name}`)
     }
     
-    // Update lesson locks BEFORE finding next lesson
-    updateLessonLocks()
+    // Update lesson locks with updated topics BEFORE finding next lesson
+    const unlockedTopics = updateLessonLocksDirectly(updatedTopics)
     
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
     } else {
-      // Find and advance to next lesson (after locks are updated)
-      const nextLesson = findNextLesson(lessonId)
+      // Find and advance to next lesson using the unlocked topics
+      const nextLesson = findNextLessonFromTopics(lessonId, unlockedTopics)
       if (nextLesson) {
         setCurrentLesson(nextLesson)
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
