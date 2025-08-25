@@ -235,7 +235,72 @@ export default function CourseLearningPage() {
     }
   }
 
+  const loadLessonProgress = (courseId: string) => {
+    try {
+      const savedProgress = localStorage.getItem(`course_progress_${courseId}`)
+      if (savedProgress) {
+        return JSON.parse(savedProgress)
+      }
+    } catch (error) {
+      console.error('Error loading lesson progress:', error)
+    }
+    return {}
+  }
+
+  const saveLessonProgress = (courseId: string, lessonId: string, progress: { isWatched: boolean, isSkipped?: boolean, completedAt: string }) => {
+    try {
+      const currentProgress = loadLessonProgress(courseId)
+      currentProgress[lessonId] = progress
+      localStorage.setItem(`course_progress_${courseId}`, JSON.stringify(currentProgress))
+      
+      // Also update the main user progress for dashboard
+      updateUserCourseProgress(courseId, lessonId, progress)
+    } catch (error) {
+      console.error('Error saving lesson progress:', error)
+    }
+  }
+
+  const updateUserCourseProgress = (courseId: string, lessonId: string, lessonProgress: any) => {
+    try {
+      // Get current user progress
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const currentUserProgress = localStorage.getItem(userProgressKey)
+      let userProgress = currentUserProgress ? JSON.parse(currentUserProgress) : {}
+      
+      // Initialize course progress if it doesn't exist
+      if (!userProgress[courseId]) {
+        userProgress[courseId] = {
+          lessons: {},
+          totalLessons: 0,
+          completedLessons: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      }
+      
+      // Update lesson progress
+      userProgress[courseId].lessons[lessonId] = lessonProgress
+      
+      // Recalculate course totals
+      const courseLessons = Object.keys(userProgress[courseId].lessons)
+      userProgress[courseId].totalLessons = courseLessons.length
+      userProgress[courseId].completedLessons = courseLessons.filter(lessonId => 
+        userProgress[courseId].lessons[lessonId]?.isWatched
+      ).length
+      userProgress[courseId].lastUpdated = new Date().toISOString()
+      
+      // Save updated user progress
+      localStorage.setItem(userProgressKey, JSON.stringify(userProgress))
+      
+      console.log('Updated user course progress:', userProgress[courseId])
+    } catch (error) {
+      console.error('Error updating user course progress:', error)
+    }
+  }
+
   const generateMockTopics = (courseData: any) => {
+    // Load saved lesson progress
+    const savedProgress = loadLessonProgress(courseId)
+    
     const mockTopics: CourseTopic[] = [
       {
         id: 'topic_1',
@@ -250,7 +315,8 @@ export default function CourseLearningPage() {
             duration: '5:30',
             videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_1_1']?.isWatched || false,
+            isSkipped: savedProgress['lesson_1_1']?.isSkipped || false,
             isLocked: false,
             order: 1,
             resources: [
@@ -276,7 +342,8 @@ export default function CourseLearningPage() {
             duration: '8:15',
             videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_1_2']?.isWatched || false,
+            isSkipped: savedProgress['lesson_1_2']?.isSkipped || false,
             isLocked: false,
             order: 2,
             resources: [
@@ -299,7 +366,8 @@ export default function CourseLearningPage() {
             duration: '12:45',
             videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_2_1']?.isWatched || false,
+            isSkipped: savedProgress['lesson_2_1']?.isSkipped || false,
             isLocked: true,
             order: 3,
             resources: [],
@@ -312,7 +380,8 @@ export default function CourseLearningPage() {
             duration: '15:20',
             videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_2_2']?.isWatched || false,
+            isSkipped: savedProgress['lesson_2_2']?.isSkipped || false,
             isLocked: true,
             order: 4,
             resources: [
@@ -344,9 +413,9 @@ export default function CourseLearningPage() {
       watchedDuration: `${Math.floor(completedLessons * 15)}m`,
       isCompleted: completedLessons === totalLessons,
       completionDate: completedLessons === totalLessons ? new Date().toISOString() : undefined,
-      certificateEarned: false,
-      badgeEarned: false,
-      finalScore: undefined
+      certificateEarned: progress.certificateEarned,
+      badgeEarned: progress.badgeEarned,
+      finalScore: progress.finalScore
     })
   }
 
@@ -451,6 +520,13 @@ export default function CourseLearningPage() {
     
     // Update topics state
     setTopics(updatedTopics)
+    
+    // Save lesson progress to localStorage
+    saveLessonProgress(courseId, lessonId, {
+      isWatched: true,
+      isSkipped: false,
+      completedAt: new Date().toISOString()
+    })
     
     // Recalculate progress with updated topics
     const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
@@ -582,6 +658,13 @@ export default function CourseLearningPage() {
     
     // Update topics state
     setTopics(updatedTopics)
+    
+    // Save lesson progress to localStorage
+    saveLessonProgress(courseId, lessonId, {
+      isWatched: true,
+      isSkipped: true,
+      completedAt: new Date().toISOString()
+    })
     
     // Debug: Log the lesson state after marking as watched
     console.log('After marking lesson as watched:', {
