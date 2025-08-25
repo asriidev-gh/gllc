@@ -993,7 +993,11 @@ export default function CourseLearningPage() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 {lesson.isWatched ? (
-                                  <CheckCircle className="w-5 h-5 text-green-600" />
+                                  lesson.isSkipped ? (
+                                    <ChevronRight className="w-5 h-5 text-orange-600" />
+                                  ) : (
+                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                  )
                                 ) : lesson.isLocked ? (
                                   <Circle className="w-5 h-5 text-gray-400" />
                                 ) : (
@@ -1002,9 +1006,15 @@ export default function CourseLearningPage() {
                                 
                                 <div className="flex-1">
                                   <h4 className={`font-medium ${
-                                    lesson.isLocked ? 'text-gray-400' : 'text-gray-900'
+                                    lesson.isLocked && !lesson.isWatched ? 'text-gray-400' : 'text-gray-900'
                                   }`}>
                                     {lesson.title}
+                                    {lesson.isSkipped && (
+                                      <span className="ml-2 text-xs text-orange-600 font-medium">(Skipped)</span>
+                                    )}
+                                    {lesson.isWatched && !lesson.isSkipped && (
+                                      <span className="ml-2 text-xs text-green-600 font-medium">(Completed)</span>
+                                    )}
                                   </h4>
                                   <p className="text-sm text-gray-600 mt-1">{lesson.summary}</p>
                                 </div>
@@ -1024,13 +1034,31 @@ export default function CourseLearningPage() {
                                 >
                                   <Bookmark className="w-4 h-4" />
                                 </Button>
+                                
+                                {/* Skip Lesson Button - Only show if lesson not completed */}
+                                {!lesson.isWatched && (
+                                  <Button
+                                    onClick={() => {
+                                      setCurrentLesson(lesson)
+                                      setShowSkipLessonModal(true)
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
+                                  >
+                                    <ChevronRight className="w-4 h-4 mr-1" />
+                                    Skip
+                                  </Button>
+                                )}
+                                
                                 <Button
                                   onClick={() => selectLesson(lesson)}
                                   variant="outline"
                                   size="sm"
-                                  disabled={lesson.isLocked}
+                                  disabled={lesson.isLocked && !lesson.isWatched}
+                                  className={lesson.isLocked && !lesson.isWatched ? 'opacity-60 cursor-not-allowed' : ''}
                                 >
-                                  {lesson.isLocked ? 'Locked' : 'Start'}
+                                  {lesson.isLocked && !lesson.isWatched ? 'Locked' : lesson.isWatched ? 'Replay' : 'Start'}
                                 </Button>
                               </div>
                             </div>
