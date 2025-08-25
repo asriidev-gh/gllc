@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
@@ -39,6 +39,8 @@ import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
 import toast from 'react-hot-toast'
 import { recordLearningActivity } from '@/lib/learningActivity'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 interface VideoLesson {
   id: string
@@ -168,6 +170,7 @@ export default function CourseLearningPage() {
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
   const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
+  const certificateRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     console.log('Course details page - Authentication state:', isAuthenticated)
@@ -783,6 +786,64 @@ export default function CourseLearningPage() {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value)
     setVideoVolume(newVolume)
+  }
+
+  const generatePDF = async () => {
+    if (!certificateRef.current) return
+    
+    try {
+      toast.loading('Generating PDF...', { id: 'pdf-generation' })
+      
+      // Capture the certificate content
+      const canvas = await html2canvas(certificateRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#fefce8' // Light yellow background
+      })
+      
+      const imgData = canvas.toDataURL('image/png')
+      
+      // Create PDF
+      const pdf = new jsPDF('landscape', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      
+      // Calculate dimensions to fit the certificate properly
+      const imgWidth = pdfWidth - 20 // 10mm margin on each side
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      // Center the image on the page
+      const x = (pdfWidth - imgWidth) / 2
+      const y = (pdfHeight - imgHeight) / 2
+      
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight)
+      
+      // Add metadata
+      pdf.setProperties({
+        title: `Certificate - ${course.name}`,
+        subject: 'Course Completion Certificate',
+        author: 'Global Language Training Center',
+        creator: 'Global Language Training Center'
+      })
+      
+      // Generate filename
+      const filename = `certificate_${course.name.replace(/\s+/g, '_')}_${user?.name || 'student'}_${user?.email || 'student'}_${new Date().toISOString().split('T')[0]}.pdf`
+      
+      // Download the PDF
+      pdf.save(filename)
+      
+      toast.success('Certificate downloaded successfully!', { id: 'pdf-generation' })
+      
+      // Record certificate download activity
+      if (user?.email) {
+        recordLearningActivity(user.email, 'certificate_downloaded', course.name)
+      }
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.', { id: 'pdf-generation' })
+    }
   }
 
   if (!course || !isAuthenticated) {
@@ -1598,7 +1659,7 @@ export default function CourseLearningPage() {
             {/* Certificate Content */}
             <div className="p-8">
               {/* Certificate Design */}
-              <div className="border-8 border-double border-gray-300 rounded-lg p-8 bg-gradient-to-br from-yellow-50 to-orange-50 relative overflow-hidden">
+              <div ref={certificateRef} className="border-8 border-double border-gray-300 rounded-lg p-8 bg-gradient-to-br from-yellow-50 to-orange-50 relative overflow-hidden">
                 {/* Decorative Elements */}
                 <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-yellow-400 to-orange-400 opacity-10 rounded-full -translate-x-16 -translate-y-16"></div>
                 <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-blue-400 to-purple-400 opacity-10 rounded-full translate-x-20 translate-y-20"></div>
@@ -1668,10 +1729,7 @@ export default function CourseLearningPage() {
               {/* Action Buttons */}
               <div className="flex justify-center space-x-4 mt-8">
                 <Button 
-                  onClick={() => {
-                    // TODO: Implement PDF download
-                    toast.success('PDF download feature coming soon!')
-                  }}
+                  onClick={generatePDF}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Download className="w-4 h-4 mr-2" />
