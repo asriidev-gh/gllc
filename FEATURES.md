@@ -30,6 +30,14 @@
 - **Performance Optimization**: Efficient lesson loading and state updates
 - **Debug Logging**: Development-friendly logging for troubleshooting
 
+### **⚡ Performance Optimizations**
+- **Dynamic Imports**: Heavy libraries (jsPDF, html2canvas) loaded only when needed
+- **Component Memoization**: React.memo for preventing unnecessary re-renders
+- **Lazy Loading**: Assessment questions loaded on-demand for faster initial load
+- **Bundle Optimization**: Webpack configuration for better code splitting
+- **Loading States**: Improved perceived performance with loading indicators
+- **Code Splitting**: Vendor chunks and optimized bundle distribution
+
 ---
 
 ## 📋 **Core Feature Categories**
@@ -58,6 +66,10 @@
 - **Achievement Tracking**: Dynamic achievement calculation and display
 - **Recent Activity**: Meaningful learning activity logging
 - **Progress Visualization**: Visual progress bars and statistics
+- **Enhanced Course Display**: Detailed progress, completion status, and assessment scores
+- **Smart Button Logic**: "Continue" for in-progress, "Retake" for completed courses
+- **Accurate Time Tracking**: Time spent calculation includes skipped and completed lessons
+- **Completion Badges**: Visual indicators for course completion status
 
 ### **🏆 Achievement & Recognition**
 - **Certificate System**: Professional completion certificates

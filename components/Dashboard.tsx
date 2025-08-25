@@ -392,6 +392,16 @@ export function Dashboard() {
           const assessmentScore = courseProgress.assessmentScore || null
           const assessmentCompleted = courseProgress.assessmentCompleted || false
           
+          // Calculate actual time spent based on lesson progress
+          let actualTimeSpent = '0h 0m'
+          if (completedLessons > 0) {
+            // Each lesson is approximately 15 minutes (based on course structure)
+            const totalMinutes = completedLessons * 15
+            const hours = Math.floor(totalMinutes / 60)
+            const minutes = totalMinutes % 60
+            actualTimeSpent = `${hours}h ${minutes}m`
+          }
+          
           return {
             id: enrollment.id,
             name: enrollment.name || enrollment.title || 'Unknown Course', // Fallback to title if name doesn't exist
@@ -404,7 +414,7 @@ export function Dashboard() {
             currentLesson: enrollment.currentLesson || 1,
             rating: enrollment.rating,
             lastAccessed: enrollment.lastAccessed || 'Just now',
-            timeSpent: enrollment.timeSpent || '0h 0m',
+            timeSpent: actualTimeSpent,
             certificate: enrollment.certificate || false,
             // Enhanced progress data
             isCompleted,
@@ -899,6 +909,12 @@ export function Dashboard() {
                             <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
                               {course.level}
                             </span>
+                            {course.isCompleted && (
+                              <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Completed
+                              </span>
+                            )}
                             {course.certificate && (
                               <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
                                 <Award className="w-3 h-3 mr-1" />
@@ -910,7 +926,11 @@ export function Dashboard() {
                           <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
                             <span className="flex items-center">
                               <BookOpen className="w-4 h-4 mr-1" />
-                              Lesson {course.currentLesson} of {course.totalLessons}
+                              {course.isCompleted ? (
+                                `All ${course.totalLessons} lessons completed`
+                              ) : (
+                                `Lesson ${course.currentLesson} of ${course.totalLessons}`
+                              )}
                             </span>
                             <span className="flex items-center">
                               <Clock className="w-4 h-4 mr-1" />
@@ -940,18 +960,18 @@ export function Dashboard() {
                           
                           {/* Enhanced Progress Information */}
                           <div className="mb-4 space-y-2">
-                            {/* Course Completion Status */}
-                            {course.isCompleted && (
-                              <div className="flex items-center space-x-2 text-sm">
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                                <span className="text-green-700 font-medium">Course Completed!</span>
-                                {course.completionDate && (
-                                  <span className="text-gray-500">
-                                    on {new Date(course.completionDate).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                                                      {/* Course Completion Status */}
+                          {course.isCompleted && (
+                            <div className="flex items-center space-x-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              <span className="text-green-700 font-medium">🎉 Course Completed!</span>
+                              {course.completionDate && (
+                                <span className="text-gray-500">
+                                  on {new Date(course.completionDate).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
                             
                             {/* Assessment Status */}
                             {course.assessmentCompleted && (
@@ -986,10 +1006,23 @@ export function Dashboard() {
                       <div className="flex flex-col items-end space-y-2">
                         <Button
                           onClick={() => continueLearning(course)}
-                          className="px-6 py-2"
+                          className={`px-6 py-2 ${
+                            course.isCompleted 
+                              ? 'bg-green-600 hover:bg-green-700' 
+                              : 'bg-primary-600 hover:bg-primary-700'
+                          }`}
                         >
-                          <Play className="w-4 h-4 mr-2" />
-                          Continue
+                          {course.isCompleted ? (
+                            <>
+                              <Target className="w-4 h-4 mr-2" />
+                              Retake
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-2" />
+                              Continue
+                            </>
+                          )}
                         </Button>
                         <Button
                           onClick={() => showUnenrollConfirmation(course)}

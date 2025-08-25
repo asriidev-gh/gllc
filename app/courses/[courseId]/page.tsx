@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { 
   Play, 
   Pause, 
@@ -35,12 +34,11 @@ import {
   Trophy
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
 import toast from 'react-hot-toast'
 import { recordLearningActivity } from '@/lib/learningActivity'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 interface VideoLesson {
   id: string
@@ -133,7 +131,13 @@ interface CourseBadge {
   unlockedAt: string
 }
 
-export default function CourseLearningPage() {
+interface AssessmentQuestion {
+  question: string
+  options: string[]
+  correctAnswer: number
+}
+
+const CourseLearningPage = () => {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
@@ -185,112 +189,123 @@ export default function CourseLearningPage() {
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [assessmentScore, setAssessmentScore] = useState(0)
   
-  // Assessment questions for the course (original order)
-  const originalAssessmentQuestions = [
-    {
-      question: "What is the primary goal of this language course?",
-      options: [
-        "To memorize vocabulary only",
-        "To develop practical communication skills",
-        "To pass written exams",
-        "To learn grammar rules by heart"
-      ],
-      correctAnswer: 1
-    },
-    {
-      question: "Which learning method is most effective for language acquisition?",
-      options: [
-        "Reading textbooks only",
-        "Passive listening",
-        "Active practice and conversation",
-        "Memorizing grammar rules"
-      ],
-      correctAnswer: 2
-    },
-    {
-      question: "How should you approach learning a new language?",
-      options: [
-        "Focus only on perfect pronunciation",
-        "Learn everything at once",
-        "Start with basics and build gradually",
-        "Skip beginner lessons"
-      ],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the best way to retain new vocabulary?",
-      options: [
-        "Write it down once",
-        "Use it in context and practice regularly",
-        "Read it silently",
-        "Memorize without understanding"
-      ],
-      correctAnswer: 1
-    },
-    {
-      question: "Why is cultural context important in language learning?",
-      options: [
-        "It's not important at all",
-        "It helps with grammar rules",
-        "It enhances understanding and communication",
-        "It's only useful for advanced learners"
-      ],
-      correctAnswer: 2
-    },
-    {
-      question: "What should you do when you make mistakes while speaking?",
-      options: [
-        "Stop speaking immediately",
-        "Ignore the mistakes and continue",
-        "Learn from them and keep practicing",
-        "Give up on the language"
-      ],
-      correctAnswer: 2
-    },
-    {
-      question: "How often should you practice to maintain language skills?",
-      options: [
-        "Once a month",
-        "Only when you have time",
-        "Regularly, ideally daily",
-        "Only before exams"
-      ],
-      correctAnswer: 2
-    },
-    {
-      question: "What is the role of listening in language learning?",
-      options: [
-        "It's not necessary",
-        "It helps develop speaking skills",
-        "It's only useful for reading",
-        "It wastes time"
-      ],
-      correctAnswer: 1
-    },
-    {
-      question: "How can you make language learning more enjoyable?",
-      options: [
-        "Focus only on difficult topics",
-        "Use materials that interest you",
-        "Study in isolation",
-        "Avoid any fun activities"
-      ],
-      correctAnswer: 1
-    },
-    {
-      question: "What is the key to successful language learning?",
-      options: [
-        "Natural talent",
-        "Consistency and persistence",
-        "Expensive materials",
-        "Perfect memory"
-      ],
-      correctAnswer: 1
-    }
-  ]
+  // Assessment questions for the course (loaded on demand)
+  const [assessmentQuestions, setAssessmentQuestions] = useState<AssessmentQuestion[]>([])
+  const [assessmentQuestionsLoaded, setAssessmentQuestionsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Shuffled assessment questions (will be set when assessment starts)
-  const [assessmentQuestions, setAssessmentQuestions] = useState(originalAssessmentQuestions)
+  // Load assessment questions only when needed
+  const loadAssessmentQuestions = () => {
+    if (assessmentQuestionsLoaded) return
+    
+    const questions: AssessmentQuestion[] = [
+      {
+        question: "What is the primary goal of this language course?",
+        options: [
+          "To memorize vocabulary only",
+          "To develop practical communication skills",
+          "To pass written exams",
+          "To learn grammar rules by heart"
+        ],
+        correctAnswer: 1
+      },
+      {
+        question: "Which learning method is most effective for language acquisition?",
+        options: [
+          "Reading textbooks only",
+          "Passive listening",
+          "Active practice and conversation",
+          "Memorizing grammar rules"
+        ],
+        correctAnswer: 2
+      },
+      {
+        question: "How should you approach learning a new language?",
+        options: [
+          "Focus only on perfect pronunciation",
+          "Learn everything at once",
+          "Start with basics and build gradually",
+          "Skip beginner lessons"
+        ],
+        correctAnswer: 2
+      },
+      {
+        question: "What is the best way to retain new vocabulary?",
+        options: [
+          "Write it down once",
+          "Use it in context and practice regularly",
+          "Read it silently",
+          "Memorize without understanding"
+        ],
+        correctAnswer: 1
+      },
+      {
+        question: "Why is cultural context important in language learning?",
+        options: [
+          "It's not important at all",
+          "It helps with grammar rules",
+          "It enhances understanding and communication",
+          "It's only useful for advanced learners"
+        ],
+        correctAnswer: 2
+      },
+      {
+        question: "What should you do when you make mistakes while speaking?",
+        options: [
+          "Stop speaking immediately",
+          "Ignore the mistakes and continue",
+          "Learn from them and keep practicing",
+          "Give up on the language"
+        ],
+        correctAnswer: 2
+      },
+      {
+        question: "How often should you practice to maintain language skills?",
+        options: [
+          "Once a month",
+          "Only when you have time",
+          "Regularly, ideally daily",
+          "Only before exams"
+        ],
+        correctAnswer: 2
+      },
+      {
+        question: "What is the role of listening in language learning?",
+        options: [
+          "It's not necessary",
+          "It helps develop speaking skills",
+          "It's only useful for reading",
+          "It wastes time"
+        ],
+        correctAnswer: 1
+      },
+      {
+        question: "How can you make language learning more enjoyable?",
+        options: [
+          "Focus only on difficult topics",
+          "Use materials that interest you",
+          "Study in isolation",
+          "Avoid any fun activities"
+        ],
+        correctAnswer: 1
+      },
+      {
+        question: "What is the key to successful language learning?",
+        options: [
+          "Natural talent",
+          "Consistency and persistence",
+          "Expensive materials",
+          "Perfect memory"
+        ],
+        correctAnswer: 1
+      }
+    ]
+    
+    // Shuffle questions for variety
+    const shuffledQuestions = questions.sort(() => Math.random() - 0.5)
+    setAssessmentQuestions(shuffledQuestions)
+    setAssessmentQuestionsLoaded(true)
+  }
 
   useEffect(() => {
     console.log('Course details page - Authentication state:', isAuthenticated)
@@ -330,6 +345,7 @@ export default function CourseLearningPage() {
 
   const loadCourseData = async () => {
     try {
+      setIsLoading(true)
       console.log('Loading course data for courseId:', courseId)
       const savedEnrollments = localStorage.getItem('enrolled_courses')
       console.log('Saved enrollments:', savedEnrollments)
@@ -373,6 +389,8 @@ export default function CourseLearningPage() {
     } catch (error) {
       console.error('Error loading course:', error)
       toast.error('Failed to load course')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -1048,6 +1066,12 @@ export default function CourseLearningPage() {
     try {
       toast.loading('Generating PDF...', { id: 'pdf-generation' })
       
+      // Dynamically import heavy libraries only when needed
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ])
+      
       // Capture the certificate content
       const canvas = await html2canvas(certificateRef.current, {
         scale: 2,
@@ -1118,11 +1142,23 @@ export default function CourseLearningPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Video Player Section */}
-          <div className="bg-black relative">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Course Content</h2>
+            <p className="text-gray-600">Please wait while we prepare your learning experience...</p>
+          </div>
+        </div>
+      )}
+      
+      {!isLoading && (
+        <div className="flex flex-1 overflow-hidden">
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col">
+            {/* Video Player Section */}
+            <div className="bg-black relative">
             <div className="aspect-video relative">
               {/* Video Player */}
               <video
@@ -1442,7 +1478,10 @@ export default function CourseLearningPage() {
                           
                           <div className="space-y-2">
                             <Button 
-                              onClick={retakeAssessment}
+                              onClick={() => {
+                                loadAssessmentQuestions()
+                                retakeAssessment()
+                              }}
                               variant="outline"
                               className="w-full"
                               size="sm"
@@ -1480,7 +1519,10 @@ export default function CourseLearningPage() {
                           
                           {progress.isCompleted ? (
                             <Button 
-                              onClick={() => setShowAssessmentModal(true)}
+                              onClick={() => {
+                                loadAssessmentQuestions()
+                                setShowAssessmentModal(true)
+                              }}
                               className="w-full bg-primary-600 hover:bg-primary-700 text-white"
                               size="sm"
                             >
@@ -1913,6 +1955,7 @@ export default function CourseLearningPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Skip Lesson Confirmation Modal */}
       {showSkipLessonModal && currentLesson && (
@@ -2146,11 +2189,17 @@ export default function CourseLearningPage() {
                 
                 <div className="flex justify-center space-x-4">
                   <Button 
-                    onClick={() => setAssessmentStarted(true)}
+                    onClick={() => {
+                      if (!assessmentQuestionsLoaded) {
+                        loadAssessmentQuestions()
+                      }
+                      setAssessmentStarted(true)
+                    }}
                     className="bg-primary-600 hover:bg-primary-700"
+                    disabled={!assessmentQuestionsLoaded}
                   >
                     <Target className="w-4 h-4 mr-2" />
-                    Start Assessment
+                    {assessmentQuestionsLoaded ? 'Start Assessment' : 'Loading Questions...'}
                   </Button>
                   <Button 
                     variant="outline"
@@ -2484,3 +2533,6 @@ export default function CourseLearningPage() {
     </div>
   )
 }
+
+// Memoize the component to prevent unnecessary re-renders
+export default React.memo(CourseLearningPage)
