@@ -386,6 +386,8 @@ export default function AchievementsPage() {
         return { icon: '🏠', color: 'bg-gray-500' }
       case 'course_access':
         return { icon: '🎯', color: 'bg-blue-500' }
+      case 'course_browsing':
+        return { icon: '🔍', color: 'bg-indigo-500' }
       case 'lesson_completed':
         return { icon: '✅', color: 'bg-green-500' }
       case 'course_enrollment':
@@ -408,6 +410,8 @@ export default function AchievementsPage() {
         return details
       case 'course_access':
         return `Accessed ${details}`
+      case 'course_browsing':
+        return details
       case 'lesson_completed':
         return `Completed ${details}`
       case 'course_enrollment':

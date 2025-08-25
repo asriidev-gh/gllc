@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { User, Mail, Calendar, Globe, Edit, Save, X, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +12,12 @@ export default function ProfilePage() {
   const { profile, updateProfile } = useUserStore()
   
   const [isEditing, setIsEditing] = useState(false)
+  const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
+  const [stats, setStats] = useState({
+    totalCourses: 0,
+    totalLessons: 0,
+    completedLessons: 0
+  })
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -20,6 +26,44 @@ export default function ProfilePage() {
     nativeLanguage: user?.nativeLanguage || '',
     bio: profile?.bio || ''
   })
+
+  // Load enrolled courses and calculate stats
+  const loadEnrolledCourses = () => {
+    try {
+      const savedEnrollments = localStorage.getItem('enrolled_courses')
+      let courses: any[] = []
+      
+      if (savedEnrollments) {
+        courses = JSON.parse(savedEnrollments).map((enrollment: any) => ({
+          id: enrollment.id,
+          name: enrollment.name || enrollment.title || 'Unknown Course',
+          language: enrollment.language,
+          progress: enrollment.progress || 0,
+          totalLessons: enrollment.totalLessons,
+          completedLessons: enrollment.completedLessons || 0
+        }))
+      }
+      
+      setEnrolledCourses(courses)
+      
+      // Calculate stats from real data
+      const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
+      const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0)
+      
+      setStats({
+        totalCourses: courses.length,
+        totalLessons,
+        completedLessons
+      })
+      
+    } catch (error) {
+      console.error('Error loading enrolled courses:', error)
+    }
+  }
+
+  useEffect(() => {
+    loadEnrolledCourses()
+  }, [])
 
   const handleSave = async () => {
     try {
@@ -97,7 +141,7 @@ export default function ProfilePage() {
                   <p className="text-gray-600">{user.role}</p>
                 </div>
 
-                {/* Quick Stats */}
+                {/* Member Since */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-600">Member Since</span>
@@ -109,15 +153,56 @@ export default function ProfilePage() {
                       }) : 'August 23, 2025'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Learning Stats Card */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 }}
+              className="lg:col-span-1"
+            >
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Learning Progress</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <span className="text-sm text-gray-600">Courses Enrolled</span>
-                    <span className="text-sm font-medium text-gray-900">0</span>
+                    <span className="text-sm font-medium text-blue-900">{stats.totalCourses}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                     <span className="text-sm text-gray-600">Lessons Completed</span>
-                    <span className="text-sm font-medium text-gray-900">0</span>
+                    <span className="text-sm font-medium text-green-900">{stats.completedLessons}</span>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+
+            {/* Target Courses Card */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="lg:col-span-1"
+            >
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Target Courses</h3>
+                <div className="space-y-2">
+                  {enrolledCourses.length > 0 ? (
+                    enrolledCourses.map((course, index) => (
+                      <span
+                        key={index}
+                        className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm mb-2"
+                      >
+                        {course.name}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500">No courses enrolled yet</p>
+                  )}
+                </div>
+              </div>
               </div>
             </motion.div>
 
@@ -221,20 +306,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  {/* Target Languages */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Target Languages</label>
-                    <div className="flex flex-wrap gap-2">
-                      {formData.targetLanguages.map((lang, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                        >
-                          {lang}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+
 
                   {/* Bio */}
                   <div>

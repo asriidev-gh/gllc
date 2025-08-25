@@ -67,6 +67,8 @@ export function Dashboard() {
   const [courseToUnenroll, setCourseToUnenroll] = useState<EnrolledCourse | null>(null)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [achievementDetails, setAchievementDetails] = useState<any[]>([])
+  const [showAllActivities, setShowAllActivities] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string>('')
 
   useEffect(() => {
     // Check if user is authenticated
@@ -618,6 +620,8 @@ export function Dashboard() {
         return { icon: '🏠', color: 'bg-gray-500' }
       case 'course_access':
         return { icon: '🎯', color: 'bg-blue-500' }
+      case 'course_browsing':
+        return { icon: '🔍', color: 'bg-indigo-500' }
       case 'lesson_completed':
         return { icon: '✅', color: 'bg-green-500' }
       case 'course_enrollment':
@@ -640,6 +644,8 @@ export function Dashboard() {
         return details
       case 'course_access':
         return `Accessed ${details}`
+      case 'course_browsing':
+        return details
       case 'lesson_completed':
         return `Completed ${details}`
       case 'course_enrollment':
@@ -986,15 +992,38 @@ export function Dashboard() {
         <div className="mt-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
-            <button
-              onClick={loadRecentActivity}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              title="Refresh recent activity"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+            <div className="flex items-center space-x-3">
+              {/* Date Filter */}
+              <select
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">All Time</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              
+              {/* View All Button */}
+              <button
+                onClick={() => setShowAllActivities(!showAllActivities)}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium"
+              >
+                {showAllActivities ? 'Show Recent' : 'View All'}
+              </button>
+              
+              {/* Refresh Button */}
+              <button
+                onClick={loadRecentActivity}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                title="Refresh recent activity"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="p-6">
             {recentActivity.length > 0 ? (
