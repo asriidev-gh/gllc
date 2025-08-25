@@ -437,20 +437,20 @@ export default function CourseLearningPage() {
       recordLearningActivity(user.email, 'lesson_completed', `${currentLesson.title} - ${course.name}`)
     }
     
+    // Update lesson locks BEFORE finding next lesson
+    updateLessonLocks()
+    
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
     } else {
-      // Find and advance to next lesson
+      // Find and advance to next lesson (after locks are updated)
       const nextLesson = findNextLesson(lessonId)
       if (nextLesson) {
         setCurrentLesson(nextLesson)
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
       }
     }
-    
-    // Update lesson locks after completion
-    updateLessonLocks()
     
     toast.success('Progress saved!')
   }
@@ -499,6 +499,16 @@ export default function CourseLearningPage() {
       )
     })))
     
+    // Debug: Log the lesson state after marking as watched
+    console.log('After marking lesson as watched:', {
+      lessonId,
+      currentLesson: currentLesson?.title,
+      topics: topics.map(topic => ({
+        title: topic.title,
+        lessons: topic.lessons.map(l => ({ id: l.id, title: l.title, order: l.order, isWatched: l.isWatched, isLocked: l.isLocked }))
+      }))
+    })
+    
     // Recalculate progress
     const totalLessons = topics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = topics.reduce((sum, topic) => 
@@ -521,20 +531,22 @@ export default function CourseLearningPage() {
       recordLearningActivity(user.email, 'lesson_skipped', `${currentLesson.title} - ${course.name}`)
     }
     
+    // Update lesson locks BEFORE finding next lesson
+    updateLessonLocks()
+    
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
     } else {
-      // Find and advance to next lesson
+      // Find and advance to next lesson (after locks are updated)
       const nextLesson = findNextLesson(lessonId)
       if (nextLesson) {
         setCurrentLesson(nextLesson)
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
+      } else {
+        console.log('No next lesson found after skip:', { lessonId, completedLessons, totalLessons })
       }
     }
-    
-    // Update lesson locks after skipping
-    updateLessonLocks()
     
     setShowSkipLessonModal(false)
     toast.success('Lesson skipped and marked as completed!')
