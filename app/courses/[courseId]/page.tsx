@@ -439,18 +439,22 @@ export default function CourseLearningPage() {
   }
 
   const markLessonAsWatched = (lessonId: string) => {
-    setTopics(prev => prev.map(topic => ({
+    // Mark lesson as watched and get updated topics
+    const updatedTopics = topics.map(topic => ({
       ...topic,
       lessons: topic.lessons.map(lesson => 
         lesson.id === lessonId 
           ? { ...lesson, isWatched: true }
           : lesson
       )
-    })))
+    }))
     
-    // Recalculate progress
-    const totalLessons = topics.reduce((sum, topic) => sum + topic.lessons.length, 0)
-    const completedLessons = topics.reduce((sum, topic) => 
+    // Update topics state
+    setTopics(updatedTopics)
+    
+    // Recalculate progress with updated topics
+    const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
+    const completedLessons = updatedTopics.reduce((sum, topic) => 
       sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
     setProgress({
@@ -470,18 +474,29 @@ export default function CourseLearningPage() {
       recordLearningActivity(user.email, 'lesson_completed', `${currentLesson.title} - ${course.name}`)
     }
     
-    // Update lesson locks BEFORE finding next lesson
-    updateLessonLocks()
+    // Update lesson locks with updated topics BEFORE finding next lesson
+    const unlockedTopics = updateLessonLocksDirectly(updatedTopics)
+    
+    // IMPORTANT: Update the main topics state with unlocked lessons
+    setTopics(unlockedTopics)
     
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
     } else {
-      // Find and advance to next lesson (after locks are updated)
-      const nextLesson = findNextLesson(lessonId)
+      // Find and advance to next lesson using the unlocked topics
+      const nextLesson = findNextLessonFromTopics(lessonId, unlockedTopics)
       if (nextLesson) {
         setCurrentLesson(nextLesson)
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
+        
+        // Debug: Verify the next lesson is unlocked
+        console.log('Next lesson unlocked status:', {
+          nextLesson: nextLesson.title,
+          isLocked: nextLesson.isLocked,
+          isWatched: nextLesson.isWatched,
+          order: nextLesson.order
+        })
       }
     }
     
@@ -603,6 +618,9 @@ export default function CourseLearningPage() {
     // Update lesson locks with updated topics BEFORE finding next lesson
     const unlockedTopics = updateLessonLocksDirectly(updatedTopics)
     
+    // IMPORTANT: Update the main topics state with unlocked lessons
+    setTopics(unlockedTopics)
+    
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
@@ -612,6 +630,14 @@ export default function CourseLearningPage() {
       if (nextLesson) {
         setCurrentLesson(nextLesson)
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
+        
+        // Debug: Verify the next lesson is unlocked
+        console.log('Next lesson unlocked status:', {
+          nextLesson: nextLesson.title,
+          isLocked: nextLesson.isLocked,
+          isWatched: nextLesson.isWatched,
+          order: nextLesson.order
+        })
       } else {
         console.log('No next lesson found after skip:', { lessonId, completedLessons, totalLessons })
       }
