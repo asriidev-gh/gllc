@@ -1031,13 +1031,65 @@ export default function CourseLearningPage() {
                     
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="font-semibold text-gray-900 mb-3">Certificate</h3>
-                      <div className="flex items-center space-x-2">
-                        <Award className="w-5 h-5 text-yellow-600" />
-                        <span className="text-gray-700">Completion Certificate</span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        Earn a certificate upon completing all lessons
-                      </p>
+                      {progress.isCompleted ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Award className="w-6 h-6 text-green-600" />
+                            <span className="text-green-700 font-medium">Course Completed! 🎉</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Congratulations! You've successfully completed this course.
+                          </p>
+                          {progress.completionDate && (
+                            <p className="text-xs text-gray-500">
+                              Completed on: {new Date(progress.completionDate).toLocaleDateString()}
+                            </p>
+                          )}
+                          <div className="space-y-2">
+                            <Button 
+                              onClick={() => setShowCompletionModal(true)}
+                              className="w-full bg-green-600 hover:bg-green-700 text-white"
+                              size="sm"
+                            >
+                              <Download className="w-4 h-4 mr-2" />
+                              View Certificate
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              className="w-full"
+                              size="sm"
+                              onClick={() => setShowAssessmentModal(true)}
+                            >
+                              <Target className="w-4 h-4 mr-2" />
+                              Take Final Assessment
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Award className="w-5 h-5 text-yellow-600" />
+                            <span className="text-gray-700">Completion Certificate</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Earn a certificate upon completing all lessons
+                          </p>
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-blue-700">Progress:</span>
+                              <span className="text-blue-700 font-medium">
+                                {progress.completedLessons}/{progress.totalLessons} lessons
+                              </span>
+                            </div>
+                            <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${getProgressPercentage()}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
