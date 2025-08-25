@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import toast from 'react-hot-toast'
+import { recordLearningActivity as recordLearningActivityUtil, getRecentActivities } from '@/lib/learningActivity'
 
 interface EnrolledCourse {
   id: string
@@ -494,32 +495,13 @@ export function Dashboard() {
   const recordLearningActivity = (action: string, details: string) => {
     if (!user?.email) return
     
-    const today = new Date().toISOString().split('T')[0]
-    const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
-    const userActivity = learningActivity[user.email] || []
-    
-    // Check if we already have activity for today
-    const todayActivity = userActivity.find((activity: any) => activity.date === today)
-    
-    if (todayActivity) {
-      // Update existing activity
-      todayActivity.actions = [...(todayActivity.actions || []), { action, details, timestamp: new Date().toISOString() }]
-    } else {
-      // Create new activity for today
-      userActivity.push({
-        date: today,
-        actions: [{ action, details, timestamp: new Date().toISOString() }]
-      })
-    }
-    
-    // Save back to localStorage
-    learningActivity[user.email] = userActivity
-    localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
+    // Use shared utility to record activity
+    recordLearningActivityUtil(user.email, action, details)
     
     // Refresh recent activity display
     loadRecentActivity()
     
-    console.log('Learning activity recorded:', { action, details, date: today })
+    console.log('Learning activity recorded:', { action, details, date: new Date().toISOString().split('T')[0] })
   }
 
   // Initialize sample learning activity for testing (remove in production)
@@ -586,41 +568,14 @@ export function Dashboard() {
     if (!user?.email) return
     
     try {
-      const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
-      const userActivity = learningActivity[user.email] || []
-      
-      // Get activities based on date filter
-      const recentActivities: any[] = []
-      const today = new Date()
-      
+      // Get days to check based on date filter
       let daysToCheck = 7 // Default to last 7 days
       if (selectedDate === '30') daysToCheck = 30
       else if (selectedDate === '90') daysToCheck = 90
       else if (selectedDate === '') daysToCheck = 365 // All time
       
-      for (let i = 0; i < daysToCheck; i++) {
-        const date = new Date(today)
-        date.setDate(date.getDate() - i)
-        const dateStr = date.toISOString().split('T')[0]
-        
-        const dayActivity = userActivity.find((activity: any) => activity.date === dateStr)
-        if (dayActivity && dayActivity.actions) {
-          dayActivity.actions.forEach((action: any) => {
-            recentActivities.push({
-              ...action,
-              date: dateStr,
-              displayDate: i === 0 ? 'Today' : i === 1 ? 'Yesterday' : `${i} days ago`
-            })
-          })
-        }
-      }
-      
-      // Sort by timestamp (most recent first)
-      const sortedActivities = recentActivities
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      
-      // Apply limit based on showAllActivities state
-      const limitedActivities = showAllActivities ? sortedActivities : sortedActivities.slice(0, 5)
+      // Use shared utility to get recent activities
+      const limitedActivities = getRecentActivities(user.email, daysToCheck, showAllActivities)
       
       setRecentActivity(limitedActivities)
       console.log('Recent activity loaded:', limitedActivities.length, 'activities')
@@ -651,6 +606,10 @@ export function Dashboard() {
         return { icon: '🏆', color: 'bg-yellow-500' }
       case 'assessment_completed':
         return { icon: '📊', color: 'bg-indigo-500' }
+      case 'profile_access':
+        return { icon: '👤', color: 'bg-teal-500' }
+      case 'achievements_access':
+        return { icon: '🏅', color: 'bg-amber-500' }
       default:
         return { icon: '📝', color: 'bg-gray-500' }
     }
@@ -675,6 +634,10 @@ export function Dashboard() {
         return `Earned ${details}`
       case 'assessment_completed':
         return `Completed assessment: ${details}`
+      case 'profile_access':
+        return details
+      case 'achievements_access':
+        return details
       default:
         return details
     }

@@ -18,6 +18,7 @@ import { useAuthStore, useCoursesStore } from '@/stores'
 import { Header } from '@/components/Header'
 import { CourseDetailsModal } from '@/components/CourseDetailsModal'
 import toast from 'react-hot-toast'
+import { recordCourseBrowsing, recordLearningActivity } from '@/lib/learningActivity'
 
 const mockCourses = [
   {
@@ -141,18 +142,6 @@ export default function CoursesPage() {
   const [isCourseDetailsModalOpen, setIsCourseDetailsModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<any>(null)
   
-  const filteredCourses = mockCourses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.language.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesLevel = !selectedLevel || course.level === selectedLevel
-    const matchesLanguage = !selectedLanguage || course.language === selectedLanguage
-    const matchesEnrolled = !showEnrolledOnly || isEnrolledInCourse(course.id)
-    
-    return matchesSearch && matchesLevel && matchesLanguage && matchesEnrolled
-  })
-
   const isEnrolledInCourse = (courseId: string): boolean => {
     if (!user) return false
     
@@ -175,6 +164,18 @@ export default function CoursesPage() {
     console.log(`Course ${courseId} store enrollment status:`, storeEnrolled)
     return storeEnrolled
   }
+  
+  const filteredCourses = mockCourses.filter(course => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         course.language.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesLevel = !selectedLevel || course.level === selectedLevel
+    const matchesLanguage = !selectedLanguage || course.language === selectedLanguage
+    const matchesEnrolled = !showEnrolledOnly || isEnrolledInCourse(course.id)
+    
+    return matchesSearch && matchesLevel && matchesLanguage && matchesEnrolled
+  })
 
   const handleEnroll = async (courseId: string) => {
     if (!isAuthenticated) {
@@ -196,31 +197,11 @@ export default function CoursesPage() {
     try {
       await enrollInCourse(courseId, user!.id)
       
-      // Record course enrollment activity
+            // Record course enrollment activity
       if (user?.email) {
-        const recordLearningActivity = (action: string, details: string) => {
-          const today = new Date().toISOString().split('T')[0]
-          const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
-          const userActivity = learningActivity[user.email] || []
-          
-          const todayActivity = userActivity.find((activity: any) => activity.date === today)
-          
-          if (todayActivity) {
-            todayActivity.actions = [...(todayActivity.actions || []), { action, details, timestamp: new Date().toISOString() }]
-          } else {
-            userActivity.push({
-              date: today,
-              actions: [{ action, details, timestamp: new Date().toISOString() }]
-            })
-          }
-          
-          learningActivity[user.email] = userActivity
-          localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
-        }
-        
         const course = mockCourses.find(c => c.id === courseId)
         if (course) {
-          recordLearningActivity('course_enrollment', course.title)
+          recordLearningActivity(user.email, 'course_enrollment', course.title)
         }
       }
       
@@ -257,62 +238,16 @@ export default function CoursesPage() {
   // Record course browsing activity when page loads (only once per session)
   useEffect(() => {
     if (isAuthenticated && user?.email) {
-      const recordLearningActivity = (action: string, details: string) => {
-        const today = new Date().toISOString().split('T')[0]
-        const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
-        const userActivity = learningActivity[user.email] || []
-        
-        // Check if we already recorded this activity today to prevent duplicates
-        const todayActivity = userActivity.find((activity: any) => activity.date === today)
-        const alreadyRecorded = todayActivity?.actions?.some((act: any) => 
-          act.action === action && act.details === details
-        )
-        
-        if (!alreadyRecorded) {
-          if (todayActivity) {
-            todayActivity.actions = [...(todayActivity.actions || []), { action, details, timestamp: new Date().toISOString() }]
-          } else {
-            userActivity.push({
-              date: today,
-              actions: [{ action, details, timestamp: new Date().toISOString() }]
-            })
-          }
-          
-          learningActivity[user.email] = userActivity
-          localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
-        }
-      }
-      
-      recordLearningActivity('course_browsing', 'Browsed available courses')
+      recordCourseBrowsing(user.email)
     }
   }, [isAuthenticated, user])
 
   const handleContinue = (courseId: string) => {
     // Record course access activity
     if (user?.email) {
-      const recordLearningActivity = (action: string, details: string) => {
-        const today = new Date().toISOString().split('T')[0]
-        const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
-        const userActivity = learningActivity[user.email] || []
-        
-        const todayActivity = userActivity.find((activity: any) => activity.date === today)
-        
-        if (todayActivity) {
-          todayActivity.actions = [...(todayActivity.actions || []), { action, details, timestamp: new Date().toISOString() }]
-        } else {
-          userActivity.push({
-            date: today,
-            actions: [{ action, details, timestamp: new Date().toISOString() }]
-          })
-        }
-        
-        learningActivity[user.email] = userActivity
-        localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
-      }
-      
       const course = mockCourses.find(c => c.id === courseId)
       if (course) {
-        recordLearningActivity('course_access', course.title)
+        recordLearningActivity(user.email, 'course_access', course.title)
       }
     }
     

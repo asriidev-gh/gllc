@@ -6,6 +6,8 @@ import { User, Mail, Calendar, Globe, Edit, Save, X, Camera } from 'lucide-react
 import { Button } from '@/components/ui/Button'
 import { Header } from '@/components/Header'
 import { useAuthStore, useUserStore } from '@/stores'
+import { recordLearningActivity } from '@/lib/learningActivity'
+import { useEffect } from 'react'
 
 export default function ProfilePage() {
   const { user } = useAuthStore()
@@ -20,6 +22,13 @@ export default function ProfilePage() {
     nativeLanguage: user?.nativeLanguage || '',
     bio: profile?.bio || ''
   })
+
+  // Record profile access activity
+  useEffect(() => {
+    if (user?.email) {
+      recordLearningActivity(user.email, 'profile_access', 'Profile page accessed')
+    }
+  }, [user?.email])
 
 
 

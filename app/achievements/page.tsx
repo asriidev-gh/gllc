@@ -6,6 +6,7 @@ import { Trophy, Star, Target, BookOpen, Clock, Award, Medal, Crown, Globe, Mess
 import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
 import { useRouter } from 'next/navigation'
+import { recordLearningActivity } from '@/lib/learningActivity'
 
 export default function AchievementsPage() {
   const { user, isAuthenticated } = useAuthStore()
@@ -22,6 +23,13 @@ export default function AchievementsPage() {
     streakDays: 0,
     achievements: 0
   })
+
+  // Record achievements page access activity
+  useEffect(() => {
+    if (user?.email) {
+      recordLearningActivity(user.email, 'achievements_access', 'Achievements page accessed')
+    }
+  }, [user?.email])
 
   // Calculate learning streak based on learning activity
   const calculateLearningStreak = (): number => {
