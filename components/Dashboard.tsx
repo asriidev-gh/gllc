@@ -65,6 +65,7 @@ export function Dashboard() {
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false)
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false)
   const [courseToUnenroll, setCourseToUnenroll] = useState<EnrolledCourse | null>(null)
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
 
   useEffect(() => {
     // Check if user is authenticated
@@ -75,6 +76,12 @@ export function Dashboard() {
 
     // Simulate loading enrolled courses
     loadEnrolledCourses()
+    
+    // Load recent activity
+    loadRecentActivity()
+    
+    // Record dashboard visit activity
+    recordLearningActivity('dashboard_visit', 'Dashboard accessed')
     
     // Show welcome message for new users
     const isNewUser = localStorage.getItem('show_welcome_message')
@@ -277,6 +284,9 @@ export function Dashboard() {
       // Recalculate stats
       loadEnrolledCourses()
       
+      // Record unenrollment activity
+      recordLearningActivity('course_unenrollment', courseName)
+      
       // Show success toast
       toast.success(`Successfully unenrolled from ${courseName}`)
       
@@ -337,6 +347,9 @@ export function Dashboard() {
     learningActivity[user.email] = userActivity
     localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
     
+    // Refresh recent activity display
+    loadRecentActivity()
+    
     console.log('Learning activity recorded:', { action, details, date: today })
   }
 
@@ -394,6 +407,92 @@ export function Dashboard() {
     if (progress >= 60) return 'bg-yellow-500'
     if (progress >= 40) return 'bg-orange-500'
     return 'bg-red-500'
+  }
+
+  // Load recent activity from learning activity data
+  const loadRecentActivity = () => {
+    if (!user?.email) return
+    
+    try {
+      const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
+      const userActivity = learningActivity[user.email] || []
+      
+      // Get recent activities (last 7 days)
+      const recentActivities: any[] = []
+      const today = new Date()
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today)
+        date.setDate(date.getDate() - i)
+        const dateStr = date.toISOString().split('T')[0]
+        
+        const dayActivity = userActivity.find((activity: any) => activity.date === dateStr)
+        if (dayActivity && dayActivity.actions) {
+          dayActivity.actions.forEach((action: any) => {
+            recentActivities.push({
+              ...action,
+              date: dateStr,
+              displayDate: i === 0 ? 'Today' : i === 1 ? 'Yesterday' : `${i} days ago`
+            })
+          })
+        }
+      }
+      
+      // Sort by timestamp (most recent first) and take top 5
+      const sortedActivities = recentActivities
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, 5)
+      
+      setRecentActivity(sortedActivities)
+      console.log('Recent activity loaded:', sortedActivities)
+    } catch (error) {
+      console.error('Error loading recent activity:', error)
+      setRecentActivity([])
+    }
+  }
+
+  // Get activity icon and color based on action type
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case 'dashboard_visit':
+        return { icon: '🏠', color: 'bg-gray-500' }
+      case 'course_access':
+        return { icon: '🎯', color: 'bg-blue-500' }
+      case 'lesson_completed':
+        return { icon: '✅', color: 'bg-green-500' }
+      case 'course_enrollment':
+        return { icon: '📚', color: 'bg-purple-500' }
+      case 'course_unenrollment':
+        return { icon: '🚫', color: 'bg-red-500' }
+      case 'achievement_earned':
+        return { icon: '🏆', color: 'bg-yellow-500' }
+      case 'assessment_completed':
+        return { icon: '📊', color: 'bg-indigo-500' }
+      default:
+        return { icon: '📝', color: 'bg-gray-500' }
+    }
+  }
+
+  // Format activity description
+  const formatActivityDescription = (action: string, details: string) => {
+    switch (action) {
+      case 'dashboard_visit':
+        return details
+      case 'course_access':
+        return `Accessed ${details}`
+      case 'lesson_completed':
+        return `Completed ${details}`
+      case 'course_enrollment':
+        return `Enrolled in ${details}`
+      case 'course_unenrollment':
+        return `Unenrolled from ${details}`
+      case 'achievement_earned':
+        return `Earned ${details}`
+      case 'assessment_completed':
+        return `Completed assessment: ${details}`
+      default:
+        return details
+    }
   }
 
   return (
@@ -732,33 +831,51 @@ export function Dashboard() {
 
         {/* Recent Activity */}
         <div className="mt-8 bg-white rounded-xl shadow-sm border">
-          <div className="px-6 py-4 border-b border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+            <button
+              onClick={loadRecentActivity}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              title="Refresh recent activity"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
           <div className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">
-                  Completed <strong>Lesson 15: Basic Greetings</strong> in Tagalog Basics
-                </span>
-                <span className="text-xs text-gray-400">2 hours ago</span>
+            {recentActivity.length > 0 ? (
+              <div className="space-y-4">
+                {recentActivity.map((activity, index) => {
+                  const { icon, color } = getActivityIcon(activity.action)
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center space-x-3"
+                    >
+                      <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-white text-sm`}>
+                        {icon}
+                      </div>
+                      <span className="text-sm text-gray-600 flex-1">
+                        {formatActivityDescription(activity.action, activity.details)}
+                      </span>
+                      <span className="text-xs text-gray-400">{activity.displayDate}</span>
+                    </motion.div>
+                  )
+                })}
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">
-                  Started <strong>Lesson 44: K-pop Vocabulary</strong> in Korean Essentials
-                </span>
-                <span className="text-xs text-gray-400">1 day ago</span>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No recent activity yet</p>
+                <p className="text-sm text-gray-400 mt-1">Start learning to see your activity here!</p>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-sm text-gray-600">
-                  Earned <strong>Achievement: First Steps</strong> in English Mastery
-                </span>
-                <span className="text-xs text-gray-400">3 days ago</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
