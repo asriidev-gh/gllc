@@ -351,10 +351,12 @@ export default function CourseLearningPage() {
   }
 
   const selectLesson = (lesson: VideoLesson) => {
-    if (lesson.isLocked) {
+    // Allow access to completed/skipped lessons, only block genuinely locked lessons
+    if (lesson.isLocked && !lesson.isWatched) {
       toast.error('This lesson is locked. Complete previous lessons first.')
       return
     }
+    
     setCurrentLesson(lesson)
     setCurrentNote('')
     setShowNotes(false)
@@ -1208,7 +1210,9 @@ export default function CourseLearningPage() {
                         className={`w-full text-left p-3 rounded-lg transition-colors ${
                           currentLesson?.id === lesson.id
                             ? 'bg-primary-50 border border-primary-200'
-                            : 'hover:bg-gray-50'
+                            : lesson.isLocked && !lesson.isWatched
+                            ? 'opacity-60 cursor-not-allowed'
+                            : 'hover:bg-gray-50 cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -1227,11 +1231,14 @@ export default function CourseLearningPage() {
                             
                             <div className="text-left">
                               <p className={`text-sm font-medium ${
-                                lesson.isLocked ? 'text-gray-400' : 'text-gray-900'
+                                lesson.isLocked && !lesson.isWatched ? 'text-gray-400' : 'text-gray-900'
                               }`}>
                                 {lesson.title}
                                 {lesson.isSkipped && (
                                   <span className="ml-2 text-xs text-orange-600 font-medium">(Skipped)</span>
+                                )}
+                                {lesson.isWatched && !lesson.isSkipped && (
+                                  <span className="ml-2 text-xs text-green-600 font-medium">(Completed)</span>
                                 )}
                               </p>
                               <p className="text-xs text-gray-500">{lesson.summary}</p>
