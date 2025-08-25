@@ -88,11 +88,93 @@ export function Dashboard() {
         setShowWelcomeMessage(false)
       }, 10000)
     }
+    
+    // Initialize sample learning activity for testing (remove in production)
+    initializeSampleLearningActivity()
   }, [isAuthenticated, router])
 
   // Don't render if not authenticated
   if (!isAuthenticated) {
     return null
+  }
+
+  // Calculate learning streak based on actual activity
+  const calculateLearningStreak = (): number => {
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    
+    // Get learning activity from localStorage
+    const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
+    const userActivity = learningActivity[user?.email || ''] || []
+    
+    if (userActivity.length === 0) return 0
+    
+    // Sort activities by date (newest first)
+    const sortedActivity = userActivity.sort((a: any, b: any) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+    
+    let streak = 0
+    let currentDate = new Date(today)
+    
+    // Check consecutive days
+    for (let i = 0; i < 30; i++) { // Check last 30 days
+      const dateStr = currentDate.toISOString().split('T')[0]
+      const hasActivity = sortedActivity.some((activity: any) => 
+        activity.date === dateStr
+      )
+      
+      if (hasActivity) {
+        streak++
+        currentDate.setDate(currentDate.getDate() - 1)
+      } else {
+        break
+      }
+    }
+    
+    return streak
+  }
+
+  // Calculate achievements based on actual user progress
+  const calculateAchievements = (courses: EnrolledCourse[], completedLessons: number, totalLessons: number): number => {
+    let achievementCount = 0
+    
+    // Achievement 1: First Course Enrollment
+    if (courses.length >= 1) achievementCount++
+    
+    // Achievement 2: Multiple Course Enrollments
+    if (courses.length >= 3) achievementCount++
+    
+    // Achievement 3: First Lesson Completion
+    if (completedLessons >= 1) achievementCount++
+    
+    // Achievement 4: Lesson Completion Milestones
+    if (completedLessons >= 5) achievementCount++
+    if (completedLessons >= 10) achievementCount++
+    if (completedLessons >= 25) achievementCount++
+    
+    // Achievement 5: Course Progress Milestones
+    if (totalLessons > 0) {
+      const progressPercentage = (completedLessons / totalLessons) * 100
+      if (progressPercentage >= 25) achievementCount++
+      if (progressPercentage >= 50) achievementCount++
+      if (progressPercentage >= 75) achievementCount++
+      if (progressPercentage >= 100) achievementCount++
+    }
+    
+    // Achievement 6: Learning Streak
+    const streak = calculateLearningStreak()
+    if (streak >= 3) achievementCount++
+    if (streak >= 7) achievementCount++
+    if (streak >= 14) achievementCount++
+    if (streak >= 30) achievementCount++
+    
+    // Achievement 7: Language Diversity
+    const uniqueLanguages = new Set(courses.map(course => course.language))
+    if (uniqueLanguages.size >= 2) achievementCount++
+    if (uniqueLanguages.size >= 3) achievementCount++
+    
+    return achievementCount
   }
 
   const loadEnrolledCourses = async () => {
@@ -151,14 +233,18 @@ export function Dashboard() {
       ? courses.reduce((sum, course) => sum + course.rating, 0) / courses.length 
       : 0
     
+    // Calculate real learning streak and achievements
+    const streakDays = calculateLearningStreak()
+    const achievements = calculateAchievements(courses, completedLessons, totalLessons)
+    
     setStats({
       totalCourses: courses.length,
       totalLessons,
       completedLessons,
       totalTimeSpent: `${Math.floor(totalTimeSpent)}h ${Math.round((totalTimeSpent % 1) * 60)}m`,
       averageRating: Math.round(averageRating * 10) / 10,
-      streakDays: courses.length > 0 ? 7 : 0,
-      achievements: courses.length > 0 ? 12 : 0
+      streakDays,
+      achievements
     })
   }
 
@@ -218,8 +304,82 @@ export function Dashboard() {
   }
 
   const continueLearning = (course: EnrolledCourse) => {
+    // Record learning activity before navigating
+    recordLearningActivity('course_access', course.name)
+    
     // Navigate to the course learning page
     router.push(`/courses/${course.id}`)
+  }
+
+  // Record learning activity for streak calculation
+  const recordLearningActivity = (action: string, details: string) => {
+    if (!user?.email) return
+    
+    const today = new Date().toISOString().split('T')[0]
+    const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
+    const userActivity = learningActivity[user.email] || []
+    
+    // Check if we already have activity for today
+    const todayActivity = userActivity.find((activity: any) => activity.date === today)
+    
+    if (todayActivity) {
+      // Update existing activity
+      todayActivity.actions = [...(todayActivity.actions || []), { action, details, timestamp: new Date().toISOString() }]
+    } else {
+      // Create new activity for today
+      userActivity.push({
+        date: today,
+        actions: [{ action, details, timestamp: new Date().toISOString() }]
+      })
+    }
+    
+    // Save back to localStorage
+    learningActivity[user.email] = userActivity
+    localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
+    
+    console.log('Learning activity recorded:', { action, details, date: today })
+  }
+
+  // Initialize sample learning activity for testing (remove in production)
+  const initializeSampleLearningActivity = () => {
+    if (!user?.email) return
+    
+    const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
+    const userActivity = learningActivity[user.email] || []
+    
+    // Only initialize if no activity exists
+    if (userActivity.length === 0) {
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const twoDaysAgo = new Date(today)
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+      
+      const sampleActivity = [
+        {
+          date: today.toISOString().split('T')[0],
+          actions: [
+            { action: 'course_access', details: 'Dashboard visit', timestamp: today.toISOString() }
+          ]
+        },
+        {
+          date: yesterday.toISOString().split('T')[0],
+          actions: [
+            { action: 'lesson_completed', details: 'English Basics Lesson 1', timestamp: yesterday.toISOString() }
+          ]
+        },
+        {
+          date: twoDaysAgo.toISOString().split('T')[0],
+          actions: [
+            { action: 'course_enrollment', details: 'Tagalog Conversation', timestamp: twoDaysAgo.toISOString() }
+          ]
+        }
+      ]
+      
+      learningActivity[user.email] = sampleActivity
+      localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
+      console.log('Sample learning activity initialized for testing')
+    }
   }
 
   const getProgressColor = (progress: number) => {
