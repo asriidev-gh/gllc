@@ -103,6 +103,13 @@ export function Dashboard() {
     initializeSampleLearningActivity()
   }, [isAuthenticated, router])
 
+  // Reload recent activity when filters change
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadRecentActivity()
+    }
+  }, [selectedDate, showAllActivities])
+
   // Don't render if not authenticated
   if (!isAuthenticated) {
     return null
@@ -579,11 +586,16 @@ export function Dashboard() {
       const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
       const userActivity = learningActivity[user.email] || []
       
-      // Get recent activities (last 7 days)
+      // Get activities based on date filter
       const recentActivities: any[] = []
       const today = new Date()
       
-      for (let i = 0; i < 7; i++) {
+      let daysToCheck = 7 // Default to last 7 days
+      if (selectedDate === '30') daysToCheck = 30
+      else if (selectedDate === '90') daysToCheck = 90
+      else if (selectedDate === '') daysToCheck = 365 // All time
+      
+      for (let i = 0; i < daysToCheck; i++) {
         const date = new Date(today)
         date.setDate(date.getDate() - i)
         const dateStr = date.toISOString().split('T')[0]
@@ -600,13 +612,15 @@ export function Dashboard() {
         }
       }
       
-      // Sort by timestamp (most recent first) and take top 5
+      // Sort by timestamp (most recent first)
       const sortedActivities = recentActivities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 5)
       
-      setRecentActivity(sortedActivities)
-      console.log('Recent activity loaded:', sortedActivities)
+      // Apply limit based on showAllActivities state
+      const limitedActivities = showAllActivities ? sortedActivities : sortedActivities.slice(0, 5)
+      
+      setRecentActivity(limitedActivities)
+      console.log('Recent activity loaded:', limitedActivities.length, 'activities')
     } catch (error) {
       console.error('Error loading recent activity:', error)
       setRecentActivity([])
