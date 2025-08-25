@@ -23,12 +23,7 @@ export default function ProfilePage() {
     bio: profile?.bio || ''
   })
 
-  // Record profile access activity
-  useEffect(() => {
-    if (user?.email) {
-      recordLearningActivity(user.email, 'profile_access', 'Profile page accessed')
-    }
-  }, [user?.email])
+
 
 
 
@@ -37,6 +32,12 @@ export default function ProfilePage() {
       await updateProfile({
         bio: formData.bio
       })
+      
+      // Record profile update activity
+      if (user?.email) {
+        recordLearningActivity(user.email, 'profile_updated', 'Profile information updated')
+      }
+      
       setIsEditing(false)
     } catch (error) {
       console.error('Failed to update profile:', error)

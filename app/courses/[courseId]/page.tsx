@@ -37,6 +37,7 @@ import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
 import toast from 'react-hot-toast'
+import { recordLearningActivity } from '@/lib/learningActivity'
 
 interface VideoLesson {
   id: string
@@ -304,6 +305,11 @@ export default function CourseLearningPage() {
     setCurrentLesson(lesson)
     setCurrentNote('')
     setShowNotes(false)
+    
+    // Record course study activity (once per lesson selection)
+    if (user?.email) {
+      recordLearningActivity(user.email, 'course_study', `${course.name} - ${lesson.title}`)
+    }
   }
 
   const togglePlayPause = () => {
@@ -336,6 +342,12 @@ export default function CourseLearningPage() {
       totalDuration: '2h 30m',
       watchedDuration: `${Math.floor(completedLessons * 15)}m`
     })
+    
+    // Record lesson completion activity
+    if (user?.email && currentLesson) {
+      recordLearningActivity(user.email, 'lesson_completed', `${currentLesson.title} - ${course.name}`)
+    }
+    
     toast.success('Progress saved!')
   }
 

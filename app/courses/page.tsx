@@ -235,12 +235,7 @@ export default function CoursesPage() {
 
   const router = useRouter()
 
-  // Record course browsing activity when page loads (only once per session)
-  useEffect(() => {
-    if (isAuthenticated && user?.email) {
-      recordCourseBrowsing(user.email)
-    }
-  }, [isAuthenticated, user])
+
 
   const handleContinue = (courseId: string) => {
     // Record course access activity

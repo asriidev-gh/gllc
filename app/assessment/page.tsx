@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
+import { recordLearningActivity } from '@/lib/learningActivity'
 
 interface Question {
   id: number
@@ -298,6 +299,11 @@ export default function AssessmentPage() {
     
     // Update the assessment results state
     setAssessmentResults(prev => [...prev, finalResult])
+    
+    // Record assessment completion activity
+    if (user?.email) {
+      recordLearningActivity(user.email, 'assessment_completed', `${selectedLanguage} assessment - ${level} level (${percentage}%)`)
+    }
   }
 
   const getRecommendedCourses = (language: string, level: string): string[] => {

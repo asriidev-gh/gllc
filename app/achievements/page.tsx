@@ -24,12 +24,7 @@ export default function AchievementsPage() {
     achievements: 0
   })
 
-  // Record achievements page access activity
-  useEffect(() => {
-    if (user?.email) {
-      recordLearningActivity(user.email, 'achievements_access', 'Achievements page accessed')
-    }
-  }, [user?.email])
+
 
   // Calculate learning streak based on learning activity
   const calculateLearningStreak = (): number => {

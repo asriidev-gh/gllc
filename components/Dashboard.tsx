@@ -84,8 +84,7 @@ export function Dashboard() {
     // Load recent activity
     loadRecentActivity()
     
-    // Record dashboard visit activity
-    recordLearningActivity('dashboard_visit', 'Dashboard accessed')
+
     
     // Show welcome message for new users
     const isNewUser = localStorage.getItem('show_welcome_message')
@@ -100,8 +99,7 @@ export function Dashboard() {
       }, 10000)
     }
     
-    // Initialize sample learning activity for testing (remove in production)
-    initializeSampleLearningActivity()
+
   }, [isAuthenticated, router])
 
   // Reload recent activity when filters change
@@ -521,21 +519,15 @@ export function Dashboard() {
       
       const sampleActivity = [
         {
-          date: today.toISOString().split('T')[0],
-          actions: [
-            { action: 'dashboard_visit', details: 'Dashboard accessed', timestamp: today.toISOString() }
-          ]
-        },
-        {
           date: yesterday.toISOString().split('T')[0],
           actions: [
-            { action: 'lesson_completed', details: 'English Basics Lesson 1', timestamp: yesterday.toISOString() }
+            { action: 'lesson_completed', details: 'English Basics Lesson 1 - English for Beginners', timestamp: yesterday.toISOString() }
           ]
         },
         {
           date: twoDaysAgo.toISOString().split('T')[0],
           actions: [
-            { action: 'course_enrollment', details: 'Tagalog Conversation', timestamp: twoDaysAgo.toISOString() }
+            { action: 'course_enrollment', details: 'Tagalog Conversation Mastery', timestamp: twoDaysAgo.toISOString() }
           ]
         }
       ]
@@ -590,12 +582,8 @@ export function Dashboard() {
   // Get activity icon and color based on action type
   const getActivityIcon = (action: string) => {
     switch (action) {
-      case 'dashboard_visit':
-        return { icon: '🏠', color: 'bg-gray-500' }
       case 'course_access':
         return { icon: '🎯', color: 'bg-blue-500' }
-      case 'course_browsing':
-        return { icon: '🔍', color: 'bg-indigo-500' }
       case 'lesson_completed':
         return { icon: '✅', color: 'bg-green-500' }
       case 'course_enrollment':
@@ -606,10 +594,10 @@ export function Dashboard() {
         return { icon: '🏆', color: 'bg-yellow-500' }
       case 'assessment_completed':
         return { icon: '📊', color: 'bg-indigo-500' }
-      case 'profile_access':
+      case 'profile_updated':
         return { icon: '👤', color: 'bg-teal-500' }
-      case 'achievements_access':
-        return { icon: '🏅', color: 'bg-amber-500' }
+      case 'course_study':
+        return { icon: '📖', color: 'bg-emerald-500' }
       default:
         return { icon: '📝', color: 'bg-gray-500' }
     }
@@ -618,12 +606,8 @@ export function Dashboard() {
   // Format activity description
   const formatActivityDescription = (action: string, details: string) => {
     switch (action) {
-      case 'dashboard_visit':
-        return details
       case 'course_access':
         return `Accessed ${details}`
-      case 'course_browsing':
-        return details
       case 'lesson_completed':
         return `Completed ${details}`
       case 'course_enrollment':
@@ -634,10 +618,10 @@ export function Dashboard() {
         return `Earned ${details}`
       case 'assessment_completed':
         return `Completed assessment: ${details}`
-      case 'profile_access':
+      case 'profile_updated':
         return details
-      case 'achievements_access':
-        return details
+      case 'course_study':
+        return `Studied ${details}`
       default:
         return details
     }
