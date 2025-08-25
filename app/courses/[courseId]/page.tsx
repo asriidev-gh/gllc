@@ -250,7 +250,7 @@ export default function CourseLearningPage() {
             duration: '5:30',
             videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: true,
+            isWatched: false,
             isLocked: false,
             order: 1,
             resources: [
@@ -627,6 +627,13 @@ export default function CourseLearningPage() {
                       <ChevronRight className="w-4 h-4 mr-1" />
                       Skip Lesson
                     </Button>
+                  )}
+                  
+                  {/* Debug info - remove in production */}
+                  {process.env.NODE_ENV === 'development' && currentLesson && (
+                    <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                      Lesson: {currentLesson.title} | Watched: {currentLesson.isWatched ? 'Yes' : 'No'} | Skipped: {currentLesson.isSkipped ? 'Yes' : 'No'}
+                    </div>
                   )}
                   
                   {/* Progress Bar */}
