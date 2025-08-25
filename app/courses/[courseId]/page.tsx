@@ -859,7 +859,7 @@ export default function CourseLearningPage() {
                   { id: 'content', label: 'Content', icon: Play },
                   { id: 'resources', label: 'Resources', icon: Download },
                   { id: 'discussions', label: 'Discussions', icon: MessageCircle },
-                  { id: 'notes', label: 'My Notes', icon: Edit3 }
+                  { id: 'notes', label: 'Notes & Bookmarks', icon: Edit3 }
                 ].map((tab) => {
                   const Icon = tab.icon
                   return (
@@ -1168,7 +1168,7 @@ export default function CourseLearningPage() {
             {activeTab === 'notes' && (
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">My Notes</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">My Notes & Bookmarks</h2>
                   <Button
                     onClick={() => setShowNotes(!showNotes)}
                     variant="outline"
@@ -1177,58 +1177,119 @@ export default function CourseLearningPage() {
                   </Button>
                 </div>
                 
-                {showNotes && currentLesson && (
-                  <div className="bg-white border rounded-lg p-4 mb-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Taking Notes: {currentLesson.title}
-                    </h3>
-                    <textarea
-                      value={currentNote}
-                      onChange={(e) => setCurrentNote(e.target.value)}
-                      placeholder="Write your notes here..."
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      rows={4}
-                    />
-                    <div className="flex justify-end space-x-2 mt-3">
-                      <Button variant="outline" onClick={() => setCurrentNote('')}>
-                        Clear
-                      </Button>
-                      <Button onClick={saveNote}>
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Note
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-4">
-                  {notes.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Edit3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Notes Yet</h3>
-                      <p className="text-gray-600">Start taking notes as you learn to track your progress.</p>
+                {/* Bookmarked Lessons Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📚 Bookmarked Lessons</h3>
+                  {bookmarkedLessons.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg">
+                      <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <h4 className="text-medium text-gray-900 mb-2">No Bookmarked Lessons</h4>
+                      <p className="text-gray-600">Click the bookmark icon on any lesson to save it for later.</p>
                     </div>
                   ) : (
-                    notes.map((note) => {
-                      const lesson = topics
-                        .flatMap(t => t.lessons)
-                        .find(l => l.id === note.lessonId)
-                      
-                      return (
-                        <div key={note.id} className="bg-white border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-gray-900">
-                              {lesson?.title || 'Unknown Lesson'}
-                            </h4>
-                            <span className="text-sm text-gray-500">
-                              {new Date(note.timestamp).toLocaleDateString()}
-                            </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bookmarkedLessons.map((lessonId) => {
+                        const lesson = topics
+                          .flatMap(t => t.lessons)
+                          .find(l => l.id === lessonId)
+                        
+                        if (!lesson) return null
+                        
+                        return (
+                          <div key={lessonId} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center space-x-2">
+                                <Bookmark className="w-4 h-4 text-yellow-600" />
+                                <h4 className="font-medium text-gray-900 text-sm">{lesson.title}</h4>
+                              </div>
+                              <Button
+                                onClick={() => toggleBookmark(lessonId)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-400 hover:text-red-500"
+                                title="Remove bookmark"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            
+                            <p className="text-xs text-gray-600 mb-3">{lesson.summary}</p>
+                            
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">{lesson.duration}</span>
+                              <Button
+                                onClick={() => selectLesson(lesson)}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                              >
+                                {lesson.isWatched ? 'Replay' : 'Start'}
+                              </Button>
+                            </div>
                           </div>
-                          <p className="text-gray-700">{note.content}</p>
-                        </div>
-                      )
-                    })
+                        )
+                      })}
+                    </div>
                   )}
+                </div>
+                
+                {/* Notes Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📝 My Notes</h3>
+                  
+                  {showNotes && currentLesson && (
+                    <div className="bg-white border rounded-lg p-4 mb-6">
+                      <h4 className="font-semibold text-gray-900 mb-3">
+                        Taking Notes: {currentLesson.title}
+                      </h4>
+                      <textarea
+                        value={currentNote}
+                        onChange={(e) => setCurrentNote(e.target.value)}
+                        placeholder="Write your notes here..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        rows={4}
+                      />
+                      <div className="flex justify-end space-x-2 mt-3">
+                        <Button variant="outline" onClick={() => setCurrentNote('')}>
+                          Clear
+                        </Button>
+                        <Button onClick={saveNote}>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Note
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-4">
+                    {notes.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <Edit3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <h4 className="text-medium text-gray-900 mb-2">No Notes Yet</h4>
+                        <p className="text-gray-600">Start taking notes as you learn to track your progress.</p>
+                      </div>
+                    ) : (
+                      notes.map((note) => {
+                        const lesson = topics
+                          .flatMap(t => t.lessons)
+                          .find(l => l.id === note.lessonId)
+                        
+                        return (
+                          <div key={note.id} className="bg-white border rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-medium text-gray-900">
+                                {lesson?.title || 'Unknown Lesson'}
+                              </h4>
+                              <span className="text-sm text-gray-500">
+                                {new Date(note.timestamp).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-gray-700">{note.content}</p>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             )}
