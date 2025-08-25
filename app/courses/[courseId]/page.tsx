@@ -2087,9 +2087,18 @@ export default function CourseLearningPage() {
             {!assessmentStarted ? (
               // Assessment Introduction
               <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                  Final Assessment - {course.name}
-                </h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Final Assessment - {course.name}
+                  </h2>
+                  <Button 
+                    variant="ghost"
+                    onClick={closeAssessmentModal}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
                 <p className="text-gray-600 mb-8 text-center">
                   Test your knowledge and earn your final score. This assessment will help you 
                   demonstrate your mastery of the course material.
@@ -2126,12 +2135,29 @@ export default function CourseLearningPage() {
               // Assessment Questions
               <>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
-                  </h2>
-                  <div className="text-sm text-gray-600">
-                    Score: {correctAnswers}/{currentQuestionIndex}
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
+                    </h2>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Score: {correctAnswers}/{currentQuestionIndex}
+                    </div>
                   </div>
+                  <Button 
+                    variant="ghost"
+                    onClick={() => {
+                      if (Object.keys(selectedAnswers).length > 0) {
+                        if (confirm('Are you sure you want to exit the assessment? Your progress will be lost.')) {
+                          closeAssessmentModal()
+                        }
+                      } else {
+                        closeAssessmentModal()
+                      }
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
                 </div>
                 
                 <div className="bg-gray-50 rounded-lg p-6 mb-6">
@@ -2156,13 +2182,31 @@ export default function CourseLearningPage() {
                   </div>
                 </div>
                 
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <Button 
                     onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
                     disabled={currentQuestionIndex === 0}
                     variant="outline"
                   >
                     Previous
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => {
+                      if (Object.keys(selectedAnswers).length > 0) {
+                        // User has answered some questions, show confirmation
+                        if (confirm('Are you sure you want to cancel the assessment? Your progress will be lost.')) {
+                          closeAssessmentModal()
+                        }
+                      } else {
+                        // No answers yet, exit directly
+                        closeAssessmentModal()
+                      }
+                    }}
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    Cancel Assessment
                   </Button>
                   
                   {currentQuestionIndex === assessmentQuestions.length - 1 ? (
@@ -2187,9 +2231,18 @@ export default function CourseLearningPage() {
             ) : (
               // Assessment Results
               <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-                  Assessment Complete! 🎉
-                </h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Assessment Complete! 🎉
+                  </h2>
+                  <Button 
+                    variant="ghost"
+                    onClick={closeAssessmentModal}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
                 
                 <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-8 mb-6 text-center">
                   <div className="text-6xl mb-4">
