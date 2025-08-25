@@ -366,15 +366,30 @@ export default function CourseLearningPage() {
   }
 
   const updateLessonLocks = () => {
+    // Flatten all lessons and sort by order
+    const allLessons = topics
+      .flatMap(topic => topic.lessons)
+      .sort((a, b) => a.order - b.order)
+    
+    console.log('Updating lesson locks:', allLessons.map(l => ({ 
+      id: l.id, 
+      title: l.title, 
+      order: l.order, 
+      isWatched: l.isWatched, 
+      isLocked: l.isLocked 
+    })))
+    
     setTopics(prev => prev.map(topic => ({
       ...topic,
-      lessons: topic.lessons.map((lesson, index) => {
+      lessons: topic.lessons.map(lesson => {
         // First lesson is always unlocked
-        if (index === 0) return { ...lesson, isLocked: false }
+        if (lesson.order === 1) return { ...lesson, isLocked: false }
         
-        // Check if previous lesson is completed
-        const previousLesson = topic.lessons[index - 1]
+        // Find the previous lesson by order (across all topics)
+        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
         const isUnlocked = previousLesson && previousLesson.isWatched
+        
+        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed = ${isUnlocked}, will be locked = ${!isUnlocked}`)
         
         return { ...lesson, isLocked: !isUnlocked }
       })
