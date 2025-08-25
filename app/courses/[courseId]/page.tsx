@@ -110,6 +110,8 @@ interface CourseProgress {
   certificateEarned?: boolean
   badgeEarned?: boolean
   finalScore?: number
+  assessmentCompleted?: boolean
+  assessmentDate?: string
 }
 
 interface CourseCertificate {
@@ -152,7 +154,9 @@ export default function CourseLearningPage() {
     completionDate: undefined,
     certificateEarned: false,
     badgeEarned: false,
-    finalScore: undefined
+    finalScore: undefined,
+    assessmentCompleted: false,
+    assessmentDate: undefined
   })
   const [notes, setNotes] = useState<CourseNote[]>([])
   const [currentNote, setCurrentNote] = useState('')
@@ -167,6 +171,7 @@ export default function CourseLearningPage() {
   const [showSkipLessonModal, setShowSkipLessonModal] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [showAssessmentReviewModal, setShowAssessmentReviewModal] = useState(false)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
   const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
@@ -335,6 +340,23 @@ export default function CourseLearningPage() {
         if (courseData) {
           setCourse(courseData)
           generateMockTopics(courseData)
+          
+          // Load assessment results if they exist
+          if (user?.email) {
+            const userProgressKey = `user_course_progress_${user.email}`
+            const userProgress = localStorage.getItem(userProgressKey)
+            if (userProgress) {
+              const progressData = JSON.parse(userProgress)
+              if (progressData[courseId]?.assessmentCompleted) {
+                setProgress(prev => ({
+                  ...prev,
+                  assessmentCompleted: progressData[courseId].assessmentCompleted,
+                  assessmentDate: progressData[courseId].assessmentDate,
+                  finalScore: progressData[courseId].assessmentScore
+                }))
+              }
+            }
+          }
         } else {
           console.error('Course not found in enrollments. Available IDs:', enrollments.map((e: any) => e.id))
           toast.error('Course not found or you are not enrolled')
@@ -849,10 +871,18 @@ export default function CourseLearningPage() {
   const submitAssessment = () => {
     // Calculate score
     let correct = 0
-    Object.keys(selectedAnswers).forEach(questionIndex => {
+    const detailedResults = Object.keys(selectedAnswers).map(questionIndex => {
       const questionIdx = parseInt(questionIndex)
-      if (selectedAnswers[questionIdx] === assessmentQuestions[questionIdx].correctAnswer) {
-        correct++
+      const isCorrect = selectedAnswers[questionIdx] === assessmentQuestions[questionIdx].correctAnswer
+      if (isCorrect) correct++
+      
+      return {
+        questionIndex: questionIdx,
+        question: assessmentQuestions[questionIdx].question,
+        userAnswer: selectedAnswers[questionIdx],
+        correctAnswer: assessmentQuestions[questionIdx].correctAnswer,
+        isCorrect,
+        options: assessmentQuestions[questionIdx].options
       }
     })
     
@@ -862,6 +892,18 @@ export default function CourseLearningPage() {
     setCorrectAnswers(correct)
     setAssessmentScore(score)
     setAssessmentCompleted(true)
+    
+    // Store detailed assessment results
+    const assessmentResults = {
+      score,
+      correctAnswers: correct,
+      totalQuestions: assessmentQuestions.length,
+      completedAt: new Date().toISOString(),
+      detailedResults,
+      selectedAnswers: { ...selectedAnswers }
+    }
+    
+    localStorage.setItem(`assessment_results_${courseId}_${user?.email}`, JSON.stringify(assessmentResults))
     
     // Update course progress with assessment score
     if (user?.email) {
@@ -886,7 +928,9 @@ export default function CourseLearningPage() {
     // Update progress with assessment score
     setProgress(prev => ({
       ...prev,
-      finalScore: score
+      finalScore: score,
+      assessmentCompleted: true,
+      assessmentDate: new Date().toISOString()
     }))
     
     toast.success(`Assessment completed! Your score: ${score}%`)
@@ -904,6 +948,41 @@ export default function CourseLearningPage() {
   const closeAssessmentModal = () => {
     resetAssessment()
     setShowAssessmentModal(false)
+  }
+
+  const loadAssessmentResults = () => {
+    if (!user?.email) return null
+    
+    try {
+      const savedResults = localStorage.getItem(`assessment_results_${courseId}_${user.email}`)
+      if (savedResults) {
+        return JSON.parse(savedResults)
+      }
+    } catch (error) {
+      console.error('Error loading assessment results:', error)
+    }
+    return null
+  }
+
+  const retakeAssessment = () => {
+    // Clear previous results
+    if (user?.email) {
+      localStorage.removeItem(`assessment_results_${courseId}_${user.email}`)
+    }
+    
+    // Reset progress
+    setProgress(prev => ({
+      ...prev,
+      assessmentCompleted: false,
+      assessmentDate: undefined,
+      finalScore: undefined
+    }))
+    
+    // Reset assessment state
+    resetAssessment()
+    
+    // Show assessment modal
+    setShowAssessmentModal(true)
   }
 
   const handleCourseCompletion = () => {
@@ -1322,6 +1401,78 @@ export default function CourseLearningPage() {
                               ></div>
                             </div>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Assessment Section */}
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 mb-3">Final Assessment</h3>
+                      {progress.assessmentCompleted ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Target className="w-6 h-6 text-green-600" />
+                              <span className="text-green-700 font-medium">Assessment Completed</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-primary-600">
+                                {progress.finalScore || 0}%
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {(progress.finalScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
+                              </div>
+                            </div>
+                          </div>
+                          {progress.assessmentDate && (
+                            <p className="text-xs text-gray-500">
+                              Taken on: {new Date(progress.assessmentDate).toLocaleDateString()}
+                            </p>
+                          )}
+                          <div className="space-y-2">
+                            <Button 
+                              onClick={retakeAssessment}
+                              variant="outline"
+                              className="w-full"
+                              size="sm"
+                            >
+                              <Target className="w-4 h-4 mr-2" />
+                              Retake Assessment
+                            </Button>
+                            <Button 
+                              onClick={() => setShowAssessmentReviewModal(true)}
+                              variant="outline"
+                              className="w-full"
+                              size="sm"
+                            >
+                              <BookOpen className="w-4 h-4 mr-2" />
+                              Review Answers
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <Target className="w-6 h-6 text-gray-400" />
+                            <span className="text-gray-600">Final Assessment</span>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            Test your knowledge and earn your certificate
+                          </p>
+                          {progress.isCompleted ? (
+                            <Button 
+                              onClick={() => setShowAssessmentModal(true)}
+                              className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+                              size="sm"
+                            >
+                              <Target className="w-4 h-4 mr-2" />
+                              Take Assessment
+                            </Button>
+                          ) : (
+                            <p className="text-xs text-gray-500 text-center">
+                              Complete all lessons to unlock assessment
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2093,6 +2244,149 @@ export default function CourseLearningPage() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Assessment Review Modal */}
+      {showAssessmentReviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">
+                Assessment Review - {course.name}
+              </h2>
+              <Button 
+                variant="outline"
+                onClick={() => setShowAssessmentReviewModal(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            {(() => {
+              const results = loadAssessmentResults()
+              if (!results) {
+                return (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No assessment results found.</p>
+                  </div>
+                )
+              }
+              
+              return (
+                <div className="space-y-6">
+                  {/* Score Summary */}
+                  <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 text-center">
+                    <div className="text-4xl mb-2">
+                      {results.score >= 70 ? '🏆' : '📚'}
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                      Final Score: {results.score}%
+                    </h3>
+                    <p className="text-gray-600">
+                      {results.correctAnswers} out of {results.totalQuestions} questions correct
+                    </p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Completed on: {new Date(results.completedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  
+                  {/* Question Review */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Question Review</h3>
+                    {results.detailedResults.map((result: any, index: number) => (
+                      <div key={index} className={`border rounded-lg p-4 ${
+                        result.isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                      }`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <h4 className="font-medium text-gray-900">
+                            Question {result.questionIndex + 1}
+                          </h4>
+                          <div className={`px-2 py-1 rounded text-xs font-medium ${
+                            result.isCorrect 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {result.isCorrect ? 'Correct' : 'Incorrect'}
+                          </div>
+                        </div>
+                        
+                        <p className="text-gray-700 mb-3">{result.question}</p>
+                        
+                        <div className="space-y-2">
+                          {result.options.map((option: string, optionIndex: number) => (
+                            <div key={optionIndex} className={`flex items-center space-x-3 p-2 rounded ${
+                              optionIndex === result.userAnswer 
+                                ? result.isCorrect 
+                                  ? 'bg-green-200' 
+                                  : 'bg-red-200'
+                                : optionIndex === result.correctAnswer
+                                  ? 'bg-green-200'
+                                  : 'bg-gray-100'
+                            }`}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                optionIndex === result.userAnswer 
+                                  ? result.isCorrect 
+                                    ? 'border-green-600 bg-green-600' 
+                                    : 'border-red-600 bg-red-600'
+                                  : optionIndex === result.correctAnswer
+                                    ? 'border-green-600 bg-green-600'
+                                    : 'border-gray-300'
+                              }`}>
+                                {optionIndex === result.userAnswer && (
+                                  <div className="w-2 h-2 bg-white rounded-full" />
+                                )}
+                                {optionIndex === result.correctAnswer && optionIndex !== result.userAnswer && (
+                                  <div className="w-2 h-2 bg-white rounded-full" />
+                                )}
+                              </div>
+                              <span className={`text-sm ${
+                                optionIndex === result.userAnswer 
+                                  ? result.isCorrect 
+                                    ? 'text-green-800 font-medium' 
+                                    : 'text-red-800 font-medium'
+                                  : optionIndex === result.correctAnswer
+                                    ? 'text-green-800 font-medium'
+                                    : 'text-gray-700'
+                              }`}>
+                                {option}
+                              </span>
+                              {optionIndex === result.userAnswer && !result.isCorrect && (
+                                <span className="text-xs text-red-600 ml-2">Your Answer</span>
+                              )}
+                              {optionIndex === result.correctAnswer && (
+                                <span className="text-xs text-green-600 ml-2">Correct Answer</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex justify-center space-x-4 pt-4">
+                    <Button 
+                      onClick={() => setShowAssessmentReviewModal(false)}
+                      variant="outline"
+                    >
+                      Close Review
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        setShowAssessmentReviewModal(false)
+                        retakeAssessment()
+                      }}
+                      className="bg-primary-600 hover:bg-primary-700"
+                    >
+                      <Target className="w-4 h-4 mr-2" />
+                      Retake Assessment
+                    </Button>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
