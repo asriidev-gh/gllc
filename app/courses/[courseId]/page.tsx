@@ -185,8 +185,8 @@ export default function CourseLearningPage() {
   const [correctAnswers, setCorrectAnswers] = useState(0)
   const [assessmentScore, setAssessmentScore] = useState(0)
   
-  // Assessment questions for the course
-  const assessmentQuestions = [
+  // Assessment questions for the course (original order)
+  const originalAssessmentQuestions = [
     {
       question: "What is the primary goal of this language course?",
       options: [
@@ -288,6 +288,9 @@ export default function CourseLearningPage() {
       correctAnswer: 1
     }
   ]
+
+  // Shuffled assessment questions (will be set when assessment starts)
+  const [assessmentQuestions, setAssessmentQuestions] = useState(originalAssessmentQuestions)
 
   useEffect(() => {
     console.log('Course details page - Authentication state:', isAuthenticated)
@@ -1429,6 +1432,14 @@ export default function CourseLearningPage() {
                               Taken on: {new Date(progress.assessmentDate).toLocaleDateString()}
                             </p>
                           )}
+                          
+                          {/* Passing Score Info */}
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-center">
+                            <span className="text-xs text-blue-700">
+                              Passing Score: <span className="font-semibold">70%</span>
+                            </span>
+                          </div>
+                          
                           <div className="space-y-2">
                             <Button 
                               onClick={retakeAssessment}
@@ -1459,6 +1470,14 @@ export default function CourseLearningPage() {
                           <p className="text-sm text-gray-600">
                             Test your knowledge and earn your certificate
                           </p>
+                          
+                          {/* Passing Score Info */}
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded text-center">
+                            <span className="text-xs text-blue-700">
+                              Passing Score: <span className="font-semibold">70%</span>
+                            </span>
+                          </div>
+                          
                           {progress.isCompleted ? (
                             <Button 
                               onClick={() => setShowAssessmentModal(true)}
@@ -2109,10 +2128,20 @@ export default function CourseLearningPage() {
                   <ul className="space-y-2 text-gray-700">
                     <li>• 10 multiple-choice questions</li>
                     <li>• No time limit - take your time</li>
-                    <li>• Passing score: 70%</li>
+                    <li>• <span className="text-primary-600 font-semibold">Passing score: 70%</span></li>
                     <li>• Certificate awarded upon completion</li>
                     <li>• Score will be recorded and displayed on your profile</li>
                   </ul>
+                  
+                  {/* Passing Score Highlight */}
+                  <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Target className="w-5 h-5 text-primary-600" />
+                      <span className="text-primary-800 font-medium">
+                        You need to score 70% or higher to pass this assessment
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="flex justify-center space-x-4">
@@ -2139,8 +2168,9 @@ export default function CourseLearningPage() {
                     <h2 className="text-2xl font-bold text-gray-900">
                       Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
                     </h2>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Score: {correctAnswers}/{currentQuestionIndex}
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                      <span>Score: {correctAnswers}/{currentQuestionIndex}</span>
+                      <span className="text-primary-600 font-medium">Passing Score: 70%</span>
                     </div>
                   </div>
                   <Button 
@@ -2254,6 +2284,14 @@ export default function CourseLearningPage() {
                   <p className="text-xl text-gray-700 mb-4">
                     Your Final Score: <span className="font-bold text-2xl text-primary-600">{assessmentScore}%</span>
                   </p>
+                  <div className="mb-4 p-3 bg-gray-100 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2">
+                      <Target className="w-4 h-4 text-gray-600" />
+                      <span className="text-gray-700">
+                        Passing Score: <span className="font-semibold">70%</span>
+                      </span>
+                    </div>
+                  </div>
                   <p className="text-gray-600">
                     {assessmentScore >= 70 
                       ? `You've successfully passed the assessment with ${correctAnswers} out of ${assessmentQuestions.length} correct answers!`
