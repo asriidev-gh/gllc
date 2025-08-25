@@ -165,6 +165,7 @@ export default function CourseLearningPage() {
   const [showSkipLessonModal, setShowSkipLessonModal] = useState(false)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
   const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
 
@@ -1047,7 +1048,7 @@ export default function CourseLearningPage() {
                           )}
                           <div className="space-y-2">
                             <Button 
-                              onClick={() => setShowCompletionModal(true)}
+                              onClick={() => setShowCertificateModal(true)}
                               className="w-full bg-green-600 hover:bg-green-700 text-white"
                               size="sm"
                             >
@@ -1571,6 +1572,128 @@ export default function CourseLearningPage() {
               >
                 Continue Learning
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Display Modal */}
+      {showCertificateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Certificate Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Certificate of Completion</h2>
+                <Button
+                  onClick={() => setShowCertificateModal(false)}
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Certificate Content */}
+            <div className="p-8">
+              {/* Certificate Design */}
+              <div className="border-8 border-double border-gray-300 rounded-lg p-8 bg-gradient-to-br from-yellow-50 to-orange-50 relative overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-yellow-400 to-orange-400 opacity-10 rounded-full -translate-x-16 -translate-y-16"></div>
+                <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-blue-400 to-purple-400 opacity-10 rounded-full translate-x-20 translate-y-20"></div>
+                
+                {/* Certificate Header */}
+                <div className="text-center mb-8">
+                  <div className="w-24 h-24 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Award className="w-12 h-12 text-white" />
+                  </div>
+                  <h1 className="text-4xl font-serif text-gray-800 mb-2">Certificate of Completion</h1>
+                  <p className="text-lg text-gray-600">This is to certify that</p>
+                </div>
+                
+                {/* Student Name */}
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2 border-b-2 border-gray-300 pb-2">
+                    {user?.name || 'Student Name'}
+                  </h2>
+                  <p className="text-lg text-gray-600">has successfully completed the course</p>
+                </div>
+                
+                {/* Course Details */}
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-blue-800 mb-2">{course.name}</h3>
+                  <p className="text-gray-600 mb-4">{course.description}</p>
+                  <div className="flex justify-center space-x-8 text-sm text-gray-500">
+                    <span>Level: {course.level}</span>
+                    <span>Language: {course.language}</span>
+                    <span>Lessons: {progress.totalLessons}</span>
+                  </div>
+                </div>
+                
+                {/* Completion Details */}
+                <div className="text-center mb-8">
+                  <p className="text-gray-600 mb-2">Completed on</p>
+                  <p className="text-xl font-semibold text-gray-800">
+                    {progress.completionDate 
+                      ? new Date(progress.completionDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                      : new Date().toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                    }
+                  </p>
+                </div>
+                
+                {/* Signature Section */}
+                <div className="flex justify-between items-end mt-12">
+                  <div className="text-center">
+                    <div className="w-32 h-0.5 bg-gray-400 mb-2"></div>
+                    <p className="text-sm text-gray-600">Course Instructor</p>
+                    <p className="font-semibold text-gray-800">{course.instructor || 'Language Expert'}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-32 h-0.5 bg-gray-400 mb-2"></div>
+                    <p className="text-sm text-gray-600">Platform Director</p>
+                    <p className="font-semibold text-gray-800">Global Language Training Center</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4 mt-8">
+                <Button 
+                  onClick={() => {
+                    // TODO: Implement PDF download
+                    toast.success('PDF download feature coming soon!')
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button 
+                  onClick={() => {
+                    // TODO: Implement social sharing
+                    toast.success('Social sharing feature coming soon!')
+                  }}
+                  variant="outline"
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share Certificate
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowCertificateModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </div>
