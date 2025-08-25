@@ -329,6 +329,9 @@ export default function CourseLearningPage() {
       setCurrentLesson(mockTopics[0].lessons[0])
     }
     
+    // Update lesson locks based on completion status
+    updateLessonLocks()
+    
     // Calculate progress
     const totalLessons = mockTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = mockTopics.reduce((sum, topic) => 
@@ -422,9 +425,39 @@ export default function CourseLearningPage() {
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
+    } else {
+      // Find and advance to next lesson
+      const nextLesson = findNextLesson(lessonId)
+      if (nextLesson) {
+        setCurrentLesson(nextLesson)
+        toast.success(`Advanced to next lesson: ${nextLesson.title}`)
+      }
     }
     
+    // Update lesson locks after completion
+    updateLessonLocks()
+    
     toast.success('Progress saved!')
+  }
+
+  const findNextLesson = (currentLessonId: string): VideoLesson | null => {
+    // Flatten all lessons from all topics
+    const allLessons = topics.flatMap(topic => topic.lessons)
+    const currentIndex = allLessons.findIndex(lesson => lesson.id === currentLessonId)
+    
+    if (currentIndex === -1 || currentIndex === allLessons.length - 1) {
+      return null // No next lesson available
+    }
+    
+    // Find the next unlocked lesson
+    for (let i = currentIndex + 1; i < allLessons.length; i++) {
+      const nextLesson = allLessons[i]
+      if (!nextLesson.isLocked) {
+        return nextLesson
+      }
+    }
+    
+    return null
   }
 
   const skipLesson = (lessonId: string) => {
@@ -463,7 +496,17 @@ export default function CourseLearningPage() {
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
+    } else {
+      // Find and advance to next lesson
+      const nextLesson = findNextLesson(lessonId)
+      if (nextLesson) {
+        setCurrentLesson(nextLesson)
+        toast.success(`Advanced to next lesson: ${nextLesson.title}`)
+      }
     }
+    
+    // Update lesson locks after skipping
+    updateLessonLocks()
     
     setShowSkipLessonModal(false)
     toast.success('Lesson skipped and marked as completed!')
@@ -574,15 +617,17 @@ export default function CourseLearningPage() {
                     {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                   </Button>
                   
-                  {/* Skip Lesson Button */}
-                  <Button
-                    onClick={() => setShowSkipLessonModal(true)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white border-0"
-                    title="Skip this lesson and mark as completed"
-                  >
-                    <ChevronRight className="w-4 h-4 mr-1" />
-                    Skip Lesson
-                  </Button>
+                  {/* Skip Lesson Button - Only show if lesson not completed */}
+                  {currentLesson && !currentLesson.isWatched && (
+                    <Button
+                      onClick={() => setShowSkipLessonModal(true)}
+                      className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+                      title="Skip this lesson and mark as completed"
+                    >
+                      <ChevronRight className="w-4 h-4 mr-1" />
+                      Skip Lesson
+                    </Button>
+                  )}
                   
                   {/* Progress Bar */}
                   <div className="flex-1">
@@ -1055,7 +1100,11 @@ export default function CourseLearningPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             {lesson.isWatched ? (
-                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              lesson.isSkipped ? (
+                                <ChevronRight className="w-4 h-4 text-orange-600" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              )
                             ) : lesson.isLocked ? (
                               <Circle className="w-4 h-4 text-gray-400" />
                             ) : (
@@ -1067,6 +1116,9 @@ export default function CourseLearningPage() {
                                 lesson.isLocked ? 'text-gray-400' : 'text-gray-900'
                               }`}>
                                 {lesson.title}
+                                {lesson.isSkipped && (
+                                  <span className="ml-2 text-xs text-orange-600 font-medium">(Skipped)</span>
+                                )}
                               </p>
                               <p className="text-xs text-gray-500">{lesson.summary}</p>
                             </div>
