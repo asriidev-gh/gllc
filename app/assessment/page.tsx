@@ -42,6 +42,8 @@ interface AssessmentResult {
   score: number
   maxScore: number
   percentage: number
+  completedAt: string
+  timeSpent: number
   recommendedCourses: string[]
   strengths: string[]
   improvements: string[]
@@ -278,6 +280,8 @@ export default function AssessmentPage() {
       score: totalScore,
       maxScore,
       percentage,
+      completedAt: new Date().toISOString(),
+      timeSpent,
       recommendedCourses: getRecommendedCourses(selectedLanguage, level),
       strengths: getStrengths(correctAnswers),
       improvements: getImprovements(incorrectAnswers)
@@ -644,8 +648,8 @@ export default function AssessmentPage() {
             
             {assessmentResults.length > 0 ? (
               <div className="space-y-3">
-                {assessmentResults.slice(0, 3).map((result) => (
-                  <div key={result.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                {assessmentResults.slice(0, 3).map((result, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className={`w-3 h-3 rounded-full ${
                         result.level === 'beginner' ? 'bg-green-500' :
@@ -1059,7 +1063,7 @@ export default function AssessmentPage() {
               <div className="space-y-6">
                 {assessmentResults.map((result, index) => (
                   <motion.div
-                    key={result.id}
+                    key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}

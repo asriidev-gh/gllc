@@ -50,7 +50,6 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
     console.log('Course data received:', course)
     console.log('Course properties:', Object.keys(course))
     console.log('course.name:', course.name)
-    console.log('course.title:', (course as any).title)
     
     if (!isAuthenticated) {
       console.log('User not authenticated, showing signup form')
@@ -72,8 +71,8 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
       const existingEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
       const newEnrollment = {
         id: course.id,
-        name: course.name || course.title, // Handle both name and title properties
-        title: course.title, // Keep both for compatibility
+        name: course.name,
+        title: course.name, // Use name as title for compatibility
         language: course.language,
         flag: course.flag,
         level: course.level,

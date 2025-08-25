@@ -171,6 +171,118 @@ export default function CourseLearningPage() {
   const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
   const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
   const certificateRef = useRef<HTMLDivElement>(null)
+  
+  // Assessment system state
+  const [assessmentStarted, setAssessmentStarted] = useState(false)
+  const [assessmentCompleted, setAssessmentCompleted] = useState(false)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [selectedAnswers, setSelectedAnswers] = useState<{[key: number]: number}>({})
+  const [correctAnswers, setCorrectAnswers] = useState(0)
+  const [assessmentScore, setAssessmentScore] = useState(0)
+  
+  // Assessment questions for the course
+  const assessmentQuestions = [
+    {
+      question: "What is the primary goal of this language course?",
+      options: [
+        "To memorize vocabulary only",
+        "To develop practical communication skills",
+        "To pass written exams",
+        "To learn grammar rules by heart"
+      ],
+      correctAnswer: 1
+    },
+    {
+      question: "Which learning method is most effective for language acquisition?",
+      options: [
+        "Reading textbooks only",
+        "Passive listening",
+        "Active practice and conversation",
+        "Memorizing grammar rules"
+      ],
+      correctAnswer: 2
+    },
+    {
+      question: "How should you approach learning a new language?",
+      options: [
+        "Focus only on perfect pronunciation",
+        "Learn everything at once",
+        "Start with basics and build gradually",
+        "Skip beginner lessons"
+      ],
+      correctAnswer: 2
+    },
+    {
+      question: "What is the best way to retain new vocabulary?",
+      options: [
+        "Write it down once",
+        "Use it in context and practice regularly",
+        "Read it silently",
+        "Memorize without understanding"
+      ],
+      correctAnswer: 1
+    },
+    {
+      question: "Why is cultural context important in language learning?",
+      options: [
+        "It's not important at all",
+        "It helps with grammar rules",
+        "It enhances understanding and communication",
+        "It's only useful for advanced learners"
+      ],
+      correctAnswer: 2
+    },
+    {
+      question: "What should you do when you make mistakes while speaking?",
+      options: [
+        "Stop speaking immediately",
+        "Ignore the mistakes and continue",
+        "Learn from them and keep practicing",
+        "Give up on the language"
+      ],
+      correctAnswer: 2
+    },
+    {
+      question: "How often should you practice to maintain language skills?",
+      options: [
+        "Once a month",
+        "Only when you have time",
+        "Regularly, ideally daily",
+        "Only before exams"
+      ],
+      correctAnswer: 2
+    },
+    {
+      question: "What is the role of listening in language learning?",
+      options: [
+        "It's not necessary",
+        "It helps develop speaking skills",
+        "It's only useful for reading",
+        "It wastes time"
+      ],
+      correctAnswer: 1
+    },
+    {
+      question: "How can you make language learning more enjoyable?",
+      options: [
+        "Focus only on difficult topics",
+        "Use materials that interest you",
+        "Study in isolation",
+        "Avoid any fun activities"
+      ],
+      correctAnswer: 1
+    },
+    {
+      question: "What is the key to successful language learning?",
+      options: [
+        "Natural talent",
+        "Consistency and persistence",
+        "Expensive materials",
+        "Perfect memory"
+      ],
+      correctAnswer: 1
+    }
+  ]
 
   useEffect(() => {
     console.log('Course details page - Authentication state:', isAuthenticated)
@@ -732,6 +844,66 @@ export default function CourseLearningPage() {
     
     setShowSkipLessonModal(false)
     toast.success('Lesson skipped and marked as completed!')
+  }
+
+  const submitAssessment = () => {
+    // Calculate score
+    let correct = 0
+    Object.keys(selectedAnswers).forEach(questionIndex => {
+      const questionIdx = parseInt(questionIndex)
+      if (selectedAnswers[questionIdx] === assessmentQuestions[questionIdx].correctAnswer) {
+        correct++
+      }
+    })
+    
+    const score = Math.round((correct / assessmentQuestions.length) * 100)
+    
+    // Update state
+    setCorrectAnswers(correct)
+    setAssessmentScore(score)
+    setAssessmentCompleted(true)
+    
+    // Update course progress with assessment score
+    if (user?.email) {
+      const userProgressKey = `user_course_progress_${user.email}`
+      const userProgress = JSON.parse(localStorage.getItem(userProgressKey) || '{}')
+      
+      if (!userProgress[courseId]) {
+        userProgress[courseId] = { lessons: {}, totalLessons: 0, completedLessons: 0, lastUpdated: new Date().toISOString() }
+      }
+      
+      userProgress[courseId].assessmentCompleted = true
+      userProgress[courseId].assessmentScore = score
+      userProgress[courseId].assessmentDate = new Date().toISOString()
+      userProgress[courseId].lastUpdated = new Date().toISOString()
+      
+      localStorage.setItem(userProgressKey, JSON.stringify(userProgress))
+      
+      // Record assessment completion activity
+      recordLearningActivity(user.email, 'assessment_completed', `${course.name} - Score: ${score}%`)
+    }
+    
+    // Update progress with assessment score
+    setProgress(prev => ({
+      ...prev,
+      finalScore: score
+    }))
+    
+    toast.success(`Assessment completed! Your score: ${score}%`)
+  }
+
+  const resetAssessment = () => {
+    setAssessmentStarted(false)
+    setAssessmentCompleted(false)
+    setCurrentQuestionIndex(0)
+    setSelectedAnswers({})
+    setCorrectAnswers(0)
+    setAssessmentScore(0)
+  }
+
+  const closeAssessmentModal = () => {
+    resetAssessment()
+    setShowAssessmentModal(false)
   }
 
   const handleCourseCompletion = () => {
@@ -1760,44 +1932,167 @@ export default function CourseLearningPage() {
       {/* Final Assessment Modal */}
       {showAssessmentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 shadow-xl max-w-4xl w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-              Final Assessment - {course.name}
-            </h2>
-            <p className="text-gray-600 mb-8 text-center">
-              Test your knowledge and earn your final score. This assessment will help you 
-              demonstrate your mastery of the course material.
-            </p>
-            
-            <div className="bg-gray-50 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Assessment Details:</h3>
-              <ul className="space-y-2 text-gray-700">
-                <li>• 20 multiple-choice questions</li>
-                <li>• 30 minutes time limit</li>
-                <li>• Passing score: 70%</li>
-                <li>• Certificate awarded upon completion</li>
-              </ul>
-            </div>
-            
-            <div className="flex justify-center space-x-4">
-              <Button 
-                onClick={() => {
-                  setShowAssessmentModal(false)
-                  // TODO: Navigate to assessment page
-                  toast.success('Assessment feature coming soon!')
-                }}
-                className="bg-primary-600 hover:bg-primary-700"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                Start Assessment
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={() => setShowAssessmentModal(false)}
-              >
-                Take Later
-              </Button>
-            </div>
+          <div className="bg-white rounded-lg p-8 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {!assessmentStarted ? (
+              // Assessment Introduction
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+                  Final Assessment - {course.name}
+                </h2>
+                <p className="text-gray-600 mb-8 text-center">
+                  Test your knowledge and earn your final score. This assessment will help you 
+                  demonstrate your mastery of the course material.
+                </p>
+                
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">Assessment Details:</h3>
+                  <ul className="space-y-2 text-gray-700">
+                    <li>• 10 multiple-choice questions</li>
+                    <li>• No time limit - take your time</li>
+                    <li>• Passing score: 70%</li>
+                    <li>• Certificate awarded upon completion</li>
+                    <li>• Score will be recorded and displayed on your profile</li>
+                  </ul>
+                </div>
+                
+                <div className="flex justify-center space-x-4">
+                  <Button 
+                    onClick={() => setAssessmentStarted(true)}
+                    className="bg-primary-600 hover:bg-primary-700"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    Start Assessment
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={closeAssessmentModal}
+                  >
+                    Take Later
+                  </Button>
+                </div>
+              </>
+            ) : !assessmentCompleted ? (
+              // Assessment Questions
+              <>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Question {currentQuestionIndex + 1} of {assessmentQuestions.length}
+                  </h2>
+                  <div className="text-sm text-gray-600">
+                    Score: {correctAnswers}/{currentQuestionIndex}
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">
+                    {assessmentQuestions[currentQuestionIndex].question}
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {assessmentQuestions[currentQuestionIndex].options.map((option, index) => (
+                      <label key={index} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-100 p-3 rounded-lg transition-colors">
+                        <input
+                          type="radio"
+                          name={`question-${currentQuestionIndex}`}
+                          value={index}
+                          checked={selectedAnswers[currentQuestionIndex] === index}
+                          onChange={() => setSelectedAnswers(prev => ({ ...prev, [currentQuestionIndex]: index }))}
+                          className="w-4 h-4 text-primary-600"
+                        />
+                        <span className="text-gray-700">{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex justify-between">
+                  <Button 
+                    onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
+                    disabled={currentQuestionIndex === 0}
+                    variant="outline"
+                  >
+                    Previous
+                  </Button>
+                  
+                  {currentQuestionIndex === assessmentQuestions.length - 1 ? (
+                    <Button 
+                      onClick={submitAssessment}
+                      disabled={selectedAnswers[currentQuestionIndex] === undefined}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Submit Assessment
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => setCurrentQuestionIndex(prev => prev + 1)}
+                      disabled={selectedAnswers[currentQuestionIndex] === undefined}
+                      className="bg-primary-600 hover:bg-primary-700"
+                    >
+                      Next Question
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              // Assessment Results
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+                  Assessment Complete! 🎉
+                </h2>
+                
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-8 mb-6 text-center">
+                  <div className="text-6xl mb-4">
+                    {assessmentScore >= 70 ? '🏆' : '📚'}
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                    {assessmentScore >= 70 ? 'Congratulations!' : 'Good Effort!'}
+                  </h3>
+                  <p className="text-xl text-gray-700 mb-4">
+                    Your Final Score: <span className="font-bold text-2xl text-primary-600">{assessmentScore}%</span>
+                  </p>
+                  <p className="text-gray-600">
+                    {assessmentScore >= 70 
+                      ? `You've successfully passed the assessment with ${correctAnswers} out of ${assessmentQuestions.length} correct answers!`
+                      : `You got ${correctAnswers} out of ${assessmentQuestions.length} correct. Keep studying and try again!`
+                    }
+                  </p>
+                </div>
+                
+                {assessmentScore >= 70 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center">
+                      <Trophy className="w-5 h-5 text-yellow-600 mr-2" />
+                      <span className="text-yellow-800 font-medium">
+                        Certificate unlocked! You can now view and download your completion certificate.
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex justify-center space-x-4">
+                  <Button 
+                    onClick={() => {
+                      closeAssessmentModal()
+                      if (assessmentScore >= 70) {
+                        setShowCertificateModal(true)
+                      }
+                    }}
+                    className="bg-primary-600 hover:bg-primary-700"
+                  >
+                    {assessmentScore >= 70 ? 'View Certificate' : 'Close'}
+                  </Button>
+                  
+                  {assessmentScore < 70 && (
+                    <Button 
+                      onClick={resetAssessment}
+                      variant="outline"
+                    >
+                      Retake Assessment
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
