@@ -586,12 +586,16 @@ export function Dashboard() {
         return { icon: '🎯', color: 'bg-blue-500' }
       case 'lesson_completed':
         return { icon: '✅', color: 'bg-green-500' }
+      case 'lesson_skipped':
+        return { icon: '⏭️', color: 'bg-orange-500' }
       case 'course_enrollment':
         return { icon: '📚', color: 'bg-purple-500' }
       case 'course_unenrollment':
         return { icon: '🚫', color: 'bg-red-500' }
-      case 'achievement_earned':
+      case 'course_completed':
         return { icon: '🏆', color: 'bg-yellow-500' }
+      case 'achievement_earned':
+        return { icon: '🏅', color: 'bg-amber-500' }
       case 'assessment_completed':
         return { icon: '📊', color: 'bg-indigo-500' }
       case 'profile_updated':
@@ -610,10 +614,14 @@ export function Dashboard() {
         return `Accessed ${details}`
       case 'lesson_completed':
         return `Completed ${details}`
+      case 'lesson_skipped':
+        return `Skipped ${details}`
       case 'course_enrollment':
         return `Enrolled in ${details}`
       case 'course_unenrollment':
         return `Unenrolled from ${details}`
+      case 'course_completed':
+        return `Completed course: ${details}`
       case 'achievement_earned':
         return `Earned ${details}`
       case 'assessment_completed':

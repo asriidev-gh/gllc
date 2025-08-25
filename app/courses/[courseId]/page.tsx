@@ -31,7 +31,8 @@ import {
   MoreHorizontal,
   Edit3,
   Save,
-  X
+  X,
+  Trophy
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
@@ -48,6 +49,7 @@ interface VideoLesson {
   thumbnail: string
   isWatched: boolean
   isLocked: boolean
+  isSkipped?: boolean
   order: number
   resources?: CourseResource[]
   comments?: LessonComment[]
@@ -96,6 +98,37 @@ interface CourseNote {
   tags: string[]
 }
 
+interface CourseProgress {
+  totalLessons: number
+  completedLessons: number
+  totalDuration: string
+  watchedDuration: string
+  isCompleted: boolean
+  completionDate?: string
+  certificateEarned?: boolean
+  badgeEarned?: boolean
+  finalScore?: number
+}
+
+interface CourseCertificate {
+  id: string
+  courseName: string
+  userName: string
+  completionDate: string
+  finalScore: number
+  certificateUrl: string
+  shareableLink: string
+}
+
+interface CourseBadge {
+  id: string
+  name: string
+  description: string
+  icon: string
+  category: string
+  unlockedAt: string
+}
+
 export default function CourseLearningPage() {
   const params = useParams()
   const router = useRouter()
@@ -108,11 +141,16 @@ export default function CourseLearningPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [showSidebar, setShowSidebar] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'resources' | 'discussions' | 'notes'>('overview')
-  const [progress, setProgress] = useState({
+  const [progress, setProgress] = useState<CourseProgress>({
     totalLessons: 0,
     completedLessons: 0,
     totalDuration: '0h 0m',
-    watchedDuration: '0h 0m'
+    watchedDuration: '0h 0m',
+    isCompleted: false,
+    completionDate: undefined,
+    certificateEarned: false,
+    badgeEarned: false,
+    finalScore: undefined
   })
   const [notes, setNotes] = useState<CourseNote[]>([])
   const [currentNote, setCurrentNote] = useState('')
@@ -122,6 +160,13 @@ export default function CourseLearningPage() {
   const [videoProgress, setVideoProgress] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  
+  // New state for enhanced course completion system
+  const [showSkipLessonModal, setShowSkipLessonModal] = useState(false)
+  const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
+  const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
 
   useEffect(() => {
     console.log('Course details page - Authentication state:', isAuthenticated)
@@ -293,7 +338,12 @@ export default function CourseLearningPage() {
       totalLessons,
       completedLessons,
       totalDuration: '2h 30m',
-      watchedDuration: `${Math.floor(completedLessons * 15)}m`
+      watchedDuration: `${Math.floor(completedLessons * 15)}m`,
+      isCompleted: completedLessons === totalLessons,
+      completionDate: completedLessons === totalLessons ? new Date().toISOString() : undefined,
+      certificateEarned: false,
+      badgeEarned: false,
+      finalScore: undefined
     })
   }
 
@@ -310,6 +360,22 @@ export default function CourseLearningPage() {
     if (user?.email) {
       recordLearningActivity(user.email, 'course_study', `${course.name} - ${lesson.title}`)
     }
+  }
+
+  const updateLessonLocks = () => {
+    setTopics(prev => prev.map(topic => ({
+      ...topic,
+      lessons: topic.lessons.map((lesson, index) => {
+        // First lesson is always unlocked
+        if (index === 0) return { ...lesson, isLocked: false }
+        
+        // Check if previous lesson is completed
+        const previousLesson = topic.lessons[index - 1]
+        const isUnlocked = previousLesson && previousLesson.isWatched
+        
+        return { ...lesson, isLocked: !isUnlocked }
+      })
+    })))
   }
 
   const togglePlayPause = () => {
@@ -340,7 +406,12 @@ export default function CourseLearningPage() {
       totalLessons,
       completedLessons,
       totalDuration: '2h 30m',
-      watchedDuration: `${Math.floor(completedLessons * 15)}m`
+      watchedDuration: `${Math.floor(completedLessons * 15)}m`,
+      isCompleted: completedLessons === totalLessons,
+      completionDate: completedLessons === totalLessons ? new Date().toISOString() : undefined,
+      certificateEarned: progress.certificateEarned,
+      badgeEarned: progress.badgeEarned,
+      finalScore: progress.finalScore
     })
     
     // Record lesson completion activity
@@ -348,7 +419,63 @@ export default function CourseLearningPage() {
       recordLearningActivity(user.email, 'lesson_completed', `${currentLesson.title} - ${course.name}`)
     }
     
+    // Check if course is completed
+    if (completedLessons === totalLessons) {
+      handleCourseCompletion()
+    }
+    
     toast.success('Progress saved!')
+  }
+
+  const skipLesson = (lessonId: string) => {
+    // Mark lesson as watched (skipped)
+    setTopics(prev => prev.map(topic => ({
+      ...topic,
+      lessons: topic.lessons.map(lesson => 
+        lesson.id === lessonId 
+          ? { ...lesson, isWatched: true, isSkipped: true }
+          : lesson
+      )
+    })))
+    
+    // Recalculate progress
+    const totalLessons = topics.reduce((sum, topic) => sum + topic.lessons.length, 0)
+    const completedLessons = topics.reduce((sum, topic) => 
+      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
+    )
+    setProgress({
+      totalLessons,
+      completedLessons,
+      totalDuration: '2h 30m',
+      watchedDuration: `${Math.floor(completedLessons * 15)}m`,
+      isCompleted: completedLessons === totalLessons,
+      completionDate: completedLessons === totalLessons ? new Date().toISOString() : undefined,
+      certificateEarned: progress.certificateEarned,
+      badgeEarned: progress.badgeEarned,
+      finalScore: progress.finalScore
+    })
+    
+    // Record lesson skip activity
+    if (user?.email && currentLesson) {
+      recordLearningActivity(user.email, 'lesson_skipped', `${currentLesson.title} - ${course.name}`)
+    }
+    
+    // Check if course is completed
+    if (completedLessons === totalLessons) {
+      handleCourseCompletion()
+    }
+    
+    setShowSkipLessonModal(false)
+    toast.success('Lesson skipped and marked as completed!')
+  }
+
+  const handleCourseCompletion = () => {
+    setShowCompletionModal(true)
+    
+    // Record course completion activity
+    if (user?.email) {
+      recordLearningActivity(user.email, 'course_completed', course.name)
+    }
   }
 
   const getProgressPercentage = () => {
@@ -445,6 +572,16 @@ export default function CourseLearningPage() {
                     className="bg-white/20 hover:bg-white/30 text-white border-0"
                   >
                     {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  </Button>
+                  
+                  {/* Skip Lesson Button */}
+                  <Button
+                    onClick={() => setShowSkipLessonModal(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+                    title="Skip this lesson and mark as completed"
+                  >
+                    <ChevronRight className="w-4 h-4 mr-1" />
+                    Skip Lesson
                   </Button>
                   
                   {/* Progress Bar */}
@@ -949,6 +1086,117 @@ export default function CourseLearningPage() {
           </div>
         )}
       </div>
+
+      {/* Skip Lesson Confirmation Modal */}
+      {showSkipLessonModal && currentLesson && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Skip Lesson</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to skip <strong>{currentLesson.title}</strong>? 
+              This lesson will be marked as completed and you can proceed to the next one.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <Button variant="outline" onClick={() => setShowSkipLessonModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => skipLesson(currentLesson.id)}
+                className="bg-orange-500 hover:bg-orange-600"
+              >
+                Skip & Mark Complete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Course Completion Modal */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 shadow-xl max-w-2xl w-full text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trophy className="w-10 h-10 text-green-600" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">🎉 Course Completed!</h2>
+            <p className="text-lg text-gray-600 mb-6">
+              Congratulations! You've successfully completed <strong>{course.name}</strong>
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">🏆 Certificate</h3>
+                <p className="text-blue-700 text-sm">Earn your completion certificate</p>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h3 className="font-semibold text-yellow-900 mb-2">🏅 Badge</h3>
+                <p className="text-yellow-700 text-sm">Unlock achievement badges</p>
+              </div>
+            </div>
+            
+            <div className="flex justify-center space-x-4">
+              <Button 
+                onClick={() => setShowAssessmentModal(true)}
+                className="bg-primary-600 hover:bg-primary-700"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Take Final Assessment
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowCompletionModal(false)}
+              >
+                Continue Learning
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Assessment Modal */}
+      {showAssessmentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 shadow-xl max-w-4xl w-full">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+              Final Assessment - {course.name}
+            </h2>
+            <p className="text-gray-600 mb-8 text-center">
+              Test your knowledge and earn your final score. This assessment will help you 
+              demonstrate your mastery of the course material.
+            </p>
+            
+            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Assessment Details:</h3>
+              <ul className="space-y-2 text-gray-700">
+                <li>• 20 multiple-choice questions</li>
+                <li>• 30 minutes time limit</li>
+                <li>• Passing score: 70%</li>
+                <li>• Certificate awarded upon completion</li>
+              </ul>
+            </div>
+            
+            <div className="flex justify-center space-x-4">
+              <Button 
+                onClick={() => {
+                  setShowAssessmentModal(false)
+                  // TODO: Navigate to assessment page
+                  toast.success('Assessment feature coming soon!')
+                }}
+                className="bg-primary-600 hover:bg-primary-700"
+              >
+                <Target className="w-4 h-4 mr-2" />
+                Start Assessment
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setShowAssessmentModal(false)}
+              >
+                Take Later
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
