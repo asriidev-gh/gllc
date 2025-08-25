@@ -529,8 +529,8 @@ export function Dashboard() {
     const learningActivity = JSON.parse(localStorage.getItem('learningActivity') || '{}')
     const userActivity = learningActivity[user.email] || []
     
-    // Only initialize if no activity exists
-    if (userActivity.length === 0) {
+    // Only initialize if no activity exists and we're in development mode
+    if (userActivity.length === 0 && process.env.NODE_ENV === 'development') {
       const today = new Date()
       const yesterday = new Date(today)
       yesterday.setDate(yesterday.getDate() - 1)
@@ -541,7 +541,7 @@ export function Dashboard() {
         {
           date: today.toISOString().split('T')[0],
           actions: [
-            { action: 'course_access', details: 'Dashboard visit', timestamp: today.toISOString() }
+            { action: 'dashboard_visit', details: 'Dashboard accessed', timestamp: today.toISOString() }
           ]
         },
         {
@@ -561,6 +561,9 @@ export function Dashboard() {
       learningActivity[user.email] = sampleActivity
       localStorage.setItem('learningActivity', JSON.stringify(learningActivity))
       console.log('Sample learning activity initialized for testing')
+      
+      // Reload recent activity after initializing sample data
+      setTimeout(() => loadRecentActivity(), 100)
     }
   }
 
@@ -621,6 +624,8 @@ export function Dashboard() {
       
       setRecentActivity(limitedActivities)
       console.log('Recent activity loaded:', limitedActivities.length, 'activities')
+      console.log('Activities:', limitedActivities)
+      console.log('Date filter:', selectedDate, 'Show all:', showAllActivities)
     } catch (error) {
       console.error('Error loading recent activity:', error)
       setRecentActivity([])
