@@ -17,6 +17,11 @@ A comprehensive language learning platform designed specifically for children, f
 - **Manual Completion**: "Mark as Complete" button available for immediate completion
 - **Progress Bar**: Draggable progress bar for easy navigation
 - **Volume Control**: Adjustable volume with visual feedback
+- **Smart Control Visibility**: Controls show on hover (desktop) or click (mobile)
+- **Click Anywhere to Play/Pause**: Intuitive click interaction anywhere on video
+- **Auto-hide Controls**: Controls automatically hide after 3 seconds of inactivity
+- **Pause State Lock**: Controls remain visible when video is paused
+- **Professional UX**: YouTube-like experience with smooth transitions
 
 ### Assessment & Progress Tracking
 - **Course Assessments**: Take assessments directly from enrolled courses
@@ -175,5 +180,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Last Updated**: August 28, 2025  
-**Version**: 3.0.2  
-**Status**: Active Development
+**Version**: 3.0.3  
+**Status**: Professional Video Player Enhancement Complete - Production Ready! 🚀

@@ -1043,9 +1043,9 @@ export function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <div className="flex items-center space-x-3 md:space-x-4">
               {/* User Avatar */}
               {user?.avatar ? (
                 user.avatar.startsWith('http') ? (
@@ -1053,90 +1053,90 @@ export function Dashboard() {
                   <img
                     src={user.avatar}
                     alt="Profile avatar"
-                    className="w-16 h-16 rounded-full border-4 border-white shadow-lg"
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white shadow-lg"
                   />
                 ) : (
                   // Emoji avatar
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold border-4 border-white shadow-lg">
                     {user.avatar}
                   </div>
                 )
               ) : (
                 // Default avatar with initials
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-lg">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl md:text-2xl font-bold border-4 border-white shadow-lg">
                   {user?.name?.charAt(0).toUpperCase() || 'S'}
                 </div>
               )}
               
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
                   Welcome back, {user?.name || 'Student'}! 👋
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-sm md:text-base text-gray-600 mt-1">
                   Continue your language learning journey
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Learning Streak</p>
-                <p className="text-2xl font-bold text-primary-600">{stats.streakDays} days 🔥</p>
+            <div className="flex items-center justify-center lg:justify-end space-x-4 md:space-x-6">
+              <div className="text-center lg:text-right">
+                <p className="text-xs md:text-sm text-gray-500">Learning Streak</p>
+                <p className="text-lg md:text-2xl font-bold text-primary-600">{stats.streakDays} days 🔥</p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Total Achievements</p>
-                <p className="text-2xl font-bold text-secondary-600">{stats.achievements} 🏆</p>
+              <div className="text-center lg:text-right">
+                <p className="text-xs md:text-sm text-gray-500">Total Achievements</p>
+                <p className="text-lg md:text-2xl font-bold text-secondary-600">{stats.achievements} 🏆</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         {/* Welcome Message */}
         {showWelcomeMessage && (
           <motion.div
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="mb-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg"
+            className="mb-6 md:mb-8 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl md:rounded-2xl p-4 md:p-6 text-white shadow-lg"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <span className="text-2xl">🎉</span>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-3 md:space-x-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl md:text-2xl">🎉</span>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold">Welcome to Global Language Training Center!</h2>
-                  <p className="text-green-100 text-lg">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold">Welcome to Global Language Training Center!</h2>
+                  <p className="text-sm md:text-base text-green-100 mt-1">
                     Your account has been created successfully. Start exploring our courses and begin your language learning journey!
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowWelcomeMessage(false)}
-                className="text-white/80 hover:text-white transition-colors p-2"
+                className="text-white/80 hover:text-white transition-colors p-2 self-end md:self-auto"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 md:w-6 md:h-6" />
               </button>
             </div>
           </motion.div>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl p-6 shadow-sm border"
+            className="bg-white rounded-lg md:rounded-xl p-3 md:p-6 shadow-sm border"
           >
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BookOpen className="w-6 h-6 text-blue-600" />
+              <div className="p-1.5 md:p-2 bg-blue-100 rounded-lg">
+                <BookOpen className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Enrolled Courses</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
+              <div className="ml-2 md:ml-4">
+                <p className="text-xs md:text-sm font-medium text-gray-600">Enrolled Courses</p>
+                <p className="text-lg md:text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
               </div>
             </div>
           </motion.div>
@@ -1242,13 +1242,13 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Enrolled Courses */}
+                {/* Enrolled Courses */}
         <div className="bg-white rounded-xl shadow-sm border">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col md:flex-row md:items-center justify-between space-y-3 md:space-y-0">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Your Enrolled Courses</h2>
-                <p className="text-gray-600 mt-1">
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">Your Enrolled Courses</h2>
+                <p className="text-sm md:text-base text-gray-600 mt-1">
                   Continue where you left off or start a new lesson
                 </p>
               </div>
@@ -1256,6 +1256,7 @@ export function Dashboard() {
                 variant="outline"
                 size="sm"
                 onClick={() => router.push('/courses')}
+                className="w-full md:w-auto"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
                 Browse More
@@ -1263,67 +1264,69 @@ export function Dashboard() {
             </div>
           </div>
           
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {enrolledCourses.length === 0 ? (
-              <div className="text-center py-12">
-                <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No courses enrolled yet</h3>
-                <p className="text-gray-600 mb-6">
+              <div className="text-center py-8 md:py-12">
+                <BookOpen className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No courses enrolled yet</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-6">
                   Start your language learning journey by enrolling in a course
                 </p>
                 <div className="space-y-4">
                   <Button 
-                    className="px-6 py-3"
+                    className="px-6 py-3 w-full md:w-auto"
                     onClick={() => router.push('/courses')}
                   >
                     <BookOpen className="w-4 h-4 mr-2" />
                     Browse All Courses
                   </Button>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs md:text-sm text-gray-500">
                     Discover languages like English, Tagalog, Korean, Japanese, and more!
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {enrolledCourses.map((course, index) => (
                   <motion.div
                     key={course.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                    className="border border-gray-200 rounded-lg p-4 md:p-6 hover:shadow-md transition-shadow"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-4">
-                        <div className="text-4xl">{course.flag}</div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900">{course.name}</h3>
-                            <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-                              {course.level}
-                            </span>
-                            {course.isCompleted && course.certificate && (
-                              <button
-                                onClick={() => showCertificate(course)}
-                                className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center hover:bg-yellow-200 transition-colors cursor-pointer"
-                                title="Click to view certificate"
-                              >
-                                <Award className="w-3 h-3 mr-1" />
-                                Certificate
-                              </button>
-                            )}
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
+                      <div className="flex items-start space-x-3 md:space-x-4">
+                        <div className="text-3xl md:text-4xl flex-shrink-0">{course.flag}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0 mb-2">
+                            <h3 className="text-base md:text-lg font-semibold text-gray-900">{course.name}</h3>
+                            <div className="flex flex-wrap items-center space-x-2">
+                              <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+                                {course.level}
+                              </span>
+                              {course.isCompleted && course.certificate && (
+                                <button
+                                  onClick={() => showCertificate(course)}
+                                  className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center hover:bg-yellow-200 transition-colors cursor-pointer"
+                                  title="Click to view certificate"
+                                >
+                                  <Award className="w-3 h-3 mr-1" />
+                                  Certificate
+                                </button>
+                              )}
+                            </div>
                           </div>
                           
-                          <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-6 text-xs md:text-sm text-gray-600 mb-4">
                             <span className="flex items-center">
-                              <Clock className="w-4 h-4 mr-2" />
+                              <Clock className="w-3 h-3 md:w-4 md:h-4 mr-2" />
                               <span className="font-medium">
                                 {course.totalLessons > 0 ? `${Math.floor(course.totalLessons * 15 / 60)}h ${course.totalLessons * 15 % 60}m` : 'Duration N/A'}
                               </span>
                             </span>
                             <span className="flex items-center">
-                              <Star className="w-4 h-4 mr-2 text-yellow-400 fill-current" />
+                              <Star className="w-3 h-3 md:w-4 md:h-4 mr-2 text-yellow-400 fill-current" />
                               <span className="font-medium">{course.rating}</span>
                             </span>
                           </div>
@@ -1331,8 +1334,8 @@ export function Dashboard() {
                           {/* Progress Bar */}
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium text-gray-700">Progress</span>
-                              <span className={`text-sm font-semibold ${getProgressColor(course.progress)}`}>
+                              <span className="text-xs md:text-sm font-medium text-gray-700">Progress</span>
+                              <span className={`text-xs md:text-sm font-semibold ${getProgressColor(course.progress)}`}>
                                 {course.progress}%
                               </span>
                             </div>
@@ -1346,27 +1349,27 @@ export function Dashboard() {
                           
                           {/* Enhanced Progress Information */}
                           <div className="mb-4 space-y-2">
-                                                      {/* Course Completion Status */}
-                          {course.isCompleted && course.certificate && (
-                            <div className="flex items-center space-x-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              <span className="text-green-700 font-medium">🎉 Course Completed!</span>
-                              {course.completionDate && (
-                                <span className="text-gray-500">
-                                  on {new Date(course.completionDate).toLocaleDateString()}
-                                </span>
-                              )}
-                            </div>
-                          )}
+                            {/* Course Completion Status */}
+                            {course.isCompleted && course.certificate && (
+                              <div className="flex items-center space-x-2 text-xs md:text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                                <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
+                                <span className="text-green-700 font-medium">🎉 Course Completed!</span>
+                                {course.completionDate && (
+                                  <span className="text-gray-500">
+                                    on {new Date(course.completionDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             
                             {/* Assessment Status */}
                             {course.assessmentCompleted ? (
                               <button
                                 onClick={() => showAssessment(course)}
-                                className="flex items-center space-x-2 text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
+                                className="flex items-center space-x-2 text-xs md:text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
                                 title="Click to view assessment details"
                               >
-                                <Target className="w-4 h-4 text-blue-600" />
+                                <Target className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
                                 <span className="text-blue-700 font-medium">Assessment: {course.assessmentScore}%</span>
                                 <span className={`px-2 py-1 text-xs rounded-full ${
                                   (course.assessmentScore || 0) >= 70 
@@ -1377,15 +1380,15 @@ export function Dashboard() {
                                 </span>
                               </button>
                             ) : course.isCompleted && course.certificate ? (
-                              <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200">
-                                <div className="flex items-center space-x-2 text-sm">
-                                  <Target className="w-4 h-4 text-yellow-600" />
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200 space-y-2 sm:space-y-0">
+                                <div className="flex items-center space-x-2 text-xs md:text-sm">
+                                  <Target className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" />
                                   <span className="text-yellow-700 font-medium">Assessment not taken yet</span>
                                 </div>
                                 <Button
                                   onClick={() => takeAssessment(course)}
                                   size="sm"
-                                  className="bg-yellow-600 hover:bg-yellow-700 text-white border-0"
+                                  className="bg-yellow-600 hover:bg-yellow-700 text-white border-0 w-full sm:w-auto"
                                 >
                                   <Target className="w-3 h-3 mr-1" />
                                   Take Assessment
@@ -1394,7 +1397,7 @@ export function Dashboard() {
                             ) : null}
                             
                             {/* Lesson Progress Details */}
-                            <div className="flex items-center space-x-4 text-xs text-gray-600">
+                            <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs text-gray-600">
                               <span className="flex items-center">
                                 <BookOpen className="w-3 h-3 mr-1" />
                                 {course.completedLessons}/{course.totalLessons} lessons
@@ -1412,10 +1415,12 @@ export function Dashboard() {
                         </div>
                       </div>
                       
-                      <div className="flex flex-col items-end space-y-2">
+                      {/* Action Buttons - Mobile Optimized */}
+                      <div className="flex flex-col space-y-2 lg:items-end">
+                        {/* Primary Action Button */}
                         <Button
                           onClick={() => continueLearning(course)}
-                          className={`px-6 py-2 ${
+                          className={`w-full lg:w-auto px-4 md:px-6 py-2 ${
                             course.isCompleted && course.certificate
                               ? 'bg-green-600 hover:bg-green-700' 
                               : 'bg-primary-600 hover:bg-primary-700'
@@ -1433,34 +1438,39 @@ export function Dashboard() {
                             </>
                           )}
                         </Button>
-                        <Button
-                          onClick={() => debugCourseProgress(course.id)}
-                          variant="outline"
-                          className="px-4 py-2 text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors"
-                          title="Debug course progress data (check console)"
-                        >
-                          <Bug className="w-4 h-4 mr-1" />
-                          Debug
-                        </Button>
-                        <Button
-                          onClick={() => resetCourseProgress(course.id)}
-                          variant="outline"
-                          className="px-4 py-2 text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-colors"
-                          title="Reset course progress (keeps enrollment)"
-                        >
-                          <RotateCcw className="w-4 h-4 mr-1" />
-                          Reset Progress
-                        </Button>
+                        
+                        {/* Secondary Action Buttons - Mobile Grid */}
+                        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2">
+                          <Button
+                            onClick={() => debugCourseProgress(course.id)}
+                            variant="outline"
+                            className="px-3 md:px-4 py-2 text-xs md:text-sm text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors"
+                            title="Debug course progress data (check console)"
+                          >
+                            <Bug className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                            <span className="hidden sm:inline">Debug</span>
+                          </Button>
+                          <Button
+                            onClick={() => resetCourseProgress(course.id)}
+                            variant="outline"
+                            className="px-3 md:px-4 py-2 text-xs md:text-sm text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-colors"
+                            title="Reset course progress (keeps enrollment)"
+                          >
+                            <RotateCcw className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                            <span className="hidden sm:inline">Reset</span>
+                          </Button>
+                        </div>
+                        
+                        {/* Unenroll Button - Full Width on Mobile */}
                         <Button
                           onClick={() => showUnenrollConfirmation(course)}
                           variant="outline"
-                          className="px-4 py-2 text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 transition-colors"
+                          className="w-full lg:w-auto px-3 md:px-4 py-2 text-xs md:text-sm text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 transition-colors"
                           title="Remove this course from your enrolled courses"
                         >
-                          <X className="w-4 h-4 mr-1" />
+                          <X className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                           Unenroll
                         </Button>
-
                       </div>
                     </div>
                   </motion.div>
@@ -1471,12 +1481,12 @@ export function Dashboard() {
             {/* Browse All Courses Link */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm md:text-base text-gray-600 mb-4">
                   Want to learn more languages? Explore our complete course catalog
                 </p>
                 <Button 
                   variant="outline"
-                  className="px-6 py-3"
+                  className="px-6 py-3 w-full md:w-auto"
                   onClick={() => router.push('/courses')}
                 >
                   <BookOpen className="w-4 h-4 mr-2" />

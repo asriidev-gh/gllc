@@ -175,6 +175,8 @@ const CourseLearningPage = () => {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showControls, setShowControls] = useState(false)
+  const [isMouseOverVideo, setIsMouseOverVideo] = useState(false)
   
   // New state for enhanced course completion system
 
@@ -263,6 +265,42 @@ const CourseLearningPage = () => {
   useEffect(() => {
     console.log('Progress state changed:', progress)
   }, [progress])
+
+  // Auto-hide video controls after inactivity
+  useEffect(() => {
+    if (!showControls) return
+    
+    // Don't auto-hide if video is paused - keep controls visible
+    if (!isPlaying) return
+
+    const timer = setTimeout(() => {
+      setShowControls(false)
+      setIsMouseOverVideo(false)
+    }, 3000) // Hide after 3 seconds
+
+    return () => clearTimeout(timer)
+  }, [showControls, isPlaying])
+
+  // Ensure controls are always visible when video is paused
+  useEffect(() => {
+    if (!isPlaying) {
+      setShowControls(true)
+      setIsMouseOverVideo(true)
+    }
+  }, [isPlaying])
+
+  // Keyboard event handler for video controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault() // Prevent page scroll
+        togglePlayPause()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
   
   // Load assessment questions only when needed
   const loadAssessmentQuestions = () => {
@@ -773,8 +811,38 @@ const CourseLearningPage = () => {
       videoRef.current.play()
       setIsPlaying(true)
     }
+    
+    // Show controls when user interacts with video
+    setShowControls(true)
+    setIsMouseOverVideo(true)
+    
     // Don't mark lesson as watched just for playing/pausing
     // Lesson will be marked as watched when video actually completes
+  }
+
+  // Control visibility functions
+  const showVideoControls = () => {
+    setShowControls(true)
+    setIsMouseOverVideo(true)
+  }
+
+  const hideVideoControls = () => {
+    setShowControls(false)
+    setIsMouseOverVideo(false)
+  }
+
+  const toggleVideoControls = () => {
+    setShowControls(!showControls)
+    setIsMouseOverVideo(!showControls)
+  }
+
+  const keepControlsVisible = () => {
+    setShowControls(true)
+    setIsMouseOverVideo(true)
+  }
+
+  const resetMouseOverState = () => {
+    setIsMouseOverVideo(false)
   }
 
   const markLessonAsWatched = (lessonId: string, bypassProgressCheck: boolean = false) => {
@@ -1306,9 +1374,35 @@ const CourseLearningPage = () => {
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col">
+            {/* Desktop Sidebar Toggle Button */}
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="hidden md:flex fixed top-20 right-4 z-50 bg-white rounded-full p-2 shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+              title={showSidebar ? "Hide Course Content" : "Show Course Content"}
+            >
+              <ChevronRight className={`w-5 h-5 transition-transform ${showSidebar ? 'rotate-180' : ''}`} />
+            </button>
+
             {/* Video Player Section */}
             <div className="bg-black relative">
-            <div className="aspect-video relative">
+            <div 
+              className="aspect-video relative cursor-pointer"
+              onClick={(e) => {
+                // Only toggle play/pause if clicking on the video area, not on controls
+                if (e.target === e.currentTarget || e.target === videoRef.current) {
+                  togglePlayPause()
+                }
+              }}
+              onMouseEnter={showVideoControls}
+              onMouseLeave={() => {
+                // Don't hide controls if video is paused
+                if (isPlaying) {
+                  hideVideoControls()
+                }
+                // Always reset mouse over state
+                resetMouseOverState()
+              }}
+            >
               {/* Video Loading Indicator */}
               {duration <= 0 && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
@@ -1323,10 +1417,24 @@ const CourseLearningPage = () => {
               <video
                 key={currentLesson?.id} // Force re-render when lesson changes
                 ref={videoRef}
-                className="w-full h-full"
+                className="w-full h-full cursor-pointer"
                 poster={currentLesson?.thumbnail}
                 controls={false}
                 preload="metadata" // Preload video metadata for better performance
+                onClick={(e) => {
+                  // Prevent event bubbling to avoid double-triggering
+                  e.stopPropagation()
+                  togglePlayPause()
+                }} // Click on video to play/pause
+                onMouseEnter={showVideoControls} // Show controls on hover (desktop)
+                              onMouseLeave={() => {
+                // Don't hide controls if video is paused
+                if (isPlaying) {
+                  hideVideoControls()
+                }
+                // Always reset mouse over state
+                resetMouseOverState()
+              }} // Hide controls on mouse leave (desktop)
                 onLoadStart={() => {
                   console.log('Video load started')
                   setDuration(0)
@@ -1394,8 +1502,27 @@ const CourseLearningPage = () => {
                 Your browser does not support the video tag.
               </video>
               
+              {/* Pause Button Overlay - Shows when controls are hidden AND video is playing AND mouse is over */}
+              {!showControls && isPlaying && isMouseOverVideo && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-300 pointer-events-none">
+                  <div 
+                    className="bg-white/20 backdrop-blur-sm rounded-full p-4 hover:bg-white/30 transition-colors"
+                  >
+                    <Pause className="w-12 h-12 text-white" />
+                  </div>
+                </div>
+              )}
+
               {/* Video Controls Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 md:p-4">
+              <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 md:p-4 transition-opacity duration-300 ${
+                showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              } ${!isPlaying ? 'opacity-100 pointer-events-auto' : ''}`}>
+                {/* Controls Locked Indicator - Shows when video is paused */}
+                {!isPlaying && (
+                  <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-75">
+                    Controls locked (paused)
+                  </div>
+                )}
                 <div className="flex flex-col space-y-2 md:space-y-0 md:flex-row md:items-center md:space-x-4">
                   {/* Top row on mobile - Progress info */}
                   <div className="flex items-center justify-between md:hidden">
@@ -1411,7 +1538,10 @@ const CourseLearningPage = () => {
                     {/* Mark Complete button for mobile */}
                     {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
                       <Button
-                        onClick={() => markLessonAsWatched(currentLesson.id, false)}
+                        onClick={() => {
+                          keepControlsVisible()
+                          markLessonAsWatched(currentLesson.id, false)
+                        }}
                         size="sm"
                         className="bg-green-500 hover:bg-green-600 text-white border-0 text-xs px-2 py-1 h-6"
                         title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
@@ -1421,46 +1551,52 @@ const CourseLearningPage = () => {
                     )}
                   </div>
 
-                  {/* Controls row */}
+                                    {/* Controls row */}
                   <div className="flex items-center space-x-2 md:space-x-4">
-                    <Button
-                      onClick={togglePlayPause}
-                      className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
-                    >
-                      {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
-                    </Button>
-                    
-                    {/* Progress Indicator - Desktop only */}
-                    {currentLesson && (
-                      <div className="hidden md:block text-white text-xs bg-black/50 px-2 py-1 rounded">
-                        Progress: {Math.round(videoProgress)}%
-                        {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
-                          <span className="ml-2 text-green-400">✓ Ready to complete (90%)</span>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Manual Mark as Completed Button - Desktop only */}
-                    {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                    {/* Left side controls */}
+                    <div className="flex items-center space-x-2 md:space-x-4">
                       <Button
-                        onClick={() => markLessonAsWatched(currentLesson.id, false)}
-                        className="hidden md:block bg-green-500 hover:bg-green-600 text-white border-0"
-                        title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
+                        onClick={togglePlayPause}
+                        className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
                       >
-                        Mark Complete
+                        {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
                       </Button>
-                    )}
-                  
-                  
+                      
+                      {/* Progress Indicator - Desktop only */}
+                      {currentLesson && (
+                        <div className="hidden md:block text-white text-xs bg-black/50 px-2 py-1 rounded">
+                          Progress: {Math.round(videoProgress)}%
+                          {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
+                            <span className="ml-2 text-green-400">✓ Ready to complete (90%)</span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Manual Mark as Completed Button - Desktop only */}
+                      {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                        <Button
+                          onClick={() => {
+                            keepControlsVisible()
+                            markLessonAsWatched(currentLesson.id, false)
+                          }}
+                          className="hidden md:block bg-green-500 hover:bg-green-600 text-white border-0"
+                          title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
+                        >
+                          Mark Complete
+                        </Button>
+                      )}
+                    </div>
                     
-                    {/* Progress Bar */}
-                    <div className="flex-1 relative">
+                    {/* Progress Bar - Center with fixed width */}
+                    <div className="w-48 md:w-80 mx-4 relative">
                       <input
                         type="range"
                         min="0"
                         max={duration > 0 ? duration : 100}
                         value={currentTime}
                         onChange={handleVideoProgress}
+                        onMouseDown={keepControlsVisible}
+                        onTouchStart={keepControlsVisible}
                         disabled={duration <= 0}
                         className={`w-full h-2 rounded-lg appearance-none cursor-pointer slider ${
                           duration > 0 
@@ -1478,74 +1614,81 @@ const CourseLearningPage = () => {
                       )}
                     </div>
                     
-                    {/* Time Display - Hide on mobile */}
-                    <div className="hidden md:block text-white text-sm">
-                      {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / 
-                      {duration > 0 
-                        ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}`
-                        : '--:--'
-                      }
-                    </div>
-                    
-                    {/* Volume Control - Simplified for mobile */}
-                    <div className="flex items-center space-x-1 md:space-x-2">
-                      <button
-                        onClick={() => {
-                          if (videoVolume > 0) {
-                            // Store current volume and mute
-                            setVideoVolume(0)
-                            if (videoRef.current) {
-                              videoRef.current.volume = 0
-                            }
-                          } else {
-                            // Restore to previous volume (default to 0.7 if was 0)
-                            const newVolume = 0.7
-                            setVideoVolume(newVolume)
-                            if (videoRef.current) {
-                              videoRef.current.volume = newVolume
-                            }
-                          }
-                        }}
-                        className="hover:bg-white/20 rounded p-1 transition-colors"
-                        title={videoVolume > 0 ? "Click to mute" : "Click to unmute"}
-                      >
-                        {videoVolume > 0 ? (
-                          <Volume2 className="w-4 h-4 text-white" />
-                        ) : (
-                          <Volume2 className="w-4 h-4 text-white opacity-50" />
-                        )}
-                      </button>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={videoVolume}
-                        onChange={handleVolumeChange}
-                        className="w-16 md:w-24 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
-                        style={{
-                          background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${videoVolume * 100}%, rgba(255,255,255,0.1) ${videoVolume * 100}%)`
-                        }}
-                      />
-                      <span className="hidden md:block text-white text-xs min-w-[2rem] text-center">
-                        {videoVolume > 0 ? `${Math.round(videoVolume * 100)}%` : 'Muted'}
-                      </span>
-                    </div>
-                    
-                    <Button 
-                      onClick={() => {
-                        if (videoRef.current) {
-                          if (isFullscreen) {
-                            document.exitFullscreen()
-                          } else {
-                            videoRef.current.requestFullscreen()
-                          }
+                    {/* Right side controls */}
+                    <div className="flex items-center space-x-2 md:space-x-4 ml-auto">
+                      {/* Time Display - Hide on mobile */}
+                      <div className="hidden md:block text-white text-sm">
+                        {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / 
+                        {duration > 0 
+                          ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}`
+                          : '--:--'
                         }
-                      }}
-                      className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
-                                      >
-                      {isFullscreen ? <X className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                    </Button>
+                      </div>
+                      
+                      {/* Volume Control - Simplified for mobile */}
+                      <div className="flex items-center space-x-1 md:space-x-2">
+                        <button
+                          onClick={() => {
+                            keepControlsVisible()
+                            if (videoVolume > 0) {
+                              // Store current volume and mute
+                              setVideoVolume(0)
+                              if (videoRef.current) {
+                                videoRef.current.volume = 0
+                              }
+                            } else {
+                              // Restore to previous volume (default to 0.7 if was 0)
+                              const newVolume = 0.7
+                              setVideoVolume(newVolume)
+                              if (videoRef.current) {
+                                videoRef.current.volume = newVolume
+                              }
+                            }
+                          }}
+                          className="hover:bg-white/20 rounded p-1 transition-colors"
+                          title={videoVolume > 0 ? "Click to mute" : "Click to unmute"}
+                        >
+                          {videoVolume > 0 ? (
+                            <Volume2 className="w-4 h-4 text-white" />
+                          ) : (
+                            <Volume2 className="w-4 h-4 text-white opacity-50" />
+                          )}
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={videoVolume}
+                          onChange={handleVolumeChange}
+                          onMouseDown={keepControlsVisible}
+                          onTouchStart={keepControlsVisible}
+                          className="w-16 md:w-24 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
+                          style={{
+                            background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${videoVolume * 100}%, rgba(255,255,255,0.1) ${videoVolume * 100}%)`
+                          }}
+                        />
+                        <span className="hidden md:block text-white text-xs min-w-[2rem] text-center">
+                          {videoVolume > 0 ? `${Math.round(videoVolume * 100)}%` : 'Muted'}
+                        </span>
+                      </div>
+                      
+                      <Button 
+                        onClick={() => {
+                          keepControlsVisible()
+                          if (videoRef.current) {
+                            if (isFullscreen) {
+                              document.exitFullscreen()
+                            } else {
+                              videoRef.current.requestFullscreen()
+                            }
+                          }
+                        }}
+                        className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
+                      >
+                        {isFullscreen ? <X className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
