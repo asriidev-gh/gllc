@@ -303,10 +303,19 @@ export default function CoursesPage() {
           className="text-center mb-12"
         >
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Explore Our Courses</h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
             Discover language courses designed to help you achieve fluency with interactive lessons, 
             expert instructors, and practical learning approaches.
           </p>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center space-x-2 text-green-700">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">All courses are now FREE with unlocked lessons!</span>
+            </div>
+            <p className="text-sm text-green-600 text-center mt-1">
+              Access any lesson at any time. Progress is tracked when you watch 90% of the content.
+            </p>
+          </div>
         </motion.div>
 
         {/* Filters */}
@@ -492,14 +501,12 @@ export default function CoursesPage() {
                 {/* Price and Enroll/Continue */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-2xl font-bold text-gray-900">
-                      ${course.price}
+                    <span className="text-2xl font-bold text-green-600">
+                      FREE
                     </span>
-                    {course.originalPrice && (
-                      <span className="text-sm text-gray-500 line-through ml-2">
-                        ${course.originalPrice}
-                      </span>
-                    )}
+                    <span className="text-sm text-green-600 font-medium ml-2">
+                      All lessons unlocked
+                    </span>
                   </div>
                   {isEnrolledInCourse(course.id) ? (
                     <Button
@@ -513,10 +520,10 @@ export default function CoursesPage() {
                   ) : (
                     <Button
                       onClick={() => handleOpenCourseDetails(course)}
-                      className="px-4 py-2"
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700"
                     >
-                      <Target className="w-4 h-4 mr-2" />
-                      Enroll Now
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Get Free Access
                     </Button>
                   )}
                 </div>

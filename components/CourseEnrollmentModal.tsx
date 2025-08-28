@@ -35,7 +35,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
   const handleEnroll = async () => {
     if (!isAuthenticated) {
       // Redirect to signup/login
-      alert('Please sign up or log in to enroll in this course.')
+      alert('Please sign up or log in to access this course.')
       onClose()
       return
     }
@@ -45,7 +45,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
 
     try {
       // Simulate enrollment process
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       // In real app, this would:
       // 1. Call backend API to create enrollment
@@ -69,7 +69,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
         timeSpent: '0h 0m',
         certificate: false,
         enrolledAt: new Date().toISOString(),
-        price: course.price
+        price: 'FREE' // Changed to FREE
       }
       
       // Check if already enrolled
@@ -175,17 +175,15 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
                 </div>
 
                 {/* Pricing */}
-                <div className="bg-gray-50 rounded-xl p-6">
+                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
                   <div className="text-center">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Course Price</h3>
-                    <div className="text-4xl font-bold text-primary-600 mb-2">
-                      {course.price}
+                    <h3 className="text-2xl font-bold text-green-900 mb-2">Course Access</h3>
+                    <div className="text-4xl font-bold text-green-600 mb-2">
+                      FREE
                     </div>
-                    {course.originalPrice && (
-                      <div className="text-lg text-gray-500 line-through">
-                        {course.originalPrice}
-                      </div>
-                    )}
+                    <div className="text-lg text-green-700 font-medium">
+                      All lessons unlocked
+                    </div>
                   </div>
                 </div>
 
@@ -217,7 +215,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
                   <Button
                     onClick={handleEnroll}
                     disabled={isEnrolling}
-                    className="w-full py-4 text-lg font-semibold"
+                    className="w-full py-4 text-lg font-semibold bg-green-600 hover:bg-green-700"
                   >
                     {isEnrolling ? (
                       <>
@@ -226,16 +224,16 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
                       </>
                     ) : (
                       <>
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        Enroll Now - {course.price}
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        Get Free Access
                       </>
                     )}
                   </Button>
                   
                   <div className="text-center mt-4">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                      <Shield className="w-4 h-4" />
-                      <span>30-day money-back guarantee</span>
+                    <div className="flex items-center justify-center space-x-2 text-sm text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Free access to all course content</span>
                     </div>
                   </div>
                 </div>

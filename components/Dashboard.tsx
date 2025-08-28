@@ -638,17 +638,22 @@ export function Dashboard() {
             assessmentScore: null,
             assessmentDate: undefined,
             finalScore: undefined,
+            // Clear all lesson progress to reset lesson locks
+            lessons: {},
             lastUpdated: new Date().toISOString()
           }
           localStorage.setItem(userProgressKey, JSON.stringify(progressData))
         }
       }
       
-      // Remove course-specific progress
+      // Remove course-specific progress (lesson states: isWatched, isSkipped)
       localStorage.removeItem(`course_progress_${courseId}`)
       
       // Refresh the courses list
       loadEnrolledCourses()
+      
+      // Redirect to course page with reset parameter to force lesson lock reset
+      router.push(`/courses/${courseId}?reset=true`)
       
       toast.success('Course progress reset successfully')
     } catch (error) {
@@ -1269,7 +1274,7 @@ export function Dashboard() {
                             <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
                               {course.level}
                             </span>
-                            {course.certificate && (
+                            {course.isCompleted && course.certificate && (
                               <button
                                 onClick={() => showCertificate(course)}
                                 className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center hover:bg-yellow-200 transition-colors cursor-pointer"

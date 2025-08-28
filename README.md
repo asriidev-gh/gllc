@@ -6,6 +6,9 @@ A comprehensive language learning platform built with Next.js, designed to help 
 
 ### Core Learning Features
 - **Interactive Video Lessons** - Learn through curated video content with progress tracking
+- **Smart Video Player** - Custom controls with volume, fullscreen, and progress seeking
+- **Flexible Lesson Completion** - Mark lessons complete from sidebar or video player
+- **90% Progress Threshold** - Complete lessons after watching 90% of content
 - **AI-Powered Assessments** - Dynamic exams that adapt to your learning level
 - **Multi-Language Support** - Tagalog, English, Korean, Japanese, Chinese, Spanish
 - **Progress Tracking** - Monitor your learning journey with detailed analytics
@@ -14,6 +17,8 @@ A comprehensive language learning platform built with Next.js, designed to help 
 ### User Experience
 - **Personalized Dashboard** - Track your enrolled courses and learning progress
 - **Course Management** - Enroll, unenroll, and continue learning seamlessly
+- **Interactive Sidebar Navigation** - Click any lesson to switch and auto-play
+- **Smart Lesson Switching** - Seamlessly switch between lessons with video state reset
 - **Notes Taking** - Save personal notes for each lesson
 - **Bookmarking** - Mark important lessons for quick access
 - **Discussion Forums** - Engage with other learners and instructors
@@ -22,6 +27,8 @@ A comprehensive language learning platform built with Next.js, designed to help 
 - **Responsive Design** - Works perfectly on all devices
 - **Dark/Light Theme** - Customizable appearance settings
 - **Real-time Progress** - Instant updates on your learning status
+- **Advanced Video Controls** - Volume slider, fullscreen toggle, progress seeking
+- **State Management** - Comprehensive lesson state and progress tracking
 - **Offline Resources** - Download course materials for offline study
 - **Audit Logging** - Track user actions and system events
 

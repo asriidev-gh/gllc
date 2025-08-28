@@ -5,7 +5,7 @@ const nextConfig = {
   },
   // Performance optimizations
   experimental: {
-    optimizeCss: true,
+    // optimizeCss: true, // Temporarily disabled due to dependency issues
     optimizePackageImports: ['lucide-react'],
   },
   // Bundle optimization

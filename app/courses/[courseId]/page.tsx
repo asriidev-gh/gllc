@@ -40,6 +40,7 @@ import { Header } from '@/components/Header'
 import toast from 'react-hot-toast'
 import { recordLearningActivity } from '@/lib/learningActivity'
 
+
 interface VideoLesson {
   id: string
   title: string
@@ -48,8 +49,8 @@ interface VideoLesson {
   videoUrl: string
   thumbnail: string
   isWatched: boolean
-  isLocked: boolean
-  isSkipped?: boolean
+
+
   order: number
   resources?: CourseResource[]
   comments?: LessonComment[]
@@ -143,6 +144,9 @@ const CourseLearningPage = () => {
   const { user, isAuthenticated } = useAuthStore()
   const courseId = params.courseId as string
   
+  // Constants
+  const COMPLETION_THRESHOLD = 90 // Percentage of video that must be watched to complete lesson
+  
   const [course, setCourse] = useState<any>(null)
   const [topics, setTopics] = useState<CourseTopic[]>([])
   const [currentLesson, setCurrentLesson] = useState<VideoLesson | null>(null)
@@ -170,9 +174,10 @@ const CourseLearningPage = () => {
   const [videoProgress, setVideoProgress] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   
   // New state for enhanced course completion system
-  const [showSkipLessonModal, setShowSkipLessonModal] = useState(false)
+
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [showAssessmentReviewModal, setShowAssessmentReviewModal] = useState(false)
@@ -180,6 +185,7 @@ const CourseLearningPage = () => {
   const [courseCertificate, setCourseCertificate] = useState<CourseCertificate | null>(null)
   const [courseBadges, setCourseBadges] = useState<CourseBadge[]>([])
   const certificateRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   
   // Assessment system state
   const [assessmentStarted, setAssessmentStarted] = useState(false)
@@ -194,6 +200,57 @@ const CourseLearningPage = () => {
   const [assessmentQuestionsLoaded, setAssessmentQuestionsLoaded] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+  
+  // Reset all lesson progress when component mounts
+  useEffect(() => {
+    if (courseId) {
+      console.log('Resetting all lesson progress for course:', courseId)
+      const progressKeys = [
+        `course_progress_${courseId}`,
+        `lesson_progress_${courseId}`,
+        `user_course_progress_${user?.email || 'anonymous'}`
+      ]
+      
+      progressKeys.forEach(key => {
+        localStorage.removeItem(key)
+        console.log(`Cleared progress key: ${key}`)
+      })
+    }
+  }, [courseId, user?.email])
+  
+  // Handle lesson changes and video loading
+  useEffect(() => {
+    if (currentLesson && videoRef.current) {
+      console.log(`Lesson changed to: ${currentLesson.title}`)
+      console.log(`Video URL: ${currentLesson.videoUrl}`)
+      
+      // Reset video states for new lesson
+      setCurrentTime(0)
+      setDuration(0)
+      setVideoProgress(0)
+      setIsPlaying(false)
+      
+      // Load the new video
+      if (videoRef.current.src !== currentLesson.videoUrl) {
+        console.log('Updating video source')
+        videoRef.current.src = currentLesson.videoUrl
+        videoRef.current.load() // Force video to reload
+      }
+    }
+  }, [currentLesson])
+  
   // Load assessment questions only when needed
   const loadAssessmentQuestions = () => {
     if (assessmentQuestionsLoaded) return
@@ -408,7 +465,7 @@ const CourseLearningPage = () => {
     return {}
   }
 
-  const saveLessonProgress = (courseId: string, lessonId: string, progress: { isWatched: boolean, isSkipped?: boolean, completedAt: string }) => {
+  const saveLessonProgress = (courseId: string, lessonId: string, progress: { isWatched: boolean, completedAt: string }) => {
     try {
       const currentProgress = loadLessonProgress(courseId)
       currentProgress[lessonId] = progress
@@ -446,7 +503,7 @@ const CourseLearningPage = () => {
       // Don't update totalLessons here - it should be set from the course structure
       // userProgress[courseId].totalLessons = courseLessons.length
       userProgress[courseId].completedLessons = courseLessons.filter(lessonId => 
-        userProgress[courseId].lessons[lessonId]?.isWatched || userProgress[courseId].lessons[lessonId]?.isSkipped
+        userProgress[courseId].lessons[lessonId]?.isWatched
       ).length
       userProgress[courseId].lastUpdated = new Date().toISOString()
       
@@ -460,8 +517,20 @@ const CourseLearningPage = () => {
   }
 
   const generateMockTopics = (courseData: any) => {
-    // Load saved lesson progress
-    const savedProgress = loadLessonProgress(courseId)
+    // Clear ALL possible saved progress to start completely fresh
+    const progressKeys = [
+      `course_progress_${courseId}`,
+      `lesson_progress_${courseId}`,
+      `user_course_progress_${user?.email || 'anonymous'}`
+    ]
+    
+    progressKeys.forEach(key => {
+      localStorage.removeItem(key)
+      console.log(`Cleared progress key: ${key}`)
+    })
+    
+    // Force all lessons to start as unwatched
+    const savedProgress = {}
     
     const mockTopics: CourseTopic[] = [
       {
@@ -475,11 +544,9 @@ const CourseLearningPage = () => {
             title: 'Welcome to the Course',
             summary: 'Course overview and what you\'ll learn',
             duration: '5:30',
-            videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: savedProgress['lesson_1_1']?.isWatched || false,
-            isSkipped: savedProgress['lesson_1_1']?.isSkipped || false,
-            isLocked: false,
+            isWatched: false,
             order: 1,
             resources: [
               { id: 'res_1', name: 'Course Syllabus', type: 'pdf', url: '#', size: '2.1 MB' },
@@ -502,11 +569,9 @@ const CourseLearningPage = () => {
             title: 'Setting Up Your Learning Environment',
             summary: 'Tools and resources you\'ll need',
             duration: '8:15',
-            videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: savedProgress['lesson_1_2']?.isWatched || false,
-            isSkipped: savedProgress['lesson_1_2']?.isSkipped || false,
-            isLocked: false,
+            isWatched: false,
             order: 2,
             resources: [
               { id: 'res_3', name: 'Setup Checklist', type: 'pdf', url: '#', size: '1.8 MB' }
@@ -526,11 +591,9 @@ const CourseLearningPage = () => {
             title: 'Understanding the Basics',
             summary: 'Fundamental concepts and principles',
             duration: '12:45',
-            videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: savedProgress['lesson_2_1']?.isWatched || false,
-            isSkipped: savedProgress['lesson_2_1']?.isSkipped || false,
-            isLocked: true,
+            isWatched: false,
             order: 3,
             resources: [],
             comments: []
@@ -540,11 +603,9 @@ const CourseLearningPage = () => {
             title: 'Practice Exercises',
             summary: 'Hands-on practice with basic concepts',
             duration: '15:20',
-            videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: savedProgress['lesson_2_2']?.isWatched || false,
-            isSkipped: savedProgress['lesson_2_2']?.isSkipped || false,
-            isLocked: true,
+            isWatched: false,
             order: 4,
             resources: [
               { id: 'res_4', name: 'Exercise Workbook', type: 'pdf', url: '#', size: '3.2 MB' }
@@ -560,15 +621,12 @@ const CourseLearningPage = () => {
       setCurrentLesson(mockTopics[0].lessons[0])
     }
     
-    // Update lesson locks based on completion status - call after a brief delay to ensure state is set
-    setTimeout(() => {
-      updateLessonLocksFromSavedProgress()
-    }, 50)
+
     
     // Calculate progress
     const totalLessons = mockTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = mockTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
+      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
     setProgress({
       totalLessons,
@@ -601,160 +659,124 @@ const CourseLearningPage = () => {
   }
 
   const selectLesson = (lesson: VideoLesson) => {
-    // Allow access to completed/skipped lessons, only block genuinely locked lessons
-    if (lesson.isLocked && !lesson.isWatched && !lesson.isSkipped) {
-      toast.error('This lesson is locked. Complete previous lessons first.')
-      return
+    console.log(`=== selectLesson called for lesson: ${lesson.title} ===`)
+    
+    // Stop current video if playing
+    if (videoRef.current && isPlaying) {
+      console.log('Stopping current video playback')
+      videoRef.current.pause()
+      setIsPlaying(false)
     }
     
+    // Update current lesson
     setCurrentLesson(lesson)
     setCurrentNote('')
     setShowNotes(false)
+    
+    // Auto-play the new lesson after a short delay to allow video to load
+    // The useEffect will handle video state reset and source loading
+    setTimeout(() => {
+      if (videoRef.current && lesson) {
+        console.log(`Auto-playing new lesson: ${lesson.title}`)
+        videoRef.current.play()
+        setIsPlaying(true)
+      }
+    }, 1500) // 1.5 second delay to allow video to load and states to reset
     
     // Record course study activity (once per lesson selection)
     if (user?.email) {
       recordLearningActivity(user.email, 'course_study', `${course.name} - ${lesson.title}`)
     }
+    
+    console.log(`Lesson switched to: ${lesson.title}`)
   }
 
-  const updateLessonLocksFromSavedProgress = () => {
-    // Load saved lesson progress to ensure we have the latest state
-    const savedProgress = loadLessonProgress(courseId)
+
+
+
+
+
+
+  const togglePlayPause = () => {
+    if (!videoRef.current) return
     
-    // Flatten all lessons and sort by order
-    const allLessons = topics
+    if (isPlaying) {
+      videoRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      videoRef.current.play()
+      setIsPlaying(true)
+    }
+    // Don't mark lesson as watched just for playing/pausing
+    // Lesson will be marked as watched when video actually completes
+  }
+
+  const markLessonAsWatched = (lessonId: string, bypassProgressCheck: boolean = false) => {
+    console.log(`=== markLessonAsWatched called for lesson: ${lessonId} ===`)
+    console.log('Current video progress:', videoProgress)
+    console.log('Completion threshold:', COMPLETION_THRESHOLD)
+    console.log('Current lesson ID:', currentLesson?.id)
+    console.log('Requested lesson ID:', lessonId)
+    console.log('Bypass progress check:', bypassProgressCheck)
+    
+    // Find the lesson to mark as completed
+    const lessonToComplete = topics
       .flatMap(topic => topic.lessons)
-      .sort((a, b) => a.order - b.order)
+      .find(lesson => lesson.id === lessonId)
     
-    console.log('Updating lesson locks from saved progress:', allLessons.map(l => ({ 
-      id: l.id, 
-      title: l.title, 
-      order: l.order, 
-      isWatched: l.isWatched, 
-      isSkipped: l.isSkipped,
-      isLocked: l.isLocked 
-    })))
-    
-    // Check if any locks need updating to avoid unnecessary state changes
-    const needsUpdate = allLessons.some(lesson => {
-      if (lesson.order === 1) return false // First lesson is always unlocked
-      
-      const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-      const shouldBeUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
-      const isCurrentlyUnlocked = !lesson.isLocked
-      
-      return shouldBeUnlocked !== isCurrentlyUnlocked
-    })
-    
-    if (!needsUpdate) {
-      console.log('No lesson lock updates needed')
+    if (!lessonToComplete) {
+      console.log(`Lesson ${lessonId} not found`)
+      toast.error('Lesson not found')
       return
     }
     
-    console.log('Updating lesson locks...')
-    setTopics(prev => prev.map(topic => ({
-      ...topic,
-      lessons: topic.lessons.map(lesson => {
-        // First lesson is always unlocked
-        if (lesson.order === 1) return { ...lesson, isLocked: false }
-        
-        // Find the previous lesson by order (across all topics)
-        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-        // A lesson is unlocked if the previous lesson is watched OR skipped
-        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
-        
-        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
-        
-        return { ...lesson, isLocked: !isUnlocked }
-      })
-    })))
-  }
-
-  const updateLessonLocks = () => {
-    // Flatten all lessons and sort by order
-    const allLessons = topics
-      .flatMap(topic => topic.lessons)
-      .sort((a, b) => a.order - b.order)
-    
-    console.log('Updating lesson locks:', allLessons.map(l => ({ 
-      id: l.id, 
-      title: l.title, 
-      order: l.order, 
-      isWatched: l.isWatched, 
-      isSkipped: l.isSkipped,
-      isLocked: l.isLocked 
-    })))
-    
-    setTopics(prev => prev.map(topic => ({
-      ...topic,
-      lessons: topic.lessons.map(lesson => {
-        // First lesson is always unlocked
-        if (lesson.order === 1) return { ...lesson, isLocked: false }
-        
-        // Find the previous lesson by order (across all topics)
-        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-        // A lesson is unlocked if the previous lesson is watched OR skipped
-        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
-        
-        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
-        
-        return { ...lesson, isLocked: !isUnlocked }
-      })
-    })))
-  }
-
-  const updateLessonLocksDirectly = (currentTopics: CourseTopic[]): CourseTopic[] => {
-    // Flatten all lessons and sort by order
-    const allLessons = currentTopics
-      .flatMap(topic => topic.lessons)
-      .sort((a, b) => a.order - b.order)
-    
-    console.log('Updating lesson locks:', allLessons.map(l => ({ 
-      id: l.id, 
-      title: l.title, 
-      order: l.order, 
-      isWatched: l.isWatched, 
-      isSkipped: l.isSkipped,
-      isLocked: l.isLocked 
-    })))
-    
-    return currentTopics.map(topic => ({
-      ...topic,
-      lessons: topic.lessons.map(lesson => {
-        // First lesson is always unlocked
-        if (lesson.order === 1) return { ...lesson, isLocked: false }
-        
-        // Find the previous lesson by order (across all topics)
-        const previousLesson = allLessons.find(l => l.order === lesson.order - 1)
-        // A lesson is unlocked if the previous lesson is watched OR skipped
-        const isUnlocked = previousLesson && (previousLesson.isWatched || previousLesson.isSkipped)
-        
-        console.log(`Lesson ${lesson.order} (${lesson.title}): previous lesson completed/skipped = ${isUnlocked}, will be locked = ${!isUnlocked}`)
-        
-        return { ...lesson, isLocked: !isUnlocked }
-      })
-    }))
-  }
-
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying)
-    if (currentLesson) {
-      if (!isPlaying) {
-        markLessonAsWatched(currentLesson.id)
-      }
+    // Prevent multiple calls for the same lesson
+    if (lessonToComplete.isWatched) {
+      console.log(`Lesson ${lessonId} is already marked as watched, skipping`)
+      toast('Lesson is already completed', { icon: 'ℹ️' })
+      return
     }
-  }
-
-  const markLessonAsWatched = (lessonId: string) => {
+    
+    // Check progress threshold unless bypassing (for sidebar completion)
+    if (!bypassProgressCheck && videoProgress < COMPLETION_THRESHOLD) {
+      console.log(`Lesson completion blocked: progress ${videoProgress}% < threshold ${COMPLETION_THRESHOLD}%`)
+      toast.error(`Please watch at least ${COMPLETION_THRESHOLD}% of the lesson to mark it as completed`)
+      return
+    }
+    
+    if (bypassProgressCheck) {
+      console.log(`Lesson completion allowed: bypassing progress check (called from sidebar)`)
+    } else {
+      console.log(`Lesson completion allowed: progress ${videoProgress}% >= threshold ${COMPLETION_THRESHOLD}%`)
+    }
+    
     // Mark lesson as watched and get updated topics
+    console.log('Before updating - Current lesson states:')
+    topics.forEach(topic => {
+      topic.lessons.forEach(lesson => {
+        console.log(`  ${lesson.title}: isWatched = ${lesson.isWatched}`)
+      })
+    })
+    
     const updatedTopics = topics.map(topic => ({
       ...topic,
-      lessons: topic.lessons.map(lesson => 
-        lesson.id === lessonId 
-          ? { ...lesson, isWatched: true }
-          : lesson
-      )
+      lessons: topic.lessons.map(lesson => {
+        if (lesson.id === lessonId) {
+          console.log(`Marking lesson "${lesson.title}" as watched`)
+          return { ...lesson, isWatched: true }
+        } else {
+          console.log(`Keeping lesson "${lesson.title}" as isWatched = ${lesson.isWatched}`)
+          return lesson
+        }
+      })
     }))
+    
+    console.log('After updating - Updated lesson states:')
+    updatedTopics.forEach(topic => {
+      topic.lessons.forEach(lesson => {
+        console.log(`  ${lesson.title}: isWatched = ${lesson.isWatched}`)
+      })
+    })
     
     // Update topics state
     setTopics(updatedTopics)
@@ -762,14 +784,13 @@ const CourseLearningPage = () => {
     // Save lesson progress to localStorage
     saveLessonProgress(courseId, lessonId, {
       isWatched: true,
-      isSkipped: false,
       completedAt: new Date().toISOString()
     })
     
     // Recalculate progress with updated topics
     const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = updatedTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
+      sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
     setProgress({
       totalLessons,
@@ -788,29 +809,43 @@ const CourseLearningPage = () => {
       recordLearningActivity(user.email, 'lesson_completed', `${currentLesson.title} - ${course.name}`)
     }
     
-    // Update lesson locks with updated topics BEFORE finding next lesson
-    const unlockedTopics = updateLessonLocksDirectly(updatedTopics)
-    
-    // IMPORTANT: Update the main topics state with unlocked lessons
-    setTopics(unlockedTopics)
+    // No need to update lesson locks - all lessons are always unlocked
     
     // Check if course is completed
     if (completedLessons === totalLessons) {
       handleCourseCompletion()
     } else {
-      // Find and advance to next lesson using the unlocked topics
-      const nextLesson = findNextLessonFromTopics(lessonId, unlockedTopics)
+      // Find and advance to next lesson using the updated topics
+      const nextLesson = findNextLessonFromTopics(lessonId, updatedTopics)
       if (nextLesson) {
+        console.log(`Advancing to next lesson: ${nextLesson.title}`)
         setCurrentLesson(nextLesson)
+        
+        // Reset video states for the new lesson
+        setCurrentTime(0)
+        setDuration(0)
+        setVideoProgress(0)
+        setIsPlaying(false)
+        
+        // Auto-play the next lesson after a short delay
+        setTimeout(() => {
+          if (videoRef.current && nextLesson) {
+            console.log(`Auto-playing next lesson: ${nextLesson.title}`)
+            videoRef.current.play()
+            setIsPlaying(true)
+          }
+        }, 1000) // 1 second delay to allow video to load
+        
         toast.success(`Advanced to next lesson: ${nextLesson.title}`)
         
-        // Debug: Verify the next lesson is unlocked
-        console.log('Next lesson unlocked status:', {
+        // Debug: Verify the next lesson status
+        console.log('Next lesson status:', {
           nextLesson: nextLesson.title,
-          isLocked: nextLesson.isLocked,
           isWatched: nextLesson.isWatched,
           order: nextLesson.order
         })
+      } else {
+        console.log('No next lesson found - course may be completed')
       }
     }
     
@@ -842,12 +877,8 @@ const CourseLearningPage = () => {
       allLessonTitles: allLessons.map(l => ({ id: l.id, title: l.title, order: l.order, topic: topics.find(t => t.lessons.includes(l))?.title }))
     })
     
-    // Ensure the next lesson is unlocked (should be unlocked if previous was completed)
-    if (nextLesson && !nextLesson.isLocked) {
-      return nextLesson
-    }
-    
-    return null
+    // All lessons are accessible - no locking needed
+    return nextLesson
   }
 
   const findNextLessonFromTopics = (currentLessonId: string, currentTopics: CourseTopic[]): VideoLesson | null => {
@@ -875,98 +906,11 @@ const CourseLearningPage = () => {
       allLessonTitles: allLessons.map(l => ({ id: l.id, title: l.title, order: l.order, topic: currentTopics.find(t => t.lessons.includes(l))?.title }))
     })
     
-    // Ensure the next lesson is unlocked (should be unlocked if previous was completed)
-    if (nextLesson && !nextLesson.isLocked) {
-      return nextLesson
-    }
-    
-    return null
+    // All lessons are accessible - no locking needed
+    return nextLesson
   }
 
-  const skipLesson = (lessonId: string) => {
-    // Mark lesson as watched (skipped) and get updated topics
-    const updatedTopics = topics.map(topic => ({
-      ...topic,
-      lessons: topic.lessons.map(lesson => 
-        lesson.id === lessonId 
-          ? { ...lesson, isWatched: true, isSkipped: true }
-          : lesson
-      )
-    }))
-    
-    // Update topics state
-    setTopics(updatedTopics)
-    
-    // Save lesson progress to localStorage
-    saveLessonProgress(courseId, lessonId, {
-      isWatched: true,
-      isSkipped: true,
-      completedAt: new Date().toISOString()
-    })
-    
-    // Debug: Log the lesson state after marking as watched
-    console.log('After marking lesson as watched:', {
-      lessonId,
-      currentLesson: currentLesson?.title,
-      updatedTopics: updatedTopics.map(topic => ({
-        title: topic.title,
-        lessons: topic.lessons.map(l => ({ id: l.id, title: l.title, order: l.order, isWatched: l.isWatched, isLocked: l.isLocked }))
-      }))
-    })
-    
-    // Recalculate progress with updated topics
-    const totalLessons = updatedTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
-    const completedLessons = updatedTopics.reduce((sum, topic) => 
-      sum + topic.lessons.filter(lesson => lesson.isWatched || lesson.isSkipped).length, 0
-    )
-    setProgress({
-      totalLessons,
-      completedLessons,
-      totalDuration: '2h 30m',
-      watchedDuration: `${Math.floor(completedLessons * 15)}m`,
-      isCompleted: completedLessons === totalLessons,
-      completionDate: completedLessons === totalLessons ? new Date().toISOString() : undefined,
-      certificateEarned: progress.certificateEarned,
-      badgeEarned: progress.badgeEarned,
-      finalScore: progress.finalScore
-    })
-    
-    // Record lesson skip activity
-    if (user?.email && currentLesson) {
-      recordLearningActivity(user.email, 'lesson_skipped', `${currentLesson.title} - ${course.name}`)
-    }
-    
-    // Update lesson locks with updated topics BEFORE finding next lesson
-    const unlockedTopics = updateLessonLocksDirectly(updatedTopics)
-    
-    // IMPORTANT: Update the main topics state with unlocked lessons
-    setTopics(unlockedTopics)
-    
-    // Check if course is completed
-    if (completedLessons === totalLessons) {
-      handleCourseCompletion()
-    } else {
-      // Find and advance to next lesson using the unlocked topics
-      const nextLesson = findNextLessonFromTopics(lessonId, unlockedTopics)
-      if (nextLesson) {
-        setCurrentLesson(nextLesson)
-        toast.success(`Advanced to next lesson: ${nextLesson.title}`)
-        
-        // Debug: Verify the next lesson is unlocked
-        console.log('Next lesson unlocked status:', {
-          nextLesson: nextLesson.title,
-          isLocked: nextLesson.isLocked,
-          isWatched: nextLesson.isWatched,
-          order: nextLesson.order
-        })
-      } else {
-        console.log('No next lesson found after skip:', { lessonId, completedLessons, totalLessons })
-      }
-    }
-    
-    setShowSkipLessonModal(false)
-    toast.success('Lesson skipped and marked as completed!')
-  }
+
 
   const submitAssessment = () => {
     // Calculate score
@@ -1130,13 +1074,30 @@ const CourseLearningPage = () => {
 
   const handleVideoProgress = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(e.target.value)
+    
+    // Don't allow seeking if duration is not valid
+    if (!duration || duration <= 0) {
+      return
+    }
+    
+    // Update state immediately for responsive UI
     setCurrentTime(newTime)
     setVideoProgress((newTime / duration) * 100)
+    
+    // Actually seek the video to the new time
+    if (videoRef.current) {
+      videoRef.current.currentTime = newTime
+    }
   }
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value)
     setVideoVolume(newVolume)
+    
+    // Apply volume to the video element
+    if (videoRef.current) {
+      videoRef.current.volume = newVolume
+    }
   }
 
   const generatePDF = async () => {
@@ -1239,17 +1200,85 @@ const CourseLearningPage = () => {
             {/* Video Player Section */}
             <div className="bg-black relative">
             <div className="aspect-video relative">
+              {/* Video Loading Indicator */}
+              {duration <= 0 && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                  <div className="text-center text-white">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                    <p className="text-lg">Loading video...</p>
+                  </div>
+                </div>
+              )}
+              
               {/* Video Player */}
               <video
+                key={currentLesson?.id} // Force re-render when lesson changes
+                ref={videoRef}
                 className="w-full h-full"
                 poster={currentLesson?.thumbnail}
-                onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                onEnded={() => {
-                  setIsPlaying(false)
-                  if (currentLesson) {
-                    markLessonAsWatched(currentLesson.id)
+                controls={false}
+                preload="metadata" // Preload video metadata for better performance
+                onLoadStart={() => {
+                  console.log('Video load started')
+                  setDuration(0)
+                  setCurrentTime(0)
+                  setVideoProgress(0)
+                }}
+                onLoadedMetadata={(e) => {
+                  const video = e.currentTarget
+                  console.log('Video metadata loaded:', { duration: video.duration, videoUrl: currentLesson?.videoUrl })
+                  if (video.duration && isFinite(video.duration)) {
+                    setDuration(video.duration)
                   }
+                }}
+                onCanPlay={(e) => {
+                  const video = e.currentTarget
+                  console.log('Video can play:', { duration: video.duration, currentTime: video.currentTime })
+                  if (video.duration && isFinite(video.duration)) {
+                    setDuration(video.duration)
+                  }
+                  
+                  // Set initial volume
+                  if (videoRef.current) {
+                    videoRef.current.volume = videoVolume
+                  }
+                }}
+                onTimeUpdate={(e) => {
+                  const video = e.currentTarget
+                  const currentTime = video.currentTime
+                  const videoDuration = video.duration
+                  
+                  setCurrentTime(currentTime)
+                  
+                  // Update duration if it's valid and different
+                  if (videoDuration && isFinite(videoDuration) && videoDuration !== duration) {
+                    setDuration(videoDuration)
+                  }
+                  
+                  // Calculate and update video progress
+                  if (videoDuration && isFinite(videoDuration) && videoDuration > 0) {
+                    const progressPercentage = (currentTime / videoDuration) * 100
+                    setVideoProgress(progressPercentage)
+                  }
+                }}
+                onEnded={() => {
+                  console.log('Video ended')
+                  console.log('Video progress at end:', videoProgress)
+                  console.log('Completion threshold:', COMPLETION_THRESHOLD)
+                  setIsPlaying(false)
+                  
+                  // Only mark as completed if user watched at least the completion threshold
+                  if (currentLesson && videoProgress >= COMPLETION_THRESHOLD) {
+                    console.log('Auto-completing lesson due to sufficient progress')
+                    markLessonAsWatched(currentLesson.id, false)
+                    toast.success('Lesson completed! Great job!')
+                  } else if (currentLesson) {
+                    console.log('Lesson not auto-completed due to insufficient progress')
+                    toast(`Please watch at least ${COMPLETION_THRESHOLD}% of the lesson to mark it as completed`, { icon: 'ℹ️' })
+                  }
+                }}
+                onError={(e) => {
+                  console.error('Video error:', e)
                 }}
               >
                 <source src={currentLesson?.videoUrl} type="video/mp4" />
@@ -1266,46 +1295,92 @@ const CourseLearningPage = () => {
                     {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                   </Button>
                   
-                  {/* Skip Lesson Button - Only show if lesson not completed */}
-                  {currentLesson && !currentLesson.isWatched && (
-                    <Button
-                      onClick={() => setShowSkipLessonModal(true)}
-                      className="bg-orange-500 hover:bg-orange-600 text-white border-0"
-                      title="Skip this lesson and mark as completed"
-                    >
-                      <ChevronRight className="w-4 h-4 mr-1" />
-                      Skip Lesson
-                    </Button>
-                  )}
-                  
-                  {/* Debug info - remove in production */}
-                  {process.env.NODE_ENV === 'development' && currentLesson && (
+                  {/* Progress Indicator */}
+                  {currentLesson && (
                     <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
-                      Lesson {currentLesson.order}: {currentLesson.title} | Watched: {currentLesson.isWatched ? 'Yes' : 'No'} | Skipped: {currentLesson.isSkipped ? 'Yes' : 'No'}
+                      Progress: {Math.round(videoProgress)}%
+                      {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
+                        <span className="ml-2 text-green-400">✓ Ready to complete (90%)</span>
+                      )}
                     </div>
                   )}
                   
+                  {/* Manual Mark as Completed Button for Testing */}
+                  {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                    <Button
+                      onClick={() => markLessonAsWatched(currentLesson.id, false)}
+                      className="bg-green-500 hover:bg-green-600 text-white border-0"
+                      title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
+                    >
+                      Mark Complete
+                    </Button>
+                  )}
+                  
+                  
+
+                  
                   {/* Progress Bar */}
-                  <div className="flex-1">
+                  <div className="flex-1 relative">
                     <input
                       type="range"
                       min="0"
-                      max={duration || 100}
+                      max={duration > 0 ? duration : 100}
                       value={currentTime}
                       onChange={handleVideoProgress}
-                      className="w-full h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
+                      disabled={duration <= 0}
+                      className={`w-full h-2 rounded-lg appearance-none cursor-pointer slider ${
+                        duration > 0 
+                          ? 'bg-white/30 hover:bg-white/40' 
+                          : 'bg-white/20 cursor-not-allowed opacity-50'
+                      }`}
+                      title={duration > 0 ? 'Drag to seek video' : 'Loading video...'}
                     />
+                    {/* Progress indicator overlay */}
+                    {duration > 0 && (
+                      <div 
+                        className="absolute top-0 left-0 h-2 bg-white/60 rounded-l-lg pointer-events-none transition-all duration-150"
+                        style={{ width: `${(currentTime / duration) * 100}%` }}
+                      />
+                    )}
                   </div>
                   
                   {/* Time Display */}
                   <div className="text-white text-sm">
                     {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / 
-                    {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
+                    {duration > 0 
+                      ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}`
+                      : '--:--'
+                    }
                   </div>
                   
                   {/* Volume Control */}
                   <div className="flex items-center space-x-2">
-                    <Volume2 className="w-4 h-4 text-white" />
+                    <button
+                      onClick={() => {
+                        if (videoVolume > 0) {
+                          // Store current volume and mute
+                          setVideoVolume(0)
+                          if (videoRef.current) {
+                            videoRef.current.volume = 0
+                          }
+                        } else {
+                          // Restore to previous volume (default to 0.7 if was 0)
+                          const newVolume = 0.7
+                          setVideoVolume(newVolume)
+                          if (videoRef.current) {
+                            videoRef.current.volume = newVolume
+                          }
+                        }
+                      }}
+                      className="hover:bg-white/20 rounded p-1 transition-colors"
+                      title={videoVolume > 0 ? "Click to mute" : "Click to unmute"}
+                    >
+                      {videoVolume > 0 ? (
+                        <Volume2 className="w-4 h-4 text-white" />
+                      ) : (
+                        <Volume2 className="w-4 h-4 text-white opacity-50" />
+                      )}
+                    </button>
                     <input
                       type="range"
                       min="0"
@@ -1313,12 +1388,29 @@ const CourseLearningPage = () => {
                       step="0.1"
                       value={videoVolume}
                       onChange={handleVolumeChange}
-                      className="w-20 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
+                      className="w-24 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
+                      style={{
+                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${videoVolume * 100}%, rgba(255,255,255,0.1) ${videoVolume * 100}%)`
+                      }}
                     />
+                    <span className="text-white text-xs min-w-[2rem] text-center">
+                      {videoVolume > 0 ? `${Math.round(videoVolume * 100)}%` : 'Muted'}
+                    </span>
                   </div>
                   
-                  <Button className="bg-white/20 hover:bg-white/30 text-white border-0">
-                    <Maximize className="w-4 h-4" />
+                  <Button 
+                    onClick={() => {
+                      if (videoRef.current) {
+                        if (isFullscreen) {
+                          document.exitFullscreen()
+                        } else {
+                          videoRef.current.requestFullscreen()
+                        }
+                      }
+                    }}
+                    className="bg-white/20 hover:bg-white/30 text-white border-0"
+                  >
+                    {isFullscreen ? <X className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
@@ -1653,26 +1745,15 @@ const CourseLearningPage = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-3">
                                 {lesson.isWatched ? (
-                                  lesson.isSkipped ? (
-                                    <ChevronRight className="w-5 h-5 text-orange-600" />
-                                  ) : (
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
-                                  )
-                                ) : lesson.isLocked ? (
-                                  <Circle className="w-5 h-5 text-gray-400" />
+                                  <CheckCircle className="w-5 h-5 text-green-600" />
                                 ) : (
                                   <Play className="w-5 h-5 text-primary-600" />
                                 )}
                                 
                                 <div className="flex-1">
-                                  <h4 className={`font-medium ${
-                                    lesson.isLocked && !lesson.isWatched ? 'text-gray-400' : 'text-gray-900'
-                                  }`}>
+                                  <h4 className="font-medium text-gray-900">
                                     {lesson.title}
-                                    {lesson.isSkipped && (
-                                      <span className="ml-2 text-xs text-orange-600 font-medium">(Skipped)</span>
-                                    )}
-                                    {lesson.isWatched && !lesson.isSkipped && (
+                                    {lesson.isWatched && (
                                       <span className="ml-2 text-xs text-green-600 font-medium">(Completed)</span>
                                     )}
                                   </h4>
@@ -1695,30 +1776,14 @@ const CourseLearningPage = () => {
                                   <Bookmark className="w-4 h-4" />
                                 </Button>
                                 
-                                {/* Skip Lesson Button - Only show if lesson not completed */}
-                                {!lesson.isWatched && (
-                                  <Button
-                                    onClick={() => {
-                                      setCurrentLesson(lesson)
-                                      setShowSkipLessonModal(true)
-                                    }}
-                                    variant="outline"
-                                    size="sm"
-                                    className="bg-orange-500 hover:bg-orange-600 text-white border-orange-500"
-                                  >
-                                    <ChevronRight className="w-4 h-4 mr-1" />
-                                    Skip
-                                  </Button>
-                                )}
+
                                 
                                 <Button
                                   onClick={() => selectLesson(lesson)}
                                   variant="outline"
                                   size="sm"
-                                  disabled={lesson.isLocked && !lesson.isWatched}
-                                  className={lesson.isLocked && !lesson.isWatched ? 'opacity-60 cursor-not-allowed' : ''}
                                 >
-                                  {lesson.isLocked && !lesson.isWatched ? 'Locked' : lesson.isWatched ? 'Replay' : 'Start'}
+                                  {lesson.isWatched ? 'Replay' : 'Start'}
                                 </Button>
                               </div>
                             </div>
@@ -1979,53 +2044,59 @@ const CourseLearningPage = () => {
                   <h4 className="font-medium text-gray-900 mb-3">{topic.title}</h4>
                   <div className="space-y-2">
                     {topic.lessons.map((lesson) => (
-                      <button
+                      <div
                         key={lesson.id}
-                        onClick={() => selectLesson(lesson)}
-                        className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        className={`w-full p-3 rounded-lg transition-colors ${
                           currentLesson?.id === lesson.id
                             ? 'bg-primary-50 border border-primary-200'
-                            : lesson.isLocked && !lesson.isWatched
-                            ? 'opacity-60 cursor-not-allowed'
-                            : 'hover:bg-gray-50 cursor-pointer'
+                            : 'hover:bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {lesson.isWatched ? (
-                              lesson.isSkipped ? (
-                                <ChevronRight className="w-4 h-4 text-orange-600" />
-                              ) : (
+                        {/* Lesson Info - Clickable to select */}
+                        <button
+                          onClick={() => selectLesson(lesson)}
+                          className="w-full text-left cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-3">
+                              {lesson.isWatched ? (
                                 <CheckCircle className="w-4 h-4 text-green-600" />
-                              )
-                            ) : lesson.isLocked ? (
-                              <Circle className="w-4 h-4 text-gray-400" />
-                            ) : (
-                              <Play className="w-4 h-4 text-primary-600" />
-                            )}
+                              ) : (
+                                <Play className="w-4 h-4 text-primary-600" />
+                              )}
+                              
+                              <div className="text-left">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {lesson.title}
+                                  {lesson.isWatched && (
+                                    <span className="ml-2 text-xs text-green-600 font-medium">(Completed)</span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500">{lesson.summary}</p>
+                              </div>
+                            </div>
                             
-                            <div className="text-left">
-                              <p className={`text-sm font-medium ${
-                                lesson.isLocked && !lesson.isWatched ? 'text-gray-400' : 'text-gray-900'
-                              }`}>
-                                {lesson.title}
-                                {lesson.isSkipped && (
-                                  <span className="ml-2 text-xs text-orange-600 font-medium">(Skipped)</span>
-                                )}
-                                {lesson.isWatched && !lesson.isSkipped && (
-                                  <span className="ml-2 text-xs text-green-600 font-medium">(Completed)</span>
-                                )}
-                              </p>
-                              <p className="text-xs text-gray-500">{lesson.summary}</p>
+                            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                              <Clock className="w-3 h-3" />
+                              <span>{lesson.duration}</span>
                             </div>
                           </div>
-                          
-                          <div className="flex items-center space-x-2 text-xs text-gray-500">
-                            <Clock className="w-3 h-3" />
-                            <span>{lesson.duration}</span>
+                        </button>
+                        
+                        {/* Mark as Completed Button */}
+                        {!lesson.isWatched && (
+                          <div className="flex justify-end">
+                            <Button
+                              onClick={() => markLessonAsWatched(lesson.id, true)}
+                              size="sm"
+                              className="bg-green-500 hover:bg-green-600 text-white border-0 text-xs px-3 py-1 h-7"
+                              title="Mark lesson as completed (bypasses video progress requirement)"
+                            >
+                              Mark Complete
+                            </Button>
                           </div>
-                        </div>
-                      </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2036,29 +2107,7 @@ const CourseLearningPage = () => {
       </div>
       )}
 
-      {/* Skip Lesson Confirmation Modal */}
-      {showSkipLessonModal && currentLesson && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Skip Lesson</h3>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to skip <strong>{currentLesson.title}</strong>? 
-              This lesson will be marked as completed and you can proceed to the next one.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={() => setShowSkipLessonModal(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => skipLesson(currentLesson.id)}
-                className="bg-orange-500 hover:bg-orange-600"
-              >
-                Skip & Mark Complete
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Course Completion Modal */}
       {showCompletionModal && (

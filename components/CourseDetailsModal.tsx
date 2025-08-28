@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield, Play, Flag } from 'lucide-react'
+import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield, Play, Flag, Target } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import SignupForm from './SignupForm'
@@ -85,7 +85,7 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
         timeSpent: '0h 0m',
         certificate: course.certificate,
         enrolledAt: new Date().toISOString(),
-        price: course.price
+        price: 'FREE' // Changed to FREE
       }
       
       console.log('New enrollment data being saved:', newEnrollment)
@@ -227,20 +227,29 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                       <span className="text-gray-700">Mobile Access</span>
                     </div>
                   </div>
+                  
+                  {/* Progress Tracking Info */}
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <Target className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Progress Tracking</span>
+                    </div>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Lessons are marked as complete when you watch 90% of the content. You can access any lesson at any time!
+                    </p>
+                  </div>
                 </div>
 
                 {/* Pricing */}
-                <div className="bg-gray-50 rounded-xl p-6">
+                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
                   <div className="text-center">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Course Price</h3>
-                    <div className="text-4xl font-bold text-primary-600 mb-2">
-                      {course.price}
+                    <h3 className="text-2xl font-bold text-green-900 mb-2">Course Access</h3>
+                    <div className="text-4xl font-bold text-green-600 mb-2">
+                      FREE
                     </div>
-                    {course.originalPrice && (
-                      <div className="text-lg text-gray-500 line-through">
-                        {course.originalPrice}
-                      </div>
-                    )}
+                    <div className="text-lg text-green-700 font-medium">
+                      All lessons unlocked
+                    </div>
                   </div>
                 </div>
 
@@ -249,7 +258,7 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                   <Button
                     onClick={handleEnroll}
                     disabled={isEnrolling}
-                    className="w-full py-4 text-lg font-semibold"
+                    className="w-full py-4 text-lg font-semibold bg-green-600 hover:bg-green-700"
                   >
                     {isEnrolling ? (
                       <>
@@ -258,16 +267,16 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                       </>
                     ) : (
                       <>
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        {isAuthenticated ? `Enroll Now - ${course.price}` : 'Sign Up to Enroll'}
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        {isAuthenticated ? 'Get Free Access' : 'Sign Up for Free Access'}
                       </>
                     )}
                   </Button>
 
                   <div className="text-center mt-4">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                      <Shield className="w-4 h-4" />
-                      <span>30-day money-back guarantee</span>
+                    <div className="flex items-center justify-center space-x-2 text-sm text-green-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Free access to all course content</span>
                     </div>
                   </div>
                 </div>

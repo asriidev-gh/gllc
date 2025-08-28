@@ -98,8 +98,85 @@
     --app-bg: #111827;
     --app-text: #f9fafb;
     --card-bg: #1f2937;
-    --card-border: #374151;
-    --primary-color: #60a5fa;
+  }
+
+  /* Custom video progress bar styles */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .slider::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.3);
+    height: 8px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #ffffff;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .slider::-webkit-slider-thumb:hover {
+    background: #f3f4f6;
+    transform: scale(1.1);
+  }
+
+  .slider::-moz-range-track {
+    background: rgba(255, 255, 255, 0.3);
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+  }
+
+  .slider::-moz-range-thumb {
+    background: #ffffff;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .slider::-moz-range-thumb:hover {
+    background: #f3f4f6;
+    transform: scale(1.1);
+  }
+
+  /* Disabled state for progress bar */
+  .slider:disabled::-webkit-slider-track {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+  }
+
+  .slider:disabled::-webkit-slider-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .slider:disabled::-moz-range-track {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+  }
+
+    .slider:disabled::-moz-range-thumb {
+    background: rgba(255, 255, 255, 0.5);
+    cursor: not-allowed;
+    transform: none;
+  }
   }
 
   .theme-dark body {
@@ -364,7 +441,6 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400;
   }
-}
 
 @layer components {
   .btn-primary {

@@ -21,6 +21,7 @@
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "critters": "^0.0.23",
     "framer-motion": "^10.16.16",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
