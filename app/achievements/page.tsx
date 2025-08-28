@@ -276,36 +276,151 @@ export default function AchievementsPage() {
       })
     }
     
+    // Achievement 8: Assessment Achievements
+    const completedAssessments = courses.filter(course => course.assessmentCompleted).length
+    if (completedAssessments >= 1) {
+      achievementCount++
+      achievements.push({
+        id: 'first_assessment',
+        title: 'Knowledge Tester',
+        description: 'Completed your first course assessment',
+        icon: '📝',
+        unlocked: true,
+        category: 'Assessment',
+        unlockedAt: new Date().toISOString().split('T')[0]
+      })
+    }
+    if (completedAssessments >= 3) {
+      achievementCount++
+      achievements.push({
+        id: 'multiple_assessments',
+        title: 'Assessment Ace',
+        description: `Completed ${completedAssessments} course assessments`,
+        icon: '🎯',
+        unlocked: true,
+        category: 'Assessment',
+        unlockedAt: new Date().toISOString().split('T')[0]
+      })
+    }
+    
+    // Achievement 9: High Assessment Scores
+    const highScoringAssessments = courses.filter(course => 
+      course.assessmentCompleted && course.assessmentScore && course.assessmentScore >= 80
+    ).length
+    if (highScoringAssessments >= 1) {
+      achievementCount++
+      achievements.push({
+        id: 'high_score',
+        title: 'High Achiever',
+        description: 'Scored 80% or higher on an assessment',
+        icon: '⭐',
+        unlocked: true,
+        category: 'Assessment',
+        unlockedAt: new Date().toISOString().split('T')[0]
+      })
+    }
+    if (highScoringAssessments >= 3) {
+      achievementCount++
+      achievements.push({
+        id: 'excellent_scores',
+        title: 'Excellence Expert',
+        description: `Scored 80%+ on ${highScoringAssessments} assessments`,
+        icon: '🏆',
+        unlocked: true,
+        category: 'Assessment',
+        unlockedAt: new Date().toISOString().split('T')[0]
+      })
+    }
+    
     return { count: achievementCount, details: achievements }
   }
 
   // Load enrolled courses and calculate achievements
   const loadEnrolledCourses = async () => {
     try {
+      // Load real enrolled courses from localStorage
       const savedEnrollments = localStorage.getItem('enrolled_courses')
       let courses: any[] = []
       
       if (savedEnrollments) {
-        courses = JSON.parse(savedEnrollments).map((enrollment: any) => ({
-          id: enrollment.id,
-          name: enrollment.name || enrollment.title || 'Unknown Course',
-          language: enrollment.language,
-          flag: enrollment.flag,
-          level: enrollment.level,
-          progress: enrollment.progress || 0,
-          totalLessons: enrollment.totalLessons,
-          completedLessons: enrollment.completedLessons || 0,
-          currentLesson: enrollment.currentLesson || 1,
-          rating: enrollment.rating,
-          lastAccessed: enrollment.lastAccessed || 'Just now',
-          timeSpent: enrollment.timeSpent || '0h 0m',
-          certificate: enrollment.certificate || false
-        }))
+        try {
+          const enrollments = JSON.parse(savedEnrollments)
+          console.log('Raw enrollments from localStorage:', enrollments)
+          
+          // Load enhanced progress data for each course
+          const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+          const userProgress = localStorage.getItem(userProgressKey)
+          const progressData = userProgress ? JSON.parse(userProgress) : {}
+          
+          courses = enrollments.map((enrollment: any) => {
+            console.log('Processing enrollment:', enrollment)
+            
+            // Get enhanced progress data for this course
+            const courseProgress = progressData[enrollment.id] || {}
+            const totalLessons = courseProgress.totalLessons || enrollment.totalLessons || 0
+            const completedLessons = courseProgress.completedLessons || enrollment.completedLessons || 0
+            const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+            
+            // Determine completion status
+            let isCompleted = courseProgress.isCompleted || (totalLessons > 0 && completedLessons > 0 && completedLessons >= totalLessons)
+            
+            // If course is completed but no completion date, set it to now
+            let completionDate = courseProgress.completionDate
+            if (isCompleted && !completionDate && completedLessons > 0) {
+              completionDate = new Date().toISOString()
+            }
+            
+            // Additional safety check: if no lessons have been started, course cannot be completed
+            if (completedLessons === 0) {
+              isCompleted = false
+              completionDate = undefined
+            }
+            
+            const assessmentScore = courseProgress.assessmentScore || null
+            const assessmentCompleted = courseProgress.assessmentCompleted || false
+            
+            // Calculate actual time spent based on lesson progress
+            let actualTimeSpent = '0h 0m'
+            if (completedLessons > 0) {
+              // Each lesson is approximately 15 minutes (based on course structure)
+              const totalMinutes = completedLessons * 15
+              const hours = Math.floor(totalMinutes / 60)
+              const minutes = totalMinutes % 60
+              actualTimeSpent = `${hours}h ${minutes}m`
+            }
+            
+            return {
+              id: enrollment.id,
+              name: enrollment.name || enrollment.title || 'Unknown Course',
+              language: enrollment.language,
+              flag: enrollment.flag,
+              level: enrollment.level,
+              progress: progressPercentage,
+              totalLessons,
+              completedLessons,
+              currentLesson: isCompleted ? totalLessons : (enrollment.currentLesson || 1),
+              rating: enrollment.rating,
+              lastAccessed: enrollment.lastAccessed || 'Just now',
+              timeSpent: actualTimeSpent,
+              certificate: enrollment.certificate || false,
+              // Enhanced progress data
+              isCompleted,
+              assessmentScore,
+              assessmentCompleted,
+              completionDate
+            }
+          })
+          
+          console.log('Processed courses for achievements with enhanced progress:', courses)
+        } catch (error) {
+          console.error('Error processing enrollments:', error)
+          courses = []
+        }
       }
       
       setEnrolledCourses(courses)
       
-      // Calculate stats from real data
+      // Calculate stats from enhanced data
       const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
       const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0)
       const totalTimeSpent = courses.reduce((sum, course) => {
@@ -604,12 +719,138 @@ export default function AchievementsPage() {
             </motion.div>
           </div>
 
-          {/* Motivation Section */}
+          {/* Enrolled Courses with Assessment Status */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-center text-white"
+            className="mt-8 bg-white rounded-xl shadow-sm border p-6"
+          >
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Enrolled Courses</h2>
+            
+            {enrolledCourses.length > 0 ? (
+              <div className="space-y-4">
+                {enrolledCourses.map((course, index) => (
+                  <motion.div
+                    key={course.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.1 }}
+                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-4">
+                        <div className="text-3xl">{course.flag}</div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900">{course.name}</h3>
+                            <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+                              {course.level}
+                            </span>
+                            {course.isCompleted && course.certificate && (
+                              <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
+                                🏆 Certificate
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700">Progress</span>
+                              <span className="text-sm font-semibold text-blue-600">
+                                {course.progress}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${course.progress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                          
+                          {/* Assessment Status */}
+                          {course.assessmentCompleted ? (
+                            <div className="flex items-center space-x-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                              <Target className="w-4 h-4 text-green-600" />
+                              <span className="text-green-700 font-medium">Assessment: {course.assessmentScore}%</span>
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                (course.assessmentScore || 0) >= 70 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
+                              </span>
+                            </div>
+                          ) : course.isCompleted && course.certificate ? (
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200">
+                              <div className="flex items-center space-x-2 text-sm">
+                                <Target className="w-4 h-4 text-yellow-600" />
+                                <span className="text-yellow-700 font-medium">Assessment not taken yet</span>
+                              </div>
+                              <button
+                                onClick={() => router.push(`/assessment?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`)}
+                                className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white border-0 rounded"
+                              >
+                                Take Assessment
+                              </button>
+                            </div>
+                          ) : null}
+                          
+                          {/* Course Details */}
+                          <div className="flex items-center space-x-4 text-xs text-gray-600 mt-2">
+                            <span className="flex items-center">
+                              <BookOpen className="w-3 h-3 mr-1" />
+                              {course.completedLessons}/{course.totalLessons} lessons
+                            </span>
+                            <span className="flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {course.timeSpent}
+                            </span>
+                            <span className="flex items-center">
+                              <Star className="w-3 h-3 mr-1" />
+                              {course.rating}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end space-y-2">
+                        <button
+                          onClick={() => router.push(`/courses/${course.id}`)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+                        >
+                          {course.isCompleted && course.certificate ? 'Review Course' : 'Continue Learning'}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BookOpen className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No courses enrolled yet</p>
+                <p className="text-sm text-gray-400 mt-1">Enroll in courses to see your progress here!</p>
+                <button
+                  onClick={() => router.push('/courses')}
+                  className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  Browse Courses
+                </button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Motivation Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-center text-white"
           >
             <Award className="w-16 h-16 mx-auto mb-4 text-blue-200" />
             <h2 className="text-2xl font-bold mb-4">Keep Up the Great Work!</h2>

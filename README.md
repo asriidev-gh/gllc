@@ -102,6 +102,7 @@ NEXT_PUBLIC_APP_VERSION=3.0.0
 - **Dashboard**: User progress and course management
 - **Assessment**: Course-specific assessment system
 - **ProgressTracker**: Learning progress management
+- **AvatarSelector**: Comprehensive avatar system with predefined and custom options
 
 ### Adding New Features
 1. Create feature branch: `git checkout -b feature/new-feature`
@@ -125,6 +126,13 @@ NEXT_PUBLIC_APP_VERSION=3.0.0
 - **Real-time Updates**: Progress changes reflect immediately
 - **Cross-Component Sync**: Dashboard and course details stay synchronized
 - **Data Persistence**: All progress data persists across sessions
+
+### Avatar System
+- **Predefined Options**: 12 emoji-based avatars (Student, Teacher, Traveler, etc.)
+- **Custom Generation**: 25+ styles from Dicebear free API
+- **Cross-Component Display**: Consistent avatar display across profile, header, and dashboard
+- **User Guidance**: Comprehensive tooltips, welcome messages, and step-by-step instructions
+- **Persistent Storage**: Avatar selections saved to localStorage and auth store
 
 ## 🎯 Roadmap
 

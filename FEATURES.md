@@ -104,6 +104,14 @@
 - **Result Storage**: Assessment results saved to course progress
 - **Dashboard Display**: Scores visible in course overview
 
+### Avatar System
+- **Predefined Options**: 12 emoji-based avatars for quick selection
+- **Custom Generation**: 25+ styles from Dicebear free API service
+- **Cross-Component Display**: Consistent avatar appearance across all components
+- **User Guidance**: Comprehensive tooltips, welcome messages, and step-by-step instructions
+- **Persistent Storage**: Avatar selections saved to localStorage and global auth store
+- **Accessibility**: ARIA labels, descriptive tooltips, and screen reader support
+
 ## 🎯 Learning Outcomes
 
 ### Student Benefits

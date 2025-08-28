@@ -132,7 +132,22 @@ export function Header() {
                   )}
                   <div className="relative group">
                     <Button variant="outline" className="flex items-center space-x-2">
-                      <User className="w-4 h-4" />
+                      {user?.avatar ? (
+                        user.avatar.startsWith('http') ? (
+                          // Dicebear or external URL
+                          <img
+                            src={user.avatar}
+                            alt="Profile avatar"
+                            className="w-5 h-5 rounded-full"
+                          />
+                        ) : (
+                          // Emoji avatar
+                          <span className="text-lg">{user.avatar}</span>
+                        )
+                      ) : (
+                        // Default user icon
+                        <User className="w-4 h-4" />
+                      )}
                       <span>{user?.name?.split(' ')[0] || 'User'}</span>
                     </Button>
                     {/* Dropdown Menu */}

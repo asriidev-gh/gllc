@@ -13,6 +13,7 @@ export interface User {
   interests: string[]
   nativeLanguage: string
   targetLanguages: string[]
+  avatar?: string | null
   createdAt?: string
   updatedAt?: string
   password?: string // For demo purposes only - in production this would be hashed
@@ -58,6 +59,7 @@ export interface AuthState {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>
   logUserAction: (action: string, details: string) => void
   getUserActionLogs: (userId: string) => UserAction[]
+  updateUserAvatar: (avatar: string | null) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -92,6 +94,13 @@ export const useAuthStore = create<AuthState>()(
             loginCount: userLoginHistory.count
           })
           
+          // Load saved avatar from localStorage if user has one
+          let savedAvatar = null
+          if (isReturningUser) {
+            const userData = JSON.parse(localStorage.getItem('users') || '{}')
+            savedAvatar = userData[email]?.avatar || null
+          }
+          
           const user: User = {
             id: isReturningUser ? userLoginHistory.userId || `user_${Date.now()}` : `user_${Date.now()}`,
             email,
@@ -103,6 +112,7 @@ export const useAuthStore = create<AuthState>()(
             interests: ['English', 'Tagalog'],
             nativeLanguage: 'Filipino',
             targetLanguages: ['English', 'Tagalog'],
+            avatar: savedAvatar,
             createdAt: isReturningUser ? userLoginHistory.firstLogin : new Date().toISOString(),
             password: password // Store password for demo validation
           }
@@ -205,6 +215,7 @@ export const useAuthStore = create<AuthState>()(
             interests: userData.interests,
             nativeLanguage: userData.nativeLanguage,
             targetLanguages: userData.targetLanguages,
+            avatar: null,
             createdAt: new Date().toISOString()
           }
           
@@ -378,6 +389,7 @@ export const useAuthStore = create<AuthState>()(
           interests: ['English', 'Tagalog'],
           nativeLanguage: 'Filipino',
           targetLanguages: ['English', 'Tagalog'],
+          avatar: null,
           createdAt: new Date().toISOString()
         }
         
@@ -497,6 +509,33 @@ export const useAuthStore = create<AuthState>()(
           console.log('📊 Total action logs after logging:', newState.actionLogs.length)
           return newState
         })
+      },
+
+      // Update user avatar
+      updateUserAvatar: (avatar: string | null) => {
+        const { user } = get()
+        if (!user) return
+        
+        console.log('🖼️ Updating user avatar:', avatar)
+        
+        // Update user object with new avatar
+        const updatedUser = { ...user, avatar }
+        
+        // Save to localStorage for persistence
+        if (user.email) {
+          const userData = JSON.parse(localStorage.getItem('users') || '{}')
+          if (!userData[user.email]) {
+            userData[user.email] = {}
+          }
+          userData[user.email].avatar = avatar
+          localStorage.setItem('users', JSON.stringify(userData))
+          console.log('💾 Avatar saved to localStorage:', avatar)
+        }
+        
+        // Update state
+        set({ user: updatedUser })
+        
+        console.log('✅ Avatar updated successfully')
       },
 
       // Get user action logs

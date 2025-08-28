@@ -1045,13 +1045,37 @@ export function Dashboard() {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Welcome back, {user?.name || 'Student'}! 👋
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Continue your language learning journey
-              </p>
+            <div className="flex items-center space-x-4">
+              {/* User Avatar */}
+              {user?.avatar ? (
+                user.avatar.startsWith('http') ? (
+                  // Dicebear or external URL
+                  <img
+                    src={user.avatar}
+                    alt="Profile avatar"
+                    className="w-16 h-16 rounded-full border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  // Emoji avatar
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
+                    {user.avatar}
+                  </div>
+                )
+              ) : (
+                // Default avatar with initials
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 border-white shadow-lg">
+                  {user?.name?.charAt(0).toUpperCase() || 'S'}
+                </div>
+              )}
+              
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Welcome back, {user?.name || 'Student'}! 👋
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Continue your language learning journey
+                </p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
