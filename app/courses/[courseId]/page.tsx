@@ -1548,7 +1548,7 @@ const CourseLearningPage = () => {
                   { id: 'overview', label: 'Overview', icon: BookOpen },
                   { id: 'content', label: 'Content', icon: Play },
                   { id: 'resources', label: 'Resources', icon: Download },
-                  { id: 'discussions', label: 'Discussions', icon: MessageCircle },
+                  // { id: 'discussions', label: 'Discussions', icon: MessageCircle }, // Hidden for future implementation
                   { id: 'notes', label: 'Notes & Bookmarks', icon: Edit3 }
                 ].map((tab) => {
                   const Icon = tab.icon
@@ -1912,65 +1912,14 @@ const CourseLearningPage = () => {
               </div>
             )}
 
+            {/* Placeholder for future Course Discussions implementation */}
             {activeTab === 'discussions' && (
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Course Discussions</h2>
-                
-                {currentLesson ? (
-                  <div className="space-y-6">
-                    <div className="bg-white border rounded-lg p-4">
-                      <h3 className="font-semibold text-gray-900 mb-3">
-                        Discussion for: {currentLesson.title}
-                      </h3>
-                      
-                      {/* Add Comment */}
-                      <div className="mb-4">
-                        <textarea
-                          placeholder="Add a comment or question..."
-                          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                          rows={3}
-                        />
-                        <div className="flex justify-end mt-2">
-                          <Button>Post Comment</Button>
-                        </div>
-                      </div>
-                      
-                      {/* Comments List */}
-                      <div className="space-y-4">
-                        {currentLesson.comments?.map((comment) => (
-                          <div key={comment.id} className="border-l-4 border-primary-200 pl-4">
-                            <div className="flex items-start space-x-3">
-                              <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-sm font-medium">
-                                {comment.avatar}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <span className="font-medium text-gray-900">{comment.user}</span>
-                                  <span className="text-sm text-gray-500">{comment.timestamp}</span>
-                                </div>
-                                <p className="text-gray-700 mb-2">{comment.content}</p>
-                                
-                                <div className="flex items-center space-x-4 text-sm">
-                                  <button className="flex items-center space-x-1 text-gray-500 hover:text-primary-600">
-                                    <ThumbsUp className="w-4 h-4" />
-                                    <span>{comment.likes}</span>
-                                  </button>
-                                  <button className="text-gray-500 hover:text-primary-600">Reply</button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Lesson Selected</h3>
-                    <p className="text-gray-600">Select a lesson to view and participate in discussions.</p>
-                  </div>
-                )}
+                <div className="text-center py-12">
+                  <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Course Discussions</h3>
+                  <p className="text-gray-600">This feature is coming soon! Students will be able to discuss lessons, ask questions, and share insights.</p>
+                </div>
               </div>
             )}
 

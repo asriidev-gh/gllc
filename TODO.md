@@ -1,6 +1,6 @@
 # Language Training Center for Kids - Development TODO
 
-## 🎯 **Project Status: Course Assessment System Complete!**
+## 🎯 **Project Status: Course Features Optimized!**
 
 ### **Overall Progress: 98%** 🚀
 
@@ -62,6 +62,11 @@
 - [x] Accessibility features and responsive design
 - [x] Enhanced user experience with immediate feedback
 
+### **📋 Course Feature Management**
+- [x] Course Discussions tab hidden for future implementation
+- [x] Placeholder system with "Coming Soon" message
+- [x] Infrastructure preserved for future discussion system
+
 ---
 
 ## 🚧 **In Progress**
@@ -77,6 +82,7 @@
 ## 📋 **Planned Features**
 
 ### **Version 3.1 (Next Phase)**
+- [ ] Course Discussions feature implementation
 - [ ] Advanced analytics dashboard
 - [ ] Parent/teacher reporting system
 - [ ] Multi-language support expansion

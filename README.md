@@ -31,6 +31,7 @@ A comprehensive language learning platform designed specifically for children, f
 - **Progress Visualization**: Clear progress bars and completion indicators
 - **Achievement System**: Celebrate learning milestones and progress
 - **Course Management**: Easy enrollment, progress tracking, and assessment access
+- **Avatar System**: Customizable user avatars with emoji and generated options
 
 ## 🛠️ Technology Stack
 
@@ -66,7 +67,7 @@ npm run dev
 Create a `.env` file with:
 ```env
 NEXT_PUBLIC_APP_NAME=Language Training Center
-NEXT_PUBLIC_APP_VERSION=3.0.0
+NEXT_PUBLIC_APP_VERSION=3.0.1
 ```
 
 ## 📱 Usage
@@ -137,6 +138,7 @@ NEXT_PUBLIC_APP_VERSION=3.0.0
 ## 🎯 Roadmap
 
 ### Version 3.1 (Next)
+- [ ] Course Discussions feature implementation
 - [ ] Advanced analytics dashboard
 - [ ] Parent/teacher reporting system
 - [ ] Multi-language support expansion
@@ -173,5 +175,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Last Updated**: August 28, 2025  
-**Version**: 3.0.0  
+**Version**: 3.0.1  
 **Status**: Active Development

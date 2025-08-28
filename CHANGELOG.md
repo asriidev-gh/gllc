@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.1] - 2025-08-28
+
+### 📋 **Course Features Management**
+- **HIDDEN**: Course Discussions tab temporarily hidden for future implementation
+- **ADDED**: Placeholder system for Course Discussions with "Coming Soon" message
+- **PREPARED**: Infrastructure ready for full discussion system implementation
+- **MAINTAINED**: All other course functionality remains intact
+
+---
+
 ## [3.0.0] - 2025-08-28
 
 ### 🎯 **Course Assessment System - COMPLETED!**
