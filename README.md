@@ -1,160 +1,155 @@
-# Global Language Training Center
+# Language Training Center for Kids
 
-A comprehensive language learning platform built with Next.js, designed to help students worldwide master languages through interactive courses, AI-powered assessments, and personalized learning paths.
+A comprehensive language learning platform designed specifically for children, featuring interactive lessons, progress tracking, and engaging assessments.
 
-## 🌟 Features
+## 🚀 Features
 
-### Core Learning Features
-- **Interactive Video Lessons** - Learn through curated video content with progress tracking
-- **Smart Video Player** - Custom controls with volume, fullscreen, and progress seeking
-- **Flexible Lesson Completion** - Mark lessons complete from sidebar or video player
-- **90% Progress Threshold** - Complete lessons after watching 90% of content
-- **AI-Powered Assessments** - Dynamic exams that adapt to your learning level
-- **Multi-Language Support** - Tagalog, English, Korean, Japanese, Chinese, Spanish
-- **Progress Tracking** - Monitor your learning journey with detailed analytics
-- **Certificate System** - Earn certificates upon course completion
+### Core Learning System
+- **Interactive Video Lessons**: Engaging video content with progress tracking
+- **Smart Progress Management**: Automatic lesson completion at 90% watch threshold
+- **Course Content Sidebar**: Easy navigation between lessons with clickable lesson selection
+- **Assessment System**: Course-specific assessments with scoring and progress tracking
+- **Progress Persistence**: All learning progress saved and synchronized across dashboard and course details
+
+### Advanced Video Player
+- **Full Video Controls**: Play/pause, volume control, fullscreen, and progress seeking
+- **Smart Completion**: Lessons marked complete at 90% watch progress
+- **Manual Completion**: "Mark as Complete" button available for immediate completion
+- **Progress Bar**: Draggable progress bar for easy navigation
+- **Volume Control**: Adjustable volume with visual feedback
+
+### Assessment & Progress Tracking
+- **Course Assessments**: Take assessments directly from enrolled courses
+- **Dashboard Integration**: Assessment scores displayed in "Your Enrolled Courses"
+- **Progress Synchronization**: Real-time updates between course details and dashboard
+- **Completion Tracking**: Visual indicators for completed lessons and assessments
+- **Learning Analytics**: Track time spent, progress percentage, and completion dates
 
 ### User Experience
-- **Personalized Dashboard** - Track your enrolled courses and learning progress
-- **Course Management** - Enroll, unenroll, and continue learning seamlessly
-- **Interactive Sidebar Navigation** - Click any lesson to switch and auto-play
-- **Smart Lesson Switching** - Seamlessly switch between lessons with video state reset
-- **Notes Taking** - Save personal notes for each lesson
-- **Bookmarking** - Mark important lessons for quick access
-- **Discussion Forums** - Engage with other learners and instructors
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Intuitive Navigation**: Easy-to-use interface for children and parents
+- **Progress Visualization**: Clear progress bars and completion indicators
+- **Achievement System**: Celebrate learning milestones and progress
+- **Course Management**: Easy enrollment, progress tracking, and assessment access
 
-### Technical Features
-- **Responsive Design** - Works perfectly on all devices
-- **Dark/Light Theme** - Customizable appearance settings
-- **Real-time Progress** - Instant updates on your learning status
-- **Advanced Video Controls** - Volume slider, fullscreen toggle, progress seeking
-- **State Management** - Comprehensive lesson state and progress tracking
-- **Offline Resources** - Download course materials for offline study
-- **Audit Logging** - Track user actions and system events
+## 🛠️ Technology Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, Framer Motion
+- **State Management**: React hooks, localStorage
+- **Video Player**: HTML5 video with custom controls
+- **UI Components**: Custom component library with accessibility features
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 20.x or higher
-- npm or yarn package manager
+- Node.js 18+ 
+- npm or yarn
 
 ### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/asriidev-gh/gllc.git
-   cd gllc
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. **Start the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-4. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## 🏗️ Project Structure
-
-```
-gllc/
-├── app/                    # Next.js 13+ app directory
-│   ├── (auth)/            # Authentication routes
-│   ├── assessment/        # Language assessment
-│   ├── courses/           # Course management
-│   ├── dashboard/         # User dashboard
-│   ├── profile/           # User profile
-│   ├── settings/          # User settings
-│   └── globals.css        # Global styles
-├── components/            # Reusable UI components
-│   ├── ui/               # Base UI components
-│   ├── forms/            # Form components
-│   └── sections/         # Page sections
-├── stores/               # Zustand state management
-├── types/                # TypeScript type definitions
-└── public/               # Static assets
-```
-
-## 🎯 Key Technologies
-
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Styling**: Tailwind CSS, Framer Motion
-- **State Management**: Zustand
-- **Authentication**: Custom auth system with localStorage
-- **Icons**: Lucide React
-- **Notifications**: React Hot Toast
-
-## 📱 Pages & Routes
-
-### Public Pages
-- `/` - Home page with course overview
-- `/courses` - Browse all available courses
-- `/about` - About the platform
-- `/contact` - Contact information
-- `/assessment` - Language assessment test
-
-### User Pages (Requires Authentication)
-- `/dashboard` - User dashboard with enrolled courses
-- `/profile` - User profile management
-- `/settings` - User preferences and account settings
-- `/achievements` - User achievements and badges
-- `/courses/[courseId]` - Individual course learning page
-
-### User Pages (Requires Authentication)
-- `/audit` - System audit logs
-
-## 🔐 Authentication
-
-The platform uses a custom authentication system with:
-- User registration and login
-- Demo user creation for testing
-- Session persistence with localStorage
-- Protected route handling
-
-## 🎨 Customization
-
-### Theme Settings
-- Light/Dark mode toggle
-- Font size adjustments
-- Color scheme preferences
-- Notification preferences
-
-### Language & Region
-- Timezone selection
-- Date format preferences
-- Language interface options
-
-## 🚀 Deployment
-
-### Build for Production
 ```bash
-npm run build
-npm start
+# Clone the repository
+git clone <repository-url>
+cd LanguageTrainingCenterForKids
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Start development server
+npm run dev
 ```
 
 ### Environment Variables
-Create a `.env.local` file for local development:
+Create a `.env` file with:
 ```env
-NEXT_PUBLIC_APP_NAME="Global Language Training Center"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_NAME=Language Training Center
+NEXT_PUBLIC_APP_VERSION=3.0.0
 ```
+
+## 📱 Usage
+
+### For Students
+1. **Browse Courses**: Explore available language courses
+2. **Enroll in Courses**: Select courses of interest
+3. **Watch Lessons**: Complete video lessons with progress tracking
+4. **Take Assessments**: Complete course assessments to test knowledge
+5. **Track Progress**: Monitor learning progress in dashboard
+
+### For Parents/Teachers
+1. **Monitor Progress**: View detailed progress reports
+2. **Assessment Results**: Review assessment scores and feedback
+3. **Learning Analytics**: Track time spent and completion rates
+4. **Course Management**: Manage enrolled courses and progress
+
+## 🔧 Development
+
+### Project Structure
+```
+├── app/                    # Next.js app directory
+│   ├── courses/           # Course learning pages
+│   ├── assessment/        # Assessment system
+│   └── dashboard/         # User dashboard
+├── components/            # Reusable UI components
+├── stores/               # State management
+└── lib/                  # Utility functions
+```
+
+### Key Components
+- **CoursePlayer**: Video player with progress tracking
+- **Dashboard**: User progress and course management
+- **Assessment**: Course-specific assessment system
+- **ProgressTracker**: Learning progress management
+
+### Adding New Features
+1. Create feature branch: `git checkout -b feature/new-feature`
+2. Implement changes with proper TypeScript types
+3. Update documentation and tests
+4. Submit pull request for review
+
+## 📊 Progress Tracking
+
+### Lesson Completion
+- **Automatic**: 90% watch threshold triggers completion
+- **Manual**: "Mark as Complete" button for immediate completion
+- **Persistence**: Progress saved to localStorage and synchronized
+
+### Assessment System
+- **Course-Specific**: Assessments tailored to enrolled courses
+- **Scoring**: Percentage-based scoring with pass/fail thresholds
+- **Integration**: Results automatically update dashboard progress
+
+### Dashboard Synchronization
+- **Real-time Updates**: Progress changes reflect immediately
+- **Cross-Component Sync**: Dashboard and course details stay synchronized
+- **Data Persistence**: All progress data persists across sessions
+
+## 🎯 Roadmap
+
+### Version 3.1 (Next)
+- [ ] Advanced analytics dashboard
+- [ ] Parent/teacher reporting system
+- [ ] Multi-language support expansion
+- [ ] Mobile app development
+
+### Version 3.2 (Future)
+- [ ] AI-powered learning recommendations
+- [ ] Social learning features
+- [ ] Gamification enhancements
+- [ ] Offline learning support
 
 ## 🤝 Contributing
 
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## 📄 License
 
@@ -162,17 +157,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Built with Next.js and React
-- Styled with Tailwind CSS
-- Icons from Lucide React
-- Animations powered by Framer Motion
-
-## 📞 Support
-
-For support and questions:
-- Create an issue in the GitHub repository
-- Contact the development team
+- Next.js team for the amazing framework
+- Tailwind CSS for the utility-first CSS framework
+- Framer Motion for smooth animations
+- All contributors and supporters
 
 ---
 
-**Built with ❤️ for language learners worldwide**
+**Last Updated**: August 28, 2025  
+**Version**: 3.0.0  
+**Status**: Active Development

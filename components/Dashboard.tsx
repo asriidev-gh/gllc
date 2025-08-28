@@ -731,6 +731,11 @@ export function Dashboard() {
     setShowAssessmentModal(true)
   }
 
+  const takeAssessment = (course: EnrolledCourse) => {
+    // Navigate to the assessment page with course context
+    router.push(`/assessment?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`)
+  }
+
   const downloadCertificatePDF = async (course: EnrolledCourse) => {
     try {
       // Dynamically import heavy libraries only when needed
@@ -1331,7 +1336,7 @@ export function Dashboard() {
                           )}
                             
                             {/* Assessment Status */}
-                            {course.assessmentCompleted && (
+                            {course.assessmentCompleted ? (
                               <button
                                 onClick={() => showAssessment(course)}
                                 className="flex items-center space-x-2 text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
@@ -1347,7 +1352,22 @@ export function Dashboard() {
                                   {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
                                 </span>
                               </button>
-                            )}
+                            ) : course.isCompleted && course.certificate ? (
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200">
+                                <div className="flex items-center space-x-2 text-sm">
+                                  <Target className="w-4 h-4 text-yellow-600" />
+                                  <span className="text-yellow-700 font-medium">Assessment not taken yet</span>
+                                </div>
+                                <Button
+                                  onClick={() => takeAssessment(course)}
+                                  size="sm"
+                                  className="bg-yellow-600 hover:bg-yellow-700 text-white border-0"
+                                >
+                                  <Target className="w-3 h-3 mr-1" />
+                                  Take Assessment
+                                </Button>
+                              </div>
+                            ) : null}
                             
                             {/* Lesson Progress Details */}
                             <div className="flex items-center space-x-4 text-xs text-gray-600">

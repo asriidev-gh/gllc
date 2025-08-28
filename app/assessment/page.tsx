@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowRight, 
@@ -169,67 +169,189 @@ const questions: Question[] = [
     correctAnswer: 2,
     explanation: 'Gamsahamnida (감사합니다) means "Thank you".',
     points: 5
+  },
+
+  // Course-Specific Assessment Questions
+  {
+    id: 11,
+    type: 'multiple-choice',
+    language: 'Course',
+    level: 'beginner',
+    question: 'What is the primary goal of this language course?',
+    options: [
+      'To memorize vocabulary only',
+      'To develop practical communication skills',
+      'To pass written exams',
+      'To learn grammar rules by heart'
+    ],
+    correctAnswer: 1,
+    explanation: 'The course focuses on developing practical communication skills for real-world use.',
+    points: 10
+  },
+  {
+    id: 12,
+    type: 'multiple-choice',
+    language: 'Course',
+    level: 'beginner',
+    question: 'Which learning method is most effective for language acquisition?',
+    options: [
+      'Reading textbooks only',
+      'Passive listening',
+      'Active practice and conversation',
+      'Memorizing grammar rules'
+    ],
+    correctAnswer: 2,
+    explanation: 'Active practice and conversation are the most effective methods for learning a language.',
+    points: 10
+  },
+  {
+    id: 13,
+    type: 'multiple-choice',
+    language: 'Course',
+    level: 'intermediate',
+    question: 'How should you approach learning a new language?',
+    options: [
+      'Focus only on perfect pronunciation',
+      'Learn everything at once',
+      'Start with basics and build gradually',
+      'Skip beginner lessons'
+    ],
+    correctAnswer: 2,
+    explanation: 'Starting with basics and building gradually is the most effective approach.',
+    points: 10
+  },
+  {
+    id: 14,
+    type: 'multiple-choice',
+    language: 'Course',
+    level: 'intermediate',
+    question: 'What is the best way to retain new vocabulary?',
+    options: [
+      'Write it down once',
+      'Use it in context and practice regularly',
+      'Read it silently',
+      'Memorize without understanding'
+    ],
+    correctAnswer: 1,
+    explanation: 'Using vocabulary in context and practicing regularly is the best way to retain it.',
+    points: 10
+  },
+  {
+    id: 15,
+    type: 'multiple-choice',
+    language: 'Course',
+    level: 'advanced',
+    question: 'Why is cultural context important in language learning?',
+    options: [
+      'It\'s not important at all',
+      'It helps with grammar rules',
+      'It enhances understanding and communication',
+      'It\'s only useful for advanced learners'
+    ],
+    correctAnswer: 2,
+    explanation: 'Cultural context enhances understanding and communication in any language.',
+    points: 15
   }
 ]
 
 export default function AssessmentPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuthStore()
   
-  const [currentStep, setCurrentStep] = useState<'intro' | 'language-select' | 'assessment' | 'results' | 'history'>('intro')
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('')
+  // Get course context from URL parameters
+  const courseId = searchParams.get('courseId')
+  const courseName = searchParams.get('courseName')
+  
+  const [currentStep, setCurrentStep] = useState<'intro' | 'course-assessment' | 'results'>('intro')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [timeSpent, setTimeSpent] = useState(0)
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null)
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([])
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [isStartingAssessment, setIsStartingAssessment] = useState(false)
-  const [showRetakeConfirm, setShowRetakeConfirm] = useState(false)
-  const [languageToRetake, setLanguageToRetake] = useState<string>('')
   
-  // Fetch assessment results on component mount
-  useEffect(() => {
-    const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
-    console.log('📊 Initial assessment results loaded:', savedResults)
-    setAssessmentResults(savedResults)
-    
-    // Check if user came from dashboard with history step
-    const urlParams = new URLSearchParams(window.location.search)
-    const step = urlParams.get('step')
-    if (step === 'history') {
-      setCurrentStep('history')
+  // Course-specific assessment questions
+  const courseAssessmentQuestions = [
+    {
+      id: 1,
+      question: 'What is the primary goal of this language course?',
+      options: [
+        'To memorize vocabulary only',
+        'To develop practical communication skills',
+        'To pass written exams',
+        'To learn grammar rules by heart'
+      ],
+      correctAnswer: 1,
+      explanation: 'The course focuses on developing practical communication skills for real-world use.',
+      points: 10
+    },
+    {
+      id: 2,
+      question: 'Which learning method is most effective for language acquisition?',
+      options: [
+        'Reading textbooks only',
+        'Passive listening',
+        'Active practice and conversation',
+        'Memorizing grammar rules'
+      ],
+      correctAnswer: 2,
+      explanation: 'Active practice and conversation are the most effective methods for learning a language.',
+      points: 10
+    },
+    {
+      id: 3,
+      question: 'How should you approach learning a new language?',
+      options: [
+        'Focus only on perfect pronunciation',
+        'Learn everything at once',
+        'Start with basics and build gradually',
+        'Skip beginner lessons'
+      ],
+      correctAnswer: 2,
+      explanation: 'Starting with basics and building gradually is the most effective approach.',
+      points: 10
+    },
+    {
+      id: 4,
+      question: 'What is the best way to retain new vocabulary?',
+      options: [
+        'Write it down once',
+        'Use it in context and practice regularly',
+        'Read it silently',
+        'Memorize without understanding'
+      ],
+      correctAnswer: 1,
+      explanation: 'Using vocabulary in context and practicing regularly is the best way to retain it.',
+      points: 10
+    },
+    {
+      id: 5,
+      question: 'Why is cultural context important in language learning?',
+      options: [
+        'It\'s not important at all',
+        'It helps with grammar rules',
+        'It enhances understanding and communication',
+        'It\'s only useful for advanced learners'
+      ],
+      correctAnswer: 2,
+      explanation: 'Cultural context enhances understanding and communication in any language.',
+      points: 15
     }
-  }, [])
-
-  // Auto-start assessment when language is selected
-  useEffect(() => {
-    if (selectedLanguage && currentStep === 'language-select') {
-      console.log('🚀 Auto-start effect triggered for:', selectedLanguage)
-      setIsStartingAssessment(true)
-      // Small delay to show the language selection briefly
-      const timer = setTimeout(() => {
-        console.log('🚀 Starting assessment for:', selectedLanguage)
-        setCurrentStep('assessment')
-        setIsStartingAssessment(false)
-      }, 1500)
-      
-      return () => clearTimeout(timer)
-    }
-  }, [selectedLanguage, currentStep])
-  
-  const languages = [
-    { name: 'English', flag: '🇺🇸', description: 'Global communication language' },
-    { name: 'Tagalog', flag: '🇵🇭', description: 'Philippine national language' },
-    { name: 'Korean', flag: '🇰🇷', description: 'Popular Asian language' },
-    { name: 'Japanese', flag: '🇯🇵', description: 'Language of innovation' },
-    { name: 'Chinese', flag: '🇨🇳', description: 'Most spoken language worldwide' },
-    { name: 'Spanish', flag: '🇪🇸', description: 'Widely spoken romance language' }
   ]
 
-  const filteredQuestions = questions.filter(q => q.language === selectedLanguage)
-  const currentQuestion = filteredQuestions[currentQuestionIndex]
-  const isLastQuestion = currentQuestionIndex === filteredQuestions.length - 1
+  // Check if user came from course dashboard
+  useEffect(() => {
+    if (courseId && courseName) {
+      console.log('📚 Course assessment context:', { courseId, courseName })
+      // Auto-start course assessment
+      setCurrentStep('course-assessment')
+    }
+  }, [courseId, courseName])
+
+  // Course assessment logic
+  const currentQuestion = courseAssessmentQuestions[currentQuestionIndex]
+  const isLastQuestion = currentQuestionIndex === courseAssessmentQuestions.length - 1
 
   const selectAnswer = (answerIndex: number) => {
     if (!currentQuestion) return
@@ -253,10 +375,10 @@ export default function AssessmentPage() {
   const calculateResults = () => {
     let totalScore = 0
     let maxScore = 0
-    const correctAnswers: Question[] = []
-    const incorrectAnswers: Question[] = []
+    const correctAnswers: any[] = []
+    const incorrectAnswers: any[] = []
 
-    filteredQuestions.forEach(question => {
+    courseAssessmentQuestions.forEach(question => {
       maxScore += question.points
       const userAnswer = answers[question.id]
       
@@ -275,14 +397,14 @@ export default function AssessmentPage() {
     else if (percentage >= 60) level = 'intermediate'
     
     const result: AssessmentResult = {
-      language: selectedLanguage,
+      language: courseName || 'Course',
       level,
       score: totalScore,
       maxScore,
       percentage,
       completedAt: new Date().toISOString(),
       timeSpent,
-      recommendedCourses: getRecommendedCourses(selectedLanguage, level),
+      recommendedCourses: [],
       strengths: getStrengths(correctAnswers),
       improvements: getImprovements(incorrectAnswers)
     }
@@ -296,17 +418,29 @@ export default function AssessmentPage() {
     setAssessmentResult(result)
     setCurrentStep('results')
     
-    // Save result to localStorage and update state
-    const savedResults = JSON.parse(localStorage.getItem('assessment_results') || '[]')
-    savedResults.push(finalResult)
-    localStorage.setItem('assessment_results', JSON.stringify(savedResults))
-    
-    // Update the assessment results state
-    setAssessmentResults(prev => [...prev, finalResult])
+    // Save course assessment result to localStorage
+    if (courseId && user?.email) {
+      const courseProgressKey = `user_course_progress_${user.email}`
+      const userProgress = localStorage.getItem(courseProgressKey)
+      let progressData = userProgress ? JSON.parse(userProgress) : {}
+      
+      if (!progressData[courseId]) {
+        progressData[courseId] = {}
+      }
+      
+      // Update course assessment data
+      progressData[courseId].assessmentCompleted = true
+      progressData[courseId].assessmentScore = percentage
+      progressData[courseId].assessmentDate = new Date().toISOString()
+      progressData[courseId].lastUpdated = new Date().toISOString()
+      
+      localStorage.setItem(courseProgressKey, JSON.stringify(progressData))
+      console.log('Course assessment result saved:', progressData[courseId])
+    }
     
     // Record assessment completion activity
     if (user?.email) {
-      recordLearningActivity(user.email, 'assessment_completed', `${selectedLanguage} assessment - ${level} level (${percentage}%)`)
+      recordLearningActivity(user.email, 'assessment_completed', `${courseName || 'Course'} assessment - ${level} level (${percentage}%)`)
     }
   }
 
@@ -350,7 +484,6 @@ export default function AssessmentPage() {
 
   const restartAssessment = () => {
     setCurrentStep('intro')
-    setSelectedLanguage('')
     setCurrentQuestionIndex(0)
     setAnswers({})
     setAssessmentResult(null)
@@ -370,7 +503,6 @@ export default function AssessmentPage() {
       // No answers yet, exit directly
       console.log('🚪 No answers, exiting directly')
       setCurrentStep('intro')
-      setSelectedLanguage('')
       setCurrentQuestionIndex(0)
       setAnswers({})
       setTimeSpent(0)
@@ -379,62 +511,18 @@ export default function AssessmentPage() {
 
   const confirmExit = () => {
     setCurrentStep('intro')
-    setSelectedLanguage('')
     setCurrentQuestionIndex(0)
     setAnswers({})
     setTimeSpent(0)
     setShowExitConfirm(false)
   }
 
-  const checkPreviousAssessment = (language: string) => {
-    console.log('🔍 Checking previous assessment for:', language)
-    console.log('🔍 Current assessmentResults:', assessmentResults)
-    console.log('🔍 assessmentResults length:', assessmentResults.length)
-    console.log('🔍 assessmentResults type:', typeof assessmentResults)
-    
-    // Make sure assessmentResults is an array
-    if (!Array.isArray(assessmentResults)) {
-      console.log('🔍 assessmentResults is not an array, resetting to empty array')
-      setAssessmentResults([])
-      return false
-    }
-    
-    const previousResult = assessmentResults.find(result => result.language === language)
-    console.log('🔍 Previous result found:', previousResult)
-    
-    if (previousResult) {
-      console.log('🔍 Setting retake confirmation for:', language)
-      setLanguageToRetake(language)
-      setShowRetakeConfirm(true)
-      return true
-    }
-    
-    console.log('🔍 No previous result found for:', language)
-    return false
-  }
-
-  const confirmRetake = () => {
-    console.log('✅ Confirming retake for:', languageToRetake)
-    setShowRetakeConfirm(false)
-    
-    // Remove the previous result for this language
-    const updatedResults = assessmentResults.filter(result => result.language !== languageToRetake)
-    setAssessmentResults(updatedResults)
-    localStorage.setItem('assessment_results', JSON.stringify(updatedResults))
-    
-    // Set the selected language
-    setSelectedLanguage(languageToRetake)
-    setLanguageToRetake('')
-    
-    // Don't manually start assessment - let the auto-start effect handle it
-    // The auto-start effect will trigger when selectedLanguage changes
-  }
-
-  const cancelRetake = () => {
-    console.log('❌ Cancelling retake')
-    setShowRetakeConfirm(false)
-    setLanguageToRetake('')
-    // Don't reset selectedLanguage here, let user choose again
+  const retakeAssessment = () => {
+    setCurrentStep('course-assessment')
+    setCurrentQuestionIndex(0)
+    setAnswers({})
+    setTimeSpent(0)
+    setAssessmentResult(null)
   }
 
   const goToCourses = () => {
@@ -457,9 +545,9 @@ export default function AssessmentPage() {
                 <Target className="w-12 h-12 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Language Assessment</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Course Assessment</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Discover your language proficiency level and get personalized course recommendations
+              Test your knowledge and understanding of the course material
             </p>
           </motion.div>
 
@@ -505,7 +593,7 @@ export default function AssessmentPage() {
             className="text-center"
           >
             <Button
-              onClick={() => setCurrentStep('language-select')}
+              onClick={() => setCurrentStep('course-assessment')}
               className="px-8 py-4 text-lg"
             >
               Start Assessment
@@ -518,187 +606,9 @@ export default function AssessmentPage() {
     )
   }
 
-  if (currentStep === 'language-select') {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
-        <div className="max-w-4xl mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Language</h1>
-            <p className="text-gray-600">
-              Select the language you'd like to assess your proficiency in
-            </p>
-          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {languages.map((language, index) => (
-              <motion.button
-                key={language.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => {
-                  console.log('🖱️ Language clicked:', language.name)
-                  console.log('🖱️ Current assessmentResults state:', assessmentResults)
-                  
-                  // Check if this language has been assessed before
-                  const hasPrevious = assessmentResults.some(result => result.language === language.name)
-                  console.log('🖱️ Has previous assessment:', hasPrevious)
-                  
-                  if (hasPrevious) {
-                    // Show retake confirmation
-                    console.log('🔄 Showing retake confirmation for:', language.name)
-                    setLanguageToRetake(language.name)
-                    setShowRetakeConfirm(true)
-                  } else {
-                    // No previous assessment, proceed normally
-                    console.log('🆕 No previous assessment, setting language to:', language.name)
-                    setSelectedLanguage(language.name)
-                  }
-                }}
-                className={`p-6 rounded-xl border-2 transition-all hover:shadow-lg relative ${
-                  selectedLanguage === language.name
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                {/* Completion indicator */}
-                {assessmentResults.some(result => result.language === language.name) && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                      <CheckCircle className="w-4 h-4 text-white" />
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-4xl mb-3">{language.flag}</div>
-                <h3 className="text-lg font-semibold mb-2">{language.name}</h3>
-                <p className="text-sm text-gray-600">{language.description}</p>
-                
-                {/* Previous result info */}
-                {assessmentResults.some(result => result.language === language.name) && (
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    {(() => {
-                      const result = assessmentResults.find(r => r.language === language.name)
-                      return result ? (
-                        <div className="text-xs text-gray-500">
-                          <span className="font-medium">Previous: </span>
-                          {result.level.charAt(0).toUpperCase() + result.level.slice(1)} Level ({result.percentage}%)
-                        </div>
-                      ) : null
-                    })()}
-                  </div>
-                )}
-              </motion.button>
-            ))}
-          </div>
 
-          {/* Auto-start message */}
-          {selectedLanguage && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-            >
-              <div className="flex items-center justify-center space-x-2 text-blue-700">
-                {isStartingAssessment ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-700"></div>
-                    <span className="font-medium">Starting your {selectedLanguage} assessment...</span>
-                  </>
-                ) : (
-                  <>
-                    <Target className="w-5 h-5" />
-                    <span className="font-medium">Assessment will start automatically in a few seconds...</span>
-                  </>
-                )}
-              </div>
-              <p className="text-sm text-blue-600 mt-1">
-                Get ready for your {selectedLanguage} assessment!
-              </p>
-            </motion.div>
-          )}
-
-          {/* Assessment History Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                <Award className="w-5 h-5 mr-2 text-yellow-600" />
-                Your Assessment History
-              </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentStep('history')}
-                className="text-sm"
-              >
-                View All Results
-              </Button>
-            </div>
-            
-            {assessmentResults.length > 0 ? (
-              <div className="space-y-3">
-                {assessmentResults.slice(0, 3).map((result, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-3 h-3 rounded-full ${
-                        result.level === 'beginner' ? 'bg-green-500' :
-                        result.level === 'intermediate' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-                      <span className="font-medium text-gray-900">{result.language}</span>
-                      <span className="text-sm text-gray-600 capitalize">({result.level})</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm font-semibold text-blue-600">
-                        {result.percentage}%
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(result.completedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                {assessmentResults.length > 3 && (
-                  <p className="text-sm text-gray-600 text-center pt-2">
-                    +{assessmentResults.length - 3} more results
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Award className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-600">No assessments completed yet</p>
-                <p className="text-sm text-gray-500">Complete your first assessment to see your progress!</p>
-              </div>
-            )}
-          </motion.div>
-
-          <div className="flex justify-center mt-8">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentStep('intro')}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </div>
-      </div>
-      </>
-    )
-  }
-
-  if (currentStep === 'assessment' && currentQuestion) {
+  if (currentStep === 'course-assessment' && currentQuestion) {
     return (
       <>
         <Header />
@@ -720,16 +630,16 @@ export default function AssessmentPage() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-600">
-                Question {currentQuestionIndex + 1} of {filteredQuestions.length}
+                Question {currentQuestionIndex + 1} of {courseAssessmentQuestions.length}
               </span>
               <span className="text-sm font-medium text-gray-600">
-                {selectedLanguage} Assessment
+                {courseName || 'Course'} Assessment
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((currentQuestionIndex + 1) / filteredQuestions.length) * 100}%` }}
+                style={{ width: `${((currentQuestionIndex + 1) / courseAssessmentQuestions.length) * 100}%` }}
               />
             </div>
           </div>
@@ -742,11 +652,9 @@ export default function AssessmentPage() {
             className="bg-white rounded-xl p-8 shadow-lg"
           >
             <div className="flex items-center mb-6">
-              {currentQuestion.type === 'reading' && <BookOpen className="w-6 h-6 text-blue-600 mr-3" />}
-              {currentQuestion.type === 'listening' && <Headphones className="w-6 h-6 text-green-600 mr-3" />}
-              {currentQuestion.type === 'multiple-choice' && <MessageCircle className="w-6 h-6 text-purple-600 mr-3" />}
+              <Target className="w-6 h-6 text-blue-600 mr-3" />
               <span className="text-sm font-medium text-gray-600 capitalize">
-                {currentQuestion.type.replace('-', ' ')} • {currentQuestion.level}
+                Course Assessment • Question {currentQuestionIndex + 1}
               </span>
             </div>
 
@@ -843,67 +751,7 @@ export default function AssessmentPage() {
     )
   }
 
-  // Retake Assessment Confirmation Modal
-  if (showRetakeConfirm) {
-    console.log('🔄 Rendering retake confirmation modal')
-    console.log('🔄 Language to retake:', languageToRetake)
-    console.log('🔄 Current assessmentResults:', assessmentResults)
-    const previousResult = assessmentResults.find(result => result.language === languageToRetake)
-    console.log('🔄 Previous result found:', previousResult)
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
-          <div className="max-w-md mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl p-8 shadow-lg text-center"
-            >
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target className="w-8 h-8 text-orange-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Retake {languageToRetake} Assessment?</h2>
-              <p className="text-gray-600 mb-4">
-                You've already taken this assessment before. Your previous result will be replaced.
-              </p>
-              {previousResult && (
-                <div className="mb-6 p-3 bg-gray-50 rounded-lg text-left">
-                  <p className="text-sm text-gray-600 mb-1">Previous Result:</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">
-                      {previousResult.level.charAt(0).toUpperCase() + previousResult.level.slice(1)} Level
-                    </span>
-                    <span className="text-sm font-semibold text-blue-600">
-                      {previousResult.percentage}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Completed on {new Date(previousResult.completedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  onClick={cancelRetake}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={confirmRetake}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
-                >
-                  Retake Assessment
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </>
-    )
-  }
+
 
   if (currentStep === 'results' && assessmentResult) {
     const levelColor = {
@@ -927,9 +775,9 @@ export default function AssessmentPage() {
                 <Award className="w-12 h-12 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Assessment Complete!</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">Course Assessment Complete!</h1>
             <p className="text-xl text-gray-600">
-              Here are your {assessmentResult.language} language proficiency results
+              Here are your {assessmentResult.language} course assessment results
             </p>
           </motion.div>
 
@@ -1020,15 +868,12 @@ export default function AssessmentPage() {
                 </p>
               )}
 
-              <div className="space-y-3">
-                <Button onClick={goToCourses} className="w-full">
+                            <div className="space-y-3">
+                <Button onClick={() => router.push('/dashboard')} className="w-full">
                   <BookOpen className="w-4 h-4 mr-2" />
-                  Browse {assessmentResult.language} Courses
+                  Back to Dashboard
                 </Button>
-                <Button variant="outline" onClick={() => setCurrentStep('history')} className="w-full">
-                  <Award className="w-4 h-4 mr-2" />
-                  View Assessment History
-                </Button>
+ 
                 <Button variant="outline" onClick={restartAssessment} className="w-full">
                   <Target className="w-4 h-4 mr-2" />
                   Take Another Assessment
@@ -1042,140 +887,7 @@ export default function AssessmentPage() {
     )
   }
 
-  if (currentStep === 'history') {
-    return (
-      <>
-        <Header />
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12">
-          <div className="max-w-6xl mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
-            >
-              <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Assessment History</h1>
-              <p className="text-gray-600">
-                Track your language learning progress and review past assessments
-              </p>
-            </motion.div>
 
-            {assessmentResults.length > 0 ? (
-              <div className="space-y-6">
-                {assessmentResults.map((result, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-xl p-6 shadow-lg border border-gray-200"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-4 h-4 rounded-full ${
-                          result.level === 'beginner' ? 'bg-green-500' :
-                          result.level === 'intermediate' ? 'bg-yellow-500' : 'bg-red-500'
-                        }`} />
-                        <h3 className="text-xl font-semibold text-gray-900">{result.language}</h3>
-                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                          result.level === 'beginner' ? 'bg-green-100 text-green-800' :
-                          result.level === 'intermediate' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {result.level.charAt(0).toUpperCase() + result.level.slice(1)} Level
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-blue-600">{result.percentage}%</div>
-                        <div className="text-sm text-gray-500">
-                          {new Date(result.completedAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-semibold text-gray-900">{result.score}</div>
-                        <div className="text-sm text-gray-600">Score</div>
-                      </div>
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-semibold text-gray-900">{result.maxScore}</div>
-                        <div className="text-sm text-gray-600">Max Score</div>
-                      </div>
-                      <div className="text-center p-3 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-semibold text-gray-900">{result.timeSpent || 0}</div>
-                        <div className="text-sm text-gray-600">Seconds</div>
-                      </div>
-                    </div>
-
-                    {result.strengths && result.strengths.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">Strengths:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {result.strengths.map((strength, idx) => (
-                            <span key={idx} className="inline-block px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                              {strength}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {result.improvements && result.improvements.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">Areas for Improvement:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {result.improvements.map((improvement, idx) => (
-                            <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-800 text-sm rounded-full">
-                              {improvement}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {result.recommendedCourses && result.recommendedCourses.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Recommended Courses:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {result.recommendedCourses.map((course, idx) => (
-                            <span key={idx} className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                              {course}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center py-12 bg-white rounded-xl shadow-lg"
-              >
-                <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Assessments Yet</h3>
-                <p className="text-gray-600 mb-6">
-                  You haven't completed any assessments yet. Start your language learning journey!
-                </p>
-                <Button onClick={() => setCurrentStep('intro')}>
-                  <Target className="w-4 h-4 mr-2" />
-                  Take Your First Assessment
-                </Button>
-              </motion.div>
-            )}
-
-            <div className="text-center mt-8">
-              <Button variant="outline" onClick={() => setCurrentStep('intro')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Assessment
-              </Button>
-            </div>
-          </div>
-        </div>
-      </>
-    )
-  }
 
   return null
 }
