@@ -151,7 +151,7 @@ const CourseLearningPage = () => {
   const [topics, setTopics] = useState<CourseTopic[]>([])
   const [currentLesson, setCurrentLesson] = useState<VideoLesson | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [showSidebar, setShowSidebar] = useState(true)
+  const [showSidebar, setShowSidebar] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'resources' | 'discussions' | 'notes'>('overview')
   const [progress, setProgress] = useState<CourseProgress>({
     totalLessons: 0,
@@ -220,6 +220,23 @@ const CourseLearningPage = () => {
       loadExistingProgress()
     }
   }, [courseId, user?.email])
+
+  // Set sidebar visibility based on screen size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) { // md breakpoint
+        setShowSidebar(true)
+      } else {
+        setShowSidebar(false)
+      }
+    }
+
+    // Set initial sidebar state
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   
   // Handle lesson changes and video loading
   useEffect(() => {
@@ -1279,6 +1296,14 @@ const CourseLearningPage = () => {
       
       {!isLoading && (
         <div className="flex flex-1 overflow-hidden">
+          {/* Mobile Sidebar Toggle Button */}
+          <button
+            onClick={() => setShowSidebar(!showSidebar)}
+            className="md:hidden fixed top-4 right-4 z-50 bg-white rounded-full p-2 shadow-lg"
+          >
+            <ChevronRight className={`w-5 h-5 transition-transform ${showSidebar ? 'rotate-180' : ''}`} />
+          </button>
+
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col">
             {/* Video Player Section */}
@@ -1370,132 +1395,158 @@ const CourseLearningPage = () => {
               </video>
               
               {/* Video Controls Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                <div className="flex items-center space-x-4">
-                  <Button
-                    onClick={togglePlayPause}
-                    className="bg-white/20 hover:bg-white/30 text-white border-0"
-                  >
-                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                  </Button>
-                  
-                  {/* Progress Indicator */}
-                  {currentLesson && (
-                    <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
-                      Progress: {Math.round(videoProgress)}%
-                      {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
-                        <span className="ml-2 text-green-400">✓ Ready to complete (90%)</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Manual Mark as Completed Button for Testing */}
-                  {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
-                    <Button
-                      onClick={() => markLessonAsWatched(currentLesson.id, false)}
-                      className="bg-green-500 hover:bg-green-600 text-white border-0"
-                      title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
-                    >
-                      Mark Complete
-                    </Button>
-                  )}
-                  
-                  
-
-                  
-                  {/* Progress Bar */}
-                  <div className="flex-1 relative">
-                    <input
-                      type="range"
-                      min="0"
-                      max={duration > 0 ? duration : 100}
-                      value={currentTime}
-                      onChange={handleVideoProgress}
-                      disabled={duration <= 0}
-                      className={`w-full h-2 rounded-lg appearance-none cursor-pointer slider ${
-                        duration > 0 
-                          ? 'bg-white/30 hover:bg-white/40' 
-                          : 'bg-white/20 cursor-not-allowed opacity-50'
-                      }`}
-                      title={duration > 0 ? 'Drag to seek video' : 'Loading video...'}
-                    />
-                    {/* Progress indicator overlay */}
-                    {duration > 0 && (
-                      <div 
-                        className="absolute top-0 left-0 h-2 bg-white/60 rounded-l-lg pointer-events-none transition-all duration-150"
-                        style={{ width: `${(currentTime / duration) * 100}%` }}
-                      />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 md:p-4">
+                <div className="flex flex-col space-y-2 md:space-y-0 md:flex-row md:items-center md:space-x-4">
+                  {/* Top row on mobile - Progress info */}
+                  <div className="flex items-center justify-between md:hidden">
+                    {currentLesson && (
+                      <div className="text-white text-xs bg-black/50 px-2 py-1 rounded">
+                        Progress: {Math.round(videoProgress)}%
+                        {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
+                          <span className="ml-2 text-green-400">✓ 90%</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Mark Complete button for mobile */}
+                    {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                      <Button
+                        onClick={() => markLessonAsWatched(currentLesson.id, false)}
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white border-0 text-xs px-2 py-1 h-6"
+                        title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
+                      >
+                        Complete
+                      </Button>
                     )}
                   </div>
-                  
-                  {/* Time Display */}
-                  <div className="text-white text-sm">
-                    {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / 
-                    {duration > 0 
-                      ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}`
-                      : '--:--'
-                    }
-                  </div>
-                  
-                  {/* Volume Control */}
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        if (videoVolume > 0) {
-                          // Store current volume and mute
-                          setVideoVolume(0)
-                          if (videoRef.current) {
-                            videoRef.current.volume = 0
-                          }
-                        } else {
-                          // Restore to previous volume (default to 0.7 if was 0)
-                          const newVolume = 0.7
-                          setVideoVolume(newVolume)
-                          if (videoRef.current) {
-                            videoRef.current.volume = newVolume
-                          }
-                        }
-                      }}
-                      className="hover:bg-white/20 rounded p-1 transition-colors"
-                      title={videoVolume > 0 ? "Click to mute" : "Click to unmute"}
+
+                  {/* Controls row */}
+                  <div className="flex items-center space-x-2 md:space-x-4">
+                    <Button
+                      onClick={togglePlayPause}
+                      className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
                     >
-                      {videoVolume > 0 ? (
-                        <Volume2 className="w-4 h-4 text-white" />
-                      ) : (
-                        <Volume2 className="w-4 h-4 text-white opacity-50" />
-                      )}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      value={videoVolume}
-                      onChange={handleVolumeChange}
-                      className="w-24 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
-                      style={{
-                        background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${videoVolume * 100}%, rgba(255,255,255,0.1) ${videoVolume * 100}%)`
-                      }}
-                    />
-                    <span className="text-white text-xs min-w-[2rem] text-center">
-                      {videoVolume > 0 ? `${Math.round(videoVolume * 100)}%` : 'Muted'}
-                    </span>
-                  </div>
+                      {isPlaying ? <Pause className="w-4 h-4 md:w-5 md:h-5" /> : <Play className="w-4 h-4 md:w-5 md:h-5" />}
+                    </Button>
+                    
+                    {/* Progress Indicator - Desktop only */}
+                    {currentLesson && (
+                      <div className="hidden md:block text-white text-xs bg-black/50 px-2 py-1 rounded">
+                        Progress: {Math.round(videoProgress)}%
+                        {videoProgress >= COMPLETION_THRESHOLD && !currentLesson.isWatched && (
+                          <span className="ml-2 text-green-400">✓ Ready to complete (90%)</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Manual Mark as Completed Button - Desktop only */}
+                    {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                      <Button
+                        onClick={() => markLessonAsWatched(currentLesson.id, false)}
+                        className="hidden md:block bg-green-500 hover:bg-green-600 text-white border-0"
+                        title={`Mark lesson as completed (${COMPLETION_THRESHOLD}% watched)`}
+                      >
+                        Mark Complete
+                      </Button>
+                    )}
                   
-                  <Button 
-                    onClick={() => {
-                      if (videoRef.current) {
-                        if (isFullscreen) {
-                          document.exitFullscreen()
-                        } else {
-                          videoRef.current.requestFullscreen()
-                        }
+                  
+                    
+                    {/* Progress Bar */}
+                    <div className="flex-1 relative">
+                      <input
+                        type="range"
+                        min="0"
+                        max={duration > 0 ? duration : 100}
+                        value={currentTime}
+                        onChange={handleVideoProgress}
+                        disabled={duration <= 0}
+                        className={`w-full h-2 rounded-lg appearance-none cursor-pointer slider ${
+                          duration > 0 
+                            ? 'bg-white/30 hover:bg-white/40' 
+                            : 'bg-white/20 cursor-not-allowed opacity-50'
+                        }`}
+                        title={duration > 0 ? 'Drag to seek video' : 'Loading video...'}
+                      />
+                      {/* Progress indicator overlay */}
+                      {duration > 0 && (
+                        <div 
+                          className="absolute top-0 left-0 h-2 bg-white/60 rounded-l-lg pointer-events-none transition-all duration-150"
+                          style={{ width: `${(currentTime / duration) * 100}%` }}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Time Display - Hide on mobile */}
+                    <div className="hidden md:block text-white text-sm">
+                      {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / 
+                      {duration > 0 
+                        ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}`
+                        : '--:--'
                       }
-                    }}
-                    className="bg-white/20 hover:bg-white/30 text-white border-0"
-                  >
-                    {isFullscreen ? <X className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-                  </Button>
+                    </div>
+                    
+                    {/* Volume Control - Simplified for mobile */}
+                    <div className="flex items-center space-x-1 md:space-x-2">
+                      <button
+                        onClick={() => {
+                          if (videoVolume > 0) {
+                            // Store current volume and mute
+                            setVideoVolume(0)
+                            if (videoRef.current) {
+                              videoRef.current.volume = 0
+                            }
+                          } else {
+                            // Restore to previous volume (default to 0.7 if was 0)
+                            const newVolume = 0.7
+                            setVideoVolume(newVolume)
+                            if (videoRef.current) {
+                              videoRef.current.volume = newVolume
+                            }
+                          }
+                        }}
+                        className="hover:bg-white/20 rounded p-1 transition-colors"
+                        title={videoVolume > 0 ? "Click to mute" : "Click to unmute"}
+                      >
+                        {videoVolume > 0 ? (
+                          <Volume2 className="w-4 h-4 text-white" />
+                        ) : (
+                          <Volume2 className="w-4 h-4 text-white opacity-50" />
+                        )}
+                      </button>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={videoVolume}
+                        onChange={handleVolumeChange}
+                        className="w-16 md:w-24 h-2 bg-white/30 rounded-lg appearance-none cursor-pointer slider"
+                        style={{
+                          background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${videoVolume * 100}%, rgba(255,255,255,0.1) ${videoVolume * 100}%)`
+                        }}
+                      />
+                      <span className="hidden md:block text-white text-xs min-w-[2rem] text-center">
+                        {videoVolume > 0 ? `${Math.round(videoVolume * 100)}%` : 'Muted'}
+                      </span>
+                    </div>
+                    
+                    <Button 
+                      onClick={() => {
+                        if (videoRef.current) {
+                          if (isFullscreen) {
+                            document.exitFullscreen()
+                          } else {
+                            videoRef.current.requestFullscreen()
+                          }
+                        }
+                      }}
+                      className="bg-white/20 hover:bg-white/30 text-white border-0 p-2 md:p-3"
+                                      >
+                      {isFullscreen ? <X className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1503,29 +1554,29 @@ const CourseLearningPage = () => {
 
           {/* Course Info and Tabs */}
           <div className="bg-white border-b">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 space-y-4 md:space-y-0">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{course.name}</h1>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{course.name}</h1>
                   <p className="text-gray-600">{course.language} • {course.level}</p>
                 </div>
                 
-                <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-4 md:space-x-6 text-sm md:text-base">
                   <div className="text-center">
-                    <p className="text-sm text-gray-500">Progress</p>
-                    <p className="text-lg font-semibold text-primary-600">
+                    <p className="text-xs md:text-sm text-gray-500">Progress</p>
+                    <p className="text-base md:text-lg font-semibold text-primary-600">
                       {Math.round(getProgressPercentage())}%
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm text-gray-500">Lessons</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-xs md:text-sm text-gray-500">Lessons</p>
+                    <p className="text-base md:text-lg font-semibold text-gray-900">
                       {progress.completedLessons}/{progress.totalLessons}
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm text-gray-500">Duration</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-xs md:text-sm text-gray-500">Duration</p>
+                    <p className="text-base md:text-lg font-semibold text-gray-900">
                       {progress.watchedDuration}
                     </p>
                   </div>
@@ -1543,7 +1594,7 @@ const CourseLearningPage = () => {
 
             {/* Tab Navigation */}
             <div className="border-t border-gray-200">
-              <nav className="flex space-x-8 px-6">
+              <nav className="flex overflow-x-auto space-x-4 md:space-x-8 px-4 md:px-6 scrollbar-hide">
                 {[
                   { id: 'overview', label: 'Overview', icon: BookOpen },
                   { id: 'content', label: 'Content', icon: Play },
@@ -1556,14 +1607,15 @@ const CourseLearningPage = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id as any)}
-                      className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                      className={`flex items-center space-x-2 py-4 px-2 md:px-1 border-b-2 font-medium text-xs md:text-sm whitespace-nowrap ${
                         activeTab === tab.id
                           ? 'border-primary-500 text-primary-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
-                      <span>{tab.label}</span>
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                     </button>
                   )
                 })}
@@ -1574,8 +1626,8 @@ const CourseLearningPage = () => {
           {/* Tab Content */}
           <div className="flex-1 overflow-y-auto">
             {activeTab === 'overview' && (
-              <div className="p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="p-4 md:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                   {/* Course Description */}
                   <div className="lg:col-span-2">
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Course</h2>
@@ -1798,7 +1850,7 @@ const CourseLearningPage = () => {
             )}
 
             {activeTab === 'content' && (
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">Course Content</h2>
                   <Button
@@ -1881,7 +1933,7 @@ const CourseLearningPage = () => {
             )}
 
             {activeTab === 'resources' && (
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Course Resources</h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1924,7 +1976,7 @@ const CourseLearningPage = () => {
             )}
 
             {activeTab === 'notes' && (
-              <div className="p-6">
+              <div className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-semibold text-gray-900">My Notes & Bookmarks</h2>
                   <Button
@@ -2054,9 +2106,17 @@ const CourseLearningPage = () => {
           </div>
         </div>
 
+        {/* Mobile Overlay for Sidebar */}
+        {showSidebar && (
+          <div 
+            className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+
         {/* Sidebar - Course Content */}
         {showSidebar && (
-          <div className="w-80 bg-white border-l border-gray-200 overflow-y-auto">
+          <div className="w-80 md:w-80 sm:w-full md:relative absolute md:right-0 right-0 top-0 h-full z-40 bg-white border-l border-gray-200 overflow-y-auto shadow-xl md:shadow-none">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Course Content</h3>
