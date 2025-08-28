@@ -242,6 +242,11 @@ const CourseLearningPage = () => {
     }
   }, [currentLesson])
   
+  // Monitor progress changes for debugging
+  useEffect(() => {
+    console.log('Progress state changed:', progress)
+  }, [progress])
+  
   // Load assessment questions only when needed
   const loadAssessmentQuestions = () => {
     if (assessmentQuestionsLoaded) return
@@ -837,8 +842,22 @@ const CourseLearningPage = () => {
       sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
     
+    console.log('Progress recalculation after lesson completion:', {
+      totalLessons,
+      completedLessons,
+      isCompleted: completedLessons === totalLessons,
+      updatedTopics: updatedTopics.map(topic => ({
+        title: topic.title,
+        lessons: topic.lessons.map(lesson => ({
+          id: lesson.id,
+          title: lesson.title,
+          isWatched: lesson.isWatched
+        }))
+      }))
+    })
+    
     // Update local progress state
-    setProgress({
+    const newProgress = {
       totalLessons,
       completedLessons,
       totalDuration: '2h 30m',
@@ -848,7 +867,10 @@ const CourseLearningPage = () => {
       certificateEarned: progress.certificateEarned,
       badgeEarned: progress.badgeEarned,
       finalScore: progress.finalScore
-    })
+    }
+    
+    console.log('Setting new progress state:', newProgress)
+    setProgress(newProgress)
     
     // Update course progress for dashboard
     updateCourseProgressForDashboard(courseId, totalLessons, completedLessons, completedLessons === totalLessons)
@@ -861,7 +883,16 @@ const CourseLearningPage = () => {
     // No need to update lesson locks - all lessons are always unlocked
     
     // Check if course is completed
+    console.log('Course completion check:', {
+      completedLessons,
+      totalLessons,
+      isCompleted: completedLessons === totalLessons,
+      courseId,
+      lessonId
+    })
+    
     if (completedLessons === totalLessons) {
+      console.log('🎉 COURSE COMPLETED! Calling handleCourseCompletion')
       handleCourseCompletion()
     } else {
       // Find and advance to next lesson using the updated topics
@@ -1079,12 +1110,16 @@ const CourseLearningPage = () => {
   }
 
   const handleCourseCompletion = () => {
+    console.log('🎉 handleCourseCompletion called!')
+    console.log('Setting showCompletionModal to true')
     setShowCompletionModal(true)
     
     // Record course completion activity
     if (user?.email) {
       recordLearningActivity(user.email, 'course_completed', course.name)
     }
+    
+    console.log('Course completion modal should now be visible')
   }
 
   const getProgressPercentage = () => {
