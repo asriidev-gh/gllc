@@ -213,20 +213,11 @@ const CourseLearningPage = () => {
     }
   }, [])
   
-  // Reset all lesson progress when component mounts
+  // Load existing progress when component mounts
   useEffect(() => {
-    if (courseId) {
-      console.log('Resetting all lesson progress for course:', courseId)
-      const progressKeys = [
-        `course_progress_${courseId}`,
-        `lesson_progress_${courseId}`,
-        `user_course_progress_${user?.email || 'anonymous'}`
-      ]
-      
-      progressKeys.forEach(key => {
-        localStorage.removeItem(key)
-        console.log(`Cleared progress key: ${key}`)
-      })
+    if (courseId && user?.email) {
+      console.log('Loading existing progress for course:', courseId)
+      loadExistingProgress()
     }
   }, [courseId, user?.email])
   
@@ -453,6 +444,37 @@ const CourseLearningPage = () => {
     }
   }
 
+  const loadExistingProgress = () => {
+    try {
+      console.log('Loading existing progress for course:', courseId)
+      
+      // Load lesson progress
+      const lessonProgress = loadLessonProgress(courseId)
+      console.log('Loaded lesson progress:', lessonProgress)
+      
+      // Load user course progress
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const userProgress = localStorage.getItem(userProgressKey)
+      if (userProgress) {
+        const userProgressData = JSON.parse(userProgress)
+        console.log('Loaded user progress:', userProgressData)
+      }
+      
+      // Load course progress
+      const courseProgressKey = `course_progress_${courseId}`
+      const courseProgress = localStorage.getItem(courseProgressKey)
+      if (courseProgress) {
+        const courseProgressData = JSON.parse(courseProgress)
+        console.log('Loaded course progress:', courseProgressData)
+      }
+      
+      return { lessonProgress, userProgress, courseProgress }
+    } catch (error) {
+      console.error('Error loading existing progress:', error)
+      return {}
+    }
+  }
+
   const loadLessonProgress = (courseId: string) => {
     try {
       const savedProgress = localStorage.getItem(`course_progress_${courseId}`)
@@ -475,6 +497,43 @@ const CourseLearningPage = () => {
       updateUserCourseProgress(courseId, lessonId, progress)
     } catch (error) {
       console.error('Error saving lesson progress:', error)
+    }
+  }
+
+  const updateCourseProgressForDashboard = (courseId: string, totalLessons: number, completedLessons: number, isCompleted: boolean) => {
+    try {
+      console.log(`Updating course progress for dashboard: ${courseId}`, { totalLessons, completedLessons, isCompleted })
+      
+      // Update user course progress with course metadata
+      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+      const currentUserProgress = localStorage.getItem(userProgressKey)
+      let userProgress = currentUserProgress ? JSON.parse(currentUserProgress) : {}
+      
+      // Initialize course progress if it doesn't exist
+      if (!userProgress[courseId]) {
+        userProgress[courseId] = {
+          lessons: {},
+          totalLessons: 0,
+          completedLessons: 0,
+          isCompleted: false,
+          completionDate: undefined,
+          lastUpdated: new Date().toISOString()
+        }
+      }
+      
+      // Update course metadata
+      userProgress[courseId].totalLessons = totalLessons
+      userProgress[courseId].completedLessons = completedLessons
+      userProgress[courseId].isCompleted = isCompleted
+      userProgress[courseId].completionDate = isCompleted ? new Date().toISOString() : undefined
+      userProgress[courseId].lastUpdated = new Date().toISOString()
+      
+      // Save updated user progress
+      localStorage.setItem(userProgressKey, JSON.stringify(userProgress))
+      
+      console.log('Updated course progress for dashboard:', userProgress[courseId])
+    } catch (error) {
+      console.error('Error updating course progress for dashboard:', error)
     }
   }
 
@@ -517,20 +576,14 @@ const CourseLearningPage = () => {
   }
 
   const generateMockTopics = (courseData: any) => {
-    // Clear ALL possible saved progress to start completely fresh
-    const progressKeys = [
-      `course_progress_${courseId}`,
-      `lesson_progress_${courseId}`,
-      `user_course_progress_${user?.email || 'anonymous'}`
-    ]
+    console.log('Generating mock topics for course:', courseId)
     
-    progressKeys.forEach(key => {
-      localStorage.removeItem(key)
-      console.log(`Cleared progress key: ${key}`)
-    })
+    // Load existing progress instead of clearing it
+    const existingProgress = loadExistingProgress()
+    console.log('Existing progress loaded:', existingProgress)
     
-    // Force all lessons to start as unwatched
-    const savedProgress = {}
+    // Use existing progress or default to unwatched
+    const savedProgress = existingProgress.lessonProgress || {}
     
     const mockTopics: CourseTopic[] = [
       {
@@ -546,7 +599,7 @@ const CourseLearningPage = () => {
             duration: '5:30',
             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_1_1']?.isWatched || false,
             order: 1,
             resources: [
               { id: 'res_1', name: 'Course Syllabus', type: 'pdf', url: '#', size: '2.1 MB' },
@@ -571,7 +624,7 @@ const CourseLearningPage = () => {
             duration: '8:15',
             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_1_2']?.isWatched || false,
             order: 2,
             resources: [
               { id: 'res_3', name: 'Setup Checklist', type: 'pdf', url: '#', size: '1.8 MB' }
@@ -593,7 +646,7 @@ const CourseLearningPage = () => {
             duration: '12:45',
             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_2_1']?.isWatched || false,
             order: 3,
             resources: [],
             comments: []
@@ -605,7 +658,7 @@ const CourseLearningPage = () => {
             duration: '15:20',
             videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
             thumbnail: '/api/placeholder/300/200',
-            isWatched: false,
+            isWatched: savedProgress['lesson_2_2']?.isWatched || false,
             order: 4,
             resources: [
               { id: 'res_4', name: 'Exercise Workbook', type: 'pdf', url: '#', size: '3.2 MB' }
@@ -623,11 +676,14 @@ const CourseLearningPage = () => {
     
 
     
-    // Calculate progress
+    // Calculate progress from the actual topics with saved progress
     const totalLessons = mockTopics.reduce((sum, topic) => sum + topic.lessons.length, 0)
     const completedLessons = mockTopics.reduce((sum, topic) => 
       sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
+    
+    console.log('Progress calculation:', { totalLessons, completedLessons, savedProgress })
+    
     setProgress({
       totalLessons,
       completedLessons,
@@ -640,21 +696,9 @@ const CourseLearningPage = () => {
       finalScore: progress.finalScore
     })
     
-    // Initialize user progress with correct total lessons if not already set
+    // Update course progress for dashboard with the loaded progress
     if (user?.email) {
-      const userProgressKey = `user_course_progress_${user.email}`
-      const userProgress = localStorage.getItem(userProgressKey)
-      if (userProgress) {
-        const progressData = JSON.parse(userProgress)
-        if (progressData[courseId] && progressData[courseId].totalLessons !== totalLessons) {
-          // Update total lessons if they don't match
-          progressData[courseId].totalLessons = totalLessons
-          progressData[courseId].isCompleted = false
-          progressData[courseId].completionDate = undefined
-          localStorage.setItem(userProgressKey, JSON.stringify(progressData))
-          console.log('Updated course total lessons in user progress:', totalLessons)
-        }
-      }
+      updateCourseProgressForDashboard(courseId, totalLessons, completedLessons, completedLessons === totalLessons)
     }
   }
 
@@ -792,6 +836,8 @@ const CourseLearningPage = () => {
     const completedLessons = updatedTopics.reduce((sum, topic) => 
       sum + topic.lessons.filter(lesson => lesson.isWatched).length, 0
     )
+    
+    // Update local progress state
     setProgress({
       totalLessons,
       completedLessons,
@@ -803,6 +849,9 @@ const CourseLearningPage = () => {
       badgeEarned: progress.badgeEarned,
       finalScore: progress.finalScore
     })
+    
+    // Update course progress for dashboard
+    updateCourseProgressForDashboard(courseId, totalLessons, completedLessons, completedLessons === totalLessons)
     
     // Record lesson completion activity
     if (user?.email && currentLesson) {
