@@ -87,6 +87,7 @@ export function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [showAssessmentHistory, setShowAssessmentHistory] = useState(false)
   const [selectedCourseForModal, setSelectedCourseForModal] = useState<EnrolledCourse | null>(null)
 
   useEffect(() => {
@@ -102,7 +103,8 @@ export function Dashboard() {
     // Load recent activity
     loadRecentActivity()
     
-
+    // Initialize sample assessment data for testing
+    initializeSampleAssessmentData()
     
     // Show welcome message for new users
     const isNewUser = localStorage.getItem('show_welcome_message')
@@ -945,6 +947,51 @@ export function Dashboard() {
     }
   }
 
+  // Initialize sample assessment data for testing (remove in production)
+  const initializeSampleAssessmentData = () => {
+    if (!user?.email) return
+    
+    const generalAssessmentKey = `general_assessment_results_${user.email}`
+    const existingData = localStorage.getItem(generalAssessmentKey)
+    
+    // Only initialize if no assessment data exists and we're in development mode
+    if (!existingData && process.env.NODE_ENV === 'development') {
+      const today = new Date()
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const twoDaysAgo = new Date(today)
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+      
+      const sampleAssessments = [
+        {
+          id: 'english_assessment_1',
+          language: 'English',
+          level: 'intermediate',
+          score: 85,
+          maxScore: 100,
+          percentage: 85,
+          completedAt: yesterday.toISOString(),
+          timeSpent: 420, // 7 minutes
+          type: 'General Language Assessment'
+        },
+        {
+          id: 'tagalog_assessment_1',
+          language: 'Tagalog',
+          level: 'beginner',
+          score: 72,
+          maxScore: 100,
+          percentage: 72,
+          completedAt: twoDaysAgo.toISOString(),
+          timeSpent: 360, // 6 minutes
+          type: 'General Language Assessment'
+        }
+      ]
+      
+      localStorage.setItem(generalAssessmentKey, JSON.stringify(sampleAssessments))
+      console.log('Sample assessment data initialized for testing')
+    }
+  }
+
   const getProgressColor = (progress: number) => {
     if (progress >= 80) return 'text-green-600'
     if (progress >= 60) return 'text-yellow-600'
@@ -1037,6 +1084,85 @@ export function Dashboard() {
       default:
         return details
     }
+  }
+
+  // Get general language assessment history from localStorage
+  const getAssessmentHistory = () => {
+    if (!user?.email) return []
+    
+    const history: any[] = []
+    
+    // Get general language assessment results
+    const generalAssessmentKey = `general_assessment_results_${user.email}`
+    const generalAssessmentData = localStorage.getItem(generalAssessmentKey)
+    
+    if (generalAssessmentData) {
+      try {
+        const parsed = JSON.parse(generalAssessmentData)
+        if (Array.isArray(parsed)) {
+          // Handle array of assessment results
+          parsed.forEach(assessment => {
+            if (assessment.score !== undefined) {
+              history.push({
+                id: assessment.id || Date.now(),
+                language: assessment.language || 'Unknown',
+                level: assessment.level || 'Unknown',
+                score: assessment.score,
+                maxScore: assessment.maxScore || 100,
+                percentage: assessment.percentage || assessment.score,
+                completedAt: assessment.completedAt || new Date().toISOString(),
+                timeSpent: assessment.timeSpent || 0,
+                type: 'General Language Assessment'
+              })
+            }
+          })
+        } else if (parsed.score !== undefined) {
+          // Handle single assessment result
+          history.push({
+            id: parsed.id || Date.now(),
+            language: parsed.language || 'Unknown',
+            level: parsed.level || 'Unknown',
+            score: parsed.score,
+            maxScore: parsed.maxScore || 100,
+            percentage: parsed.percentage || parsed.score,
+            completedAt: parsed.completedAt || new Date().toISOString(),
+            timeSpent: parsed.timeSpent || 0,
+            type: 'General Language Assessment'
+          })
+        }
+      } catch (error) {
+        console.error('Error parsing general assessment data:', error)
+      }
+    }
+    
+    // Also check for legacy assessment data
+    const legacyKeys = ['english_assessment', 'tagalog_assessment', 'korean_assessment', 'japanese_assessment']
+    legacyKeys.forEach(key => {
+      const legacyData = localStorage.getItem(key)
+      if (legacyData) {
+        try {
+          const parsed = JSON.parse(legacyData)
+          if (parsed.score !== undefined) {
+            history.push({
+              id: `${key}_${Date.now()}`,
+              language: key.replace('_assessment', '').charAt(0).toUpperCase() + key.replace('_assessment', '').slice(1),
+              level: parsed.level || 'Unknown',
+              score: parsed.score,
+              maxScore: parsed.maxScore || 100,
+              percentage: parsed.percentage || parsed.score,
+              completedAt: parsed.completedAt || new Date().toISOString(),
+              timeSpent: parsed.timeSpent || 0,
+              type: 'General Language Assessment'
+            })
+          }
+        } catch (error) {
+          console.error(`Error parsing legacy assessment data for ${key}:`, error)
+        }
+      }
+    })
+    
+    // Sort by completion date (newest first)
+    return history.sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
   }
 
   return (
@@ -1230,7 +1356,7 @@ export function Dashboard() {
               <Button 
                 variant="outline"
                 className="h-16 text-lg justify-start"
-                onClick={() => router.push('/assessment?step=history')}
+                onClick={() => setShowAssessmentHistory(true)}
               >
                 <Award className="w-6 h-6 mr-3" />
                 <div className="text-left">
@@ -1799,6 +1925,116 @@ export function Dashboard() {
                 Unenroll
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assessment History Modal */}
+      {showAssessmentHistory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Assessment History</h3>
+              <button
+                onClick={() => setShowAssessmentHistory(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {getAssessmentHistory().length === 0 ? (
+              <div className="text-center py-12">
+                <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Assessment History</h4>
+                <p className="text-gray-600 mb-6">
+                  You haven't completed any language assessments yet. Take your first assessment to discover your language level!
+                </p>
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => {
+                      setShowAssessmentHistory(false)
+                      router.push('/assessment')
+                    }}
+                    className="bg-primary-600 hover:bg-primary-700"
+                  >
+                    <Target className="w-4 h-4 mr-2" />
+                    Take Your First Assessment
+                  </Button>
+                  <Button 
+                    onClick={() => setShowAssessmentHistory(false)}
+                    variant="outline"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {getAssessmentHistory().map((assessment, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{assessment.language}</h4>
+                        <p className="text-sm text-gray-600 capitalize">{assessment.level} Level</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        assessment.score >= 70 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {assessment.score}%
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                      <div>
+                        <span className="font-medium">Type:</span>
+                        <span className="ml-2">{assessment.type}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Score:</span>
+                        <span className="ml-2">{assessment.score}/{assessment.maxScore}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Status:</span>
+                        <span className={`ml-2 font-medium ${
+                          assessment.score >= 70 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {assessment.score >= 70 ? 'Passed' : 'Not Passed'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Completed:</span>
+                        <span className="ml-2">
+                          {new Date(assessment.completedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {assessment.timeSpent > 0 && (
+                      <div className="text-sm text-gray-600 mb-3">
+                        <span className="font-medium">Time Spent:</span>
+                        <span className="ml-2">{Math.floor(assessment.timeSpent / 60)}m {assessment.timeSpent % 60}s</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-end space-x-3">
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowAssessmentHistory(false)
+                          router.push('/assessment')
+                        }}
+                      >
+                        Take Another Assessment
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

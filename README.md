@@ -1,50 +1,38 @@
 # Language Training Center for Kids
 
-A comprehensive language learning platform designed specifically for children, featuring interactive lessons, progress tracking, and engaging assessments.
+A comprehensive language learning platform designed specifically for children, offering interactive courses in multiple languages with engaging content and progress tracking.
 
-## 🚀 Features
+## 🌟 Features
 
-### Core Learning System
-- **Interactive Video Lessons**: Engaging video content with progress tracking
-- **Smart Progress Management**: Automatic lesson completion at 90% watch threshold
-- **Course Content Sidebar**: Easy navigation between lessons with clickable lesson selection
-- **Assessment System**: Course-specific assessments with scoring and progress tracking
-- **Progress Persistence**: All learning progress saved and synchronized across dashboard and course details
-
-### Advanced Video Player
-- **Full Video Controls**: Play/pause, volume control, fullscreen, and progress seeking
-- **Smart Completion**: Lessons marked complete at 90% watch progress
-- **Manual Completion**: "Mark as Complete" button available for immediate completion
-- **Progress Bar**: Draggable progress bar for easy navigation
-- **Volume Control**: Adjustable volume with visual feedback
-- **Smart Control Visibility**: Controls show on hover (desktop) or click (mobile)
-- **Click Anywhere to Play/Pause**: Intuitive click interaction anywhere on video
-- **Auto-hide Controls**: Controls automatically hide after 3 seconds of inactivity
+### 🎯 **Smart Video Player**
+- **Professional Controls**: Desktop-wide layout with left-center-right control distribution
+- **Smart Visibility**: Controls visible on click (mobile) and mouseover (desktop)
+- **Click-to-Play**: Click anywhere on video to toggle play/pause
+- **Auto-hide**: Controls automatically hide after 3 seconds of inactivity
 - **Pause State Lock**: Controls remain visible when video is paused
-- **Professional UX**: YouTube-like experience with smooth transitions
+- **Keyboard Shortcuts**: Spacebar to toggle play/pause
 
-### Assessment & Progress Tracking
-- **Course Assessments**: Take assessments directly from enrolled courses
-- **Dashboard Integration**: Assessment scores displayed in "Your Enrolled Courses"
-- **Progress Synchronization**: Real-time updates between course details and dashboard
-- **Completion Tracking**: Visual indicators for completed lessons and assessments
-- **Learning Analytics**: Track time spent, progress percentage, and completion dates
+### 📚 **Course Management**
+- **Interactive Lessons**: Engaging video content with progress tracking
+- **Collapsible Sidebar**: Course content sidebar that can be collapsed/expanded
+- **Progress Tracking**: Real-time progress monitoring and completion certificates
+- **Assessment System**: Comprehensive language proficiency evaluations
 
-### User Experience
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Intuitive Navigation**: Easy-to-use interface for children and parents
-- **Progress Visualization**: Clear progress bars and completion indicators
-- **Achievement System**: Celebrate learning milestones and progress
-- **Course Management**: Easy enrollment, progress tracking, and assessment access
-- **Avatar System**: Customizable user avatars with emoji and generated options
+### 📊 **Assessment History**
+- **General Language Assessments**: Track English, Tagalog, Korean, Japanese proficiency
+- **Detailed Results**: View scores, levels, completion dates, and time spent
+- **Progress Monitoring**: Visual indicators for passed/failed assessments
+- **Historical Data**: Complete assessment history with sorting and filtering
 
-## 🛠️ Technology Stack
+### 🏆 **Achievement System**
+- **Progress-Based**: Unlock achievements as you complete courses and lessons
+- **Visual Rewards**: Beautiful achievement badges and progress indicators
+- **Learning Streaks**: Track consecutive days of learning activity
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Styling**: Tailwind CSS, Framer Motion
-- **State Management**: React hooks, localStorage
-- **Video Player**: HTML5 video with custom controls
-- **UI Components**: Custom component library with accessibility features
+### 📱 **Responsive Design**
+- **Mobile-First**: Optimized for all device sizes
+- **Touch-Friendly**: Intuitive mobile navigation and controls
+- **Cross-Platform**: Consistent experience across devices
 
 ## 🚀 Getting Started
 
@@ -54,131 +42,150 @@ A comprehensive language learning platform designed specifically for children, f
 
 ### Installation
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone [repository-url]
 cd LanguageTrainingCenterForKids
-
-# Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env
-
-# Start development server
 npm run dev
 ```
 
-### Environment Variables
-Create a `.env` file with:
+### Environment Setup
+Create a `.env.local` file with:
 ```env
-NEXT_PUBLIC_APP_NAME=Language Training Center
-NEXT_PUBLIC_APP_VERSION=3.0.1
+NEXTAUTH_SECRET=your-secret-key
+NEXTAUTH_URL=http://localhost:3000
 ```
 
-## 📱 Usage
+## 🛠️ Technology Stack
 
-### For Students
-1. **Browse Courses**: Explore available language courses
-2. **Enroll in Courses**: Select courses of interest
-3. **Watch Lessons**: Complete video lessons with progress tracking
-4. **Take Assessments**: Complete course assessments to test knowledge
-5. **Track Progress**: Monitor learning progress in dashboard
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS
+- **Authentication**: NextAuth.js
+- **State Management**: React Hooks, Context API
+- **Data Storage**: LocalStorage, IndexedDB
+- **Deployment**: Vercel (recommended)
 
-### For Parents/Teachers
-1. **Monitor Progress**: View detailed progress reports
-2. **Assessment Results**: Review assessment scores and feedback
-3. **Learning Analytics**: Track time spent and completion rates
-4. **Course Management**: Manage enrolled courses and progress
+## 📁 Project Structure
+
+```
+├── app/                    # Next.js 14 app directory
+│   ├── courses/           # Course pages and components
+│   ├── dashboard/         # User dashboard
+│   ├── assessment/        # Language assessment system
+│   └── profile/           # User profile management
+├── components/            # Reusable React components
+├── lib/                   # Utility functions and helpers
+├── types/                 # TypeScript type definitions
+└── public/                # Static assets
+```
 
 ## 🔧 Development
 
-### Project Structure
-```
-├── app/                    # Next.js app directory
-│   ├── courses/           # Course learning pages
-│   ├── assessment/        # Assessment system
-│   └── dashboard/         # User dashboard
-├── components/            # Reusable UI components
-├── stores/               # State management
-└── lib/                  # Utility functions
+### Available Scripts
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript type checking
 ```
 
-### Key Components
-- **CoursePlayer**: Video player with progress tracking
-- **Dashboard**: User progress and course management
-- **Assessment**: Course-specific assessment system
-- **ProgressTracker**: Learning progress management
-- **AvatarSelector**: Comprehensive avatar system with predefined and custom options
+### Code Style
+- Follow TypeScript best practices
+- Use Tailwind CSS for styling
+- Implement responsive design patterns
+- Follow React hooks guidelines
 
-### Adding New Features
-1. Create feature branch: `git checkout -b feature/new-feature`
-2. Implement changes with proper TypeScript types
-3. Update documentation and tests
-4. Submit pull request for review
+## 📊 Assessment System
 
-## 📊 Progress Tracking
+### General Language Assessments
+The platform provides comprehensive language proficiency evaluations:
 
-### Lesson Completion
-- **Automatic**: 90% watch threshold triggers completion
-- **Manual**: "Mark as Complete" button for immediate completion
-- **Persistence**: Progress saved to localStorage and synchronized
+- **English**: Beginner to Advanced levels
+- **Tagalog**: Filipino language proficiency
+- **Korean**: Korean language skills
+- **Japanese**: Japanese language assessment
 
-### Assessment System
-- **Course-Specific**: Assessments tailored to enrolled courses
-- **Scoring**: Percentage-based scoring with pass/fail thresholds
-- **Integration**: Results automatically update dashboard progress
+### Assessment Features
+- **Adaptive Questions**: Questions adjust based on user performance
+- **Time Tracking**: Monitor assessment completion time
+- **Score Calculation**: Percentage-based scoring with pass/fail thresholds
+- **Progress History**: Complete assessment history with detailed analytics
 
-### Dashboard Synchronization
-- **Real-time Updates**: Progress changes reflect immediately
-- **Cross-Component Sync**: Dashboard and course details stay synchronized
-- **Data Persistence**: All progress data persists across sessions
+## 🎨 UI/UX Features
 
-### Avatar System
-- **Predefined Options**: 12 emoji-based avatars (Student, Teacher, Traveler, etc.)
-- **Custom Generation**: 25+ styles from Dicebear free API
-- **Cross-Component Display**: Consistent avatar display across profile, header, and dashboard
-- **User Guidance**: Comprehensive tooltips, welcome messages, and step-by-step instructions
-- **Persistent Storage**: Avatar selections saved to localStorage and auth store
+### Video Player Controls
+- **Desktop Layout**: Wide control distribution with proper alignment
+- **Mobile Optimization**: Touch-friendly controls and gestures
+- **Smart Visibility**: Context-aware control display
+- **Professional Experience**: Industry-standard video player behavior
 
-## 🎯 Roadmap
+### Course Content Sidebar
+- **Collapsible Design**: Expandable/collapsible sidebar for better space utilization
+- **Responsive Behavior**: Adapts to different screen sizes
+- **Header Integration**: Proper z-index management to prevent overlaps
 
-### Version 3.1 (Next)
-- [ ] Course Discussions feature implementation
-- [ ] Advanced analytics dashboard
-- [ ] Parent/teacher reporting system
-- [ ] Multi-language support expansion
-- [ ] Mobile app development
+## 📈 Performance & Optimization
 
-### Version 3.2 (Future)
-- [ ] AI-powered learning recommendations
-- [ ] Social learning features
-- [ ] Gamification enhancements
-- [ ] Offline learning support
+- **Fast Refresh**: Next.js Fast Refresh for rapid development
+- **Code Splitting**: Automatic route-based code splitting
+- **Image Optimization**: Next.js Image component for optimized images
+- **Bundle Analysis**: Built-in bundle analyzer for performance monitoring
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+```bash
+npm install -g vercel
+vercel --prod
+```
+
+### Other Platforms
+- **Netlify**: Compatible with Next.js static export
+- **AWS Amplify**: Full-stack deployment solution
+- **Docker**: Containerized deployment option
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Setup
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 🆘 Support
 
-- Next.js team for the amazing framework
-- Tailwind CSS for the utility-first CSS framework
-- Framer Motion for smooth animations
-- All contributors and supporters
+For support and questions:
+- Create an issue in the repository
+- Check the documentation
+- Review existing issues and discussions
+
+## 🔄 Version History
+
+### v3.0.3 (Current)
+- ✨ **NEW**: Assessment History Modal for General Language Assessments
+- ✨ **NEW**: Smart Video Player Controls with Auto-hide
+- ✨ **NEW**: Click-anywhere-to-play Video Functionality
+- ✨ **NEW**: Collapsible Course Content Sidebar
+- 🐛 **FIXED**: Video Player Controls Alignment on Desktop
+- 🐛 **FIXED**: Course Content Sidebar Header Overlap
+- 🐛 **FIXED**: Assessment History Empty State
+- 🎨 **IMPROVED**: Video Player UX with Professional Controls
+- 🎨 **IMPROVED**: Responsive Design for Mobile and Desktop
+
+### v3.0.2
+- Enhanced video player functionality
+- Improved course navigation
+- Bug fixes and performance improvements
+
+### v3.0.1
+- Initial release with core features
+- Basic course management
+- User authentication system
 
 ---
 
-**Last Updated**: August 28, 2025  
-**Version**: 3.0.3  
-**Status**: Professional Video Player Enhancement Complete - Production Ready! 🚀
+**Built with ❤️ for children's language learning**
