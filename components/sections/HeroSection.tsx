@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { motion } from 'framer-motion'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { 
   Play, 
   BookOpen, 
@@ -13,14 +14,15 @@ import {
 } from 'lucide-react'
 
 export function HeroSection() {
+  const { t } = useLanguage()
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
   const features = [
-    { icon: BookOpen, text: 'Interactive Lessons' },
-    { icon: Users, text: 'Study Groups' },
-    { icon: Award, text: 'Achievement System' },
-    { icon: Globe, text: 'Multiple Languages' },
-    { icon: Brain, text: 'AI-Powered Learning' },
+    { icon: BookOpen, text: t('hero.features.interactive') },
+    { icon: Users, text: t('hero.features.groups') },
+    { icon: Award, text: t('hero.features.achievements') },
+    { icon: Globe, text: t('hero.features.languages') },
+    { icon: Brain, text: t('hero.features.ai') },
   ]
 
   return (
@@ -47,7 +49,7 @@ export function HeroSection() {
             className="inline-flex items-center px-4 py-2 rounded-full bg-primary-100 text-primary-800 text-sm font-medium mb-6"
           >
             <span className="w-2 h-2 bg-primary-600 rounded-full mr-2 animate-pulse"></span>
-            #1 Global Platform for Filipino & Asian Languages
+            {t('hero.badge')}
           </motion.div>
 
           {/* Main Headline */}
@@ -57,9 +59,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight"
           >
-            Master Languages with{' '}
-            <span className="gradient-text">AI-Powered</span>{' '}
-            Learning
+            {t('hero.headline')}
           </motion.h1>
 
           {/* Subtitle */}
@@ -69,9 +69,7 @@ export function HeroSection() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed"
           >
-            Learn Tagalog, English, Korean, Japanese, Chinese and more through interactive video lessons, 
-            AI-generated exams, and personalized learning paths. Perfect for students worldwide, with special 
-            expertise in Filipino languages and Asian cultures.
+            {t('hero.subtitle')}
           </motion.p>
 
           {/* CTA Buttons */}
@@ -82,7 +80,7 @@ export function HeroSection() {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
           >
             <Button size="lg" className="text-lg px-8 py-4">
-              Start Learning Free
+              {t('hero.startLearning')}
             </Button>
             <Button 
               variant="outline" 
@@ -91,7 +89,7 @@ export function HeroSection() {
               onClick={() => setIsVideoPlaying(true)}
             >
               <Play className="w-5 h-5 mr-2" />
-              Watch Demo
+              {t('hero.watchDemo')}
             </Button>
           </motion.div>
 

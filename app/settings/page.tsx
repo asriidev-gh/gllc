@@ -6,6 +6,7 @@ import { Settings, Bell, Shield, Palette, Globe, Lock, Key, User, Mail, X } from
 import { Button } from '@/components/ui/Button'
 import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
+import { useLanguage } from '@/contexts/LanguageContext'
 import toast from 'react-hot-toast'
 
 // Settings interfaces
@@ -34,6 +35,7 @@ interface LanguageRegionSettings {
 
 export default function SettingsPage() {
   const { user, changePassword, logUserAction } = useAuthStore()
+  const { t } = useLanguage()
   
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [passwordData, setPasswordData] = useState({
@@ -254,9 +256,9 @@ export default function SettingsPage() {
       console.error('Failed to change password:', error)
       
       // Log the failed password change attempt
-      logUserAction('PASSWORD_CHANGE_FAILED', `Failed to change password: ${error instanceof Error ? error.message : 'Unknown error'}`)
+              logUserAction('PASSWORD_CHANGE_FAILED', t('settings.page.password.failedToChangePasswordError').replace('{error}', error instanceof Error ? error.message : t('settings.page.password.unknown')))
       
-      toast.error(error instanceof Error ? error.message : 'Failed to change password. Please try again.', {
+              toast.error(error instanceof Error ? error.message : t('settings.page.password.failedToChangePassword'), {
         duration: 5000,
         position: 'top-right',
         style: {
@@ -269,7 +271,7 @@ export default function SettingsPage() {
         },
       })
       
-      setPasswordError(error instanceof Error ? error.message : 'Failed to change password. Please try again.')
+              setPasswordError(error instanceof Error ? error.message : t('settings.page.password.failedToChangePassword'))
     } finally {
       setIsChangingPassword(false)
     }
@@ -312,16 +314,16 @@ export default function SettingsPage() {
             <div className="p-6 border-b border-gray-200">
               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
                 <Settings className="w-8 h-8 text-blue-600 mr-3" />
-                Settings
+                {t('settings.page.title')}
               </h1>
-              <p className="text-gray-600 mt-2">Manage your account preferences and settings</p>
+              <p className="text-gray-600 mt-2">{t('settings.page.subtitle')}</p>
             </div>
 
             {/* Account Settings - Always Visible */}
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                 <User className="w-5 h-5 mr-2 text-blue-600" />
-                Account Settings
+                {t('settings.page.security.title')}
               </h2>
               
               {/* Email Section */}
@@ -330,14 +332,14 @@ export default function SettingsPage() {
                   <p className="font-medium text-gray-900">Email Address</p>
                   <p className="text-sm text-gray-600">{user.email}</p>
                 </div>
-                <span className="text-sm text-gray-500">Email cannot be changed</span>
+                <span className="text-sm text-gray-500">{t('settings.page.password.emailCannotBeChanged')}</span>
               </div>
 
               {/* Password Section */}
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="font-medium text-gray-900">Password</p>
-                  <p className="text-sm text-gray-600">Last changed: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}</p>
+                  <p className="text-sm text-gray-600">{t('settings.page.password.lastChanged')}: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : t('settings.page.password.unknown')}</p>
                 </div>
                 <Button
                   onClick={() => setShowPasswordForm(!showPasswordForm)}
@@ -345,7 +347,7 @@ export default function SettingsPage() {
                   size="sm"
                 >
                   <Key className="w-4 h-4 mr-2" />
-                  Change Password
+                  {t('settings.page.security.changePassword')}
                 </Button>
               </div>
 
@@ -357,7 +359,7 @@ export default function SettingsPage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg"
                 >
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">{t('settings.page.security.changePassword')}</h3>
                   
                   {passwordError && (
                     <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">
@@ -368,7 +370,7 @@ export default function SettingsPage() {
                   <form onSubmit={handlePasswordChange} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Current Password
+                        {t('settings.page.security.currentPassword')}
                       </label>
                       <input
                         type="password"
@@ -377,13 +379,13 @@ export default function SettingsPage() {
                         required
                         disabled={isChangingPassword}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                        placeholder="Enter your current password"
+                        placeholder={t('settings.page.password.enterCurrentPassword')}
                       />
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        New Password
+                        {t('settings.page.security.newPassword')}
                       </label>
                       <input
                         type="password"
@@ -393,13 +395,13 @@ export default function SettingsPage() {
                         minLength={6}
                         disabled={isChangingPassword}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                        placeholder="Enter your new password"
+                        placeholder={t('settings.page.password.enterNewPassword')}
                       />
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Confirm New Password
+                        {t('settings.page.security.confirmPassword')}
                       </label>
                       <input
                         type="password"
@@ -415,7 +417,7 @@ export default function SettingsPage() {
                     <div className="flex space-x-3">
                       <Button type="submit" className="flex-1" disabled={isChangingPassword}>
                         <Lock className="w-4 h-4 mr-2" />
-                        <span>{isChangingPassword ? 'Changing Password...' : 'Change Password'}</span>
+                        <span>{isChangingPassword ? t('settings.page.password.changingPassword') : t('settings.page.password.changePassword')}</span>
                       </Button>
                       <Button 
                         type="button" 
@@ -427,7 +429,7 @@ export default function SettingsPage() {
                           setPasswordError('')
                         }}
                       >
-                        Cancel
+                        {t('settings.page.password.cancel')}
                       </Button>
                     </div>
                   </form>
@@ -437,7 +439,7 @@ export default function SettingsPage() {
 
             {/* Quick Actions - Always Visible */}
             <div className="p-6 border-t border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('settings.page.quickActions.title')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button 
                   variant="outline" 
@@ -446,8 +448,8 @@ export default function SettingsPage() {
                 >
                   <Shield className="w-5 h-5 mr-3 text-green-600" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">View Audit Logs</p>
-                    <p className="text-sm text-gray-600">Monitor your account activity</p>
+                    <p className="font-medium text-gray-900">{t('settings.page.quickActions.viewAuditLogs.title')}</p>
+                    <p className="text-sm text-gray-600">{t('settings.page.quickActions.viewAuditLogs.description')}</p>
                   </div>
                 </Button>
                 
@@ -458,8 +460,8 @@ export default function SettingsPage() {
                 >
                   <Bell className="w-5 h-5 mr-3 text-blue-600" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Notification Preferences</p>
-                    <p className="text-sm text-gray-600">Customize your alerts</p>
+                    <p className="font-medium text-gray-900">{t('settings.page.quickActions.notificationPreferences.title')}</p>
+                    <p className="text-sm text-gray-600">{t('settings.page.quickActions.notificationPreferences.description')}</p>
                   </div>
                 </Button>
                 
@@ -470,8 +472,8 @@ export default function SettingsPage() {
                 >
                   <Palette className="w-5 h-5 mr-3 text-purple-600" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Appearance</p>
-                    <p className="text-sm text-gray-600">Theme and display options</p>
+                    <p className="font-medium text-gray-900">{t('settings.page.quickActions.appearance.title')}</p>
+                    <p className="text-sm text-gray-600">{t('settings.page.quickActions.appearance.description')}</p>
                   </div>
                 </Button>
                 
@@ -482,8 +484,8 @@ export default function SettingsPage() {
                 >
                   <Globe className="w-5 h-5 mr-3 text-orange-600" />
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">Language & Region</p>
-                    <p className="text-sm text-gray-600">Set your preferences</p>
+                    <p className="font-medium text-gray-900">{t('settings.page.quickActions.languageRegion.title')}</p>
+                    <p className="text-sm text-gray-600">{t('settings.page.quickActions.languageRegion.description')}</p>
                   </div>
                 </Button>
               </div>
@@ -637,10 +639,10 @@ export default function SettingsPage() {
                 >
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                        <Palette className="w-5 h-5 mr-2 text-purple-600" />
-                        Appearance
-                      </h2>
+                                              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                          <Palette className="w-5 h-5 mr-2 text-purple-600" />
+                          {t('settings.page.appearance.title')}
+                        </h2>
                       <Button
                         onClick={closeSection}
                         variant="outline"
@@ -717,10 +719,10 @@ export default function SettingsPage() {
                 >
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                        <Globe className="w-5 h-5 mr-2 text-orange-600" />
-                        Language & Region
-                      </h2>
+                                              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                          <Globe className="w-5 h-5 mr-2 text-orange-600" />
+                          {t('settings.page.language.title')}
+                        </h2>
                       <Button
                         onClick={closeSection}
                         variant="outline"

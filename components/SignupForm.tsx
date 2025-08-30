@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores'
 import { Button } from '@/components/ui/Button'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface FormData {
   firstName: string
@@ -31,6 +32,7 @@ export default function SignupForm() {
   
   const router = useRouter()
   const { register, isLoading } = useAuthStore()
+  const { t } = useLanguage()
   
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -53,53 +55,53 @@ export default function SignupForm() {
     const newErrors: FormErrors = {}
 
     if (!formData.firstName.trim()) {
-      newErrors.firstName = 'First name is required'
+      newErrors.firstName = t('auth.signup.errors.firstNameRequired')
     }
 
     if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Last name is required'
+      newErrors.lastName = t('auth.signup.errors.lastNameRequired')
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required'
+      newErrors.email = t('auth.signup.errors.emailRequired')
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid'
+      newErrors.email = t('auth.signup.errors.emailInvalid')
     }
 
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = t('auth.signup.errors.passwordRequired')
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+      newErrors.password = t('auth.signup.errors.passwordLength')
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
+      newErrors.confirmPassword = t('auth.signup.errors.passwordMismatch')
     }
 
     if (!formData.age) {
-      newErrors.age = 'Age is required'
+      newErrors.age = t('auth.signup.errors.ageRequired')
     } else if (parseInt(formData.age) < 5 || parseInt(formData.age) > 100) {
-      newErrors.age = 'Age must be between 5 and 100'
+      newErrors.age = t('auth.signup.errors.ageRange')
     }
 
     if (!formData.grade) {
-      newErrors.grade = 'Grade level is required'
+      newErrors.grade = t('auth.signup.errors.gradeRequired')
     }
 
     if (!formData.school.trim()) {
-      newErrors.school = 'School is required'
+      newErrors.school = t('auth.signup.errors.schoolRequired')
     }
 
     if (formData.interests.length === 0) {
-      newErrors.interests = 'Please select at least one interest'
+      newErrors.interests = t('auth.signup.errors.interestsRequired')
     }
 
     if (!formData.nativeLanguage) {
-      newErrors.nativeLanguage = 'Native language is required'
+      newErrors.nativeLanguage = t('auth.signup.errors.nativeLanguageRequired')
     }
 
     if (formData.targetLanguages.length === 0) {
-      newErrors.targetLanguages = 'Please select at least one target language'
+      newErrors.targetLanguages = t('auth.signup.errors.targetLanguagesRequired')
     }
 
     console.log('🚀 Validation errors:', newErrors)
@@ -136,7 +138,7 @@ export default function SignupForm() {
       router.push('/dashboard')
     } catch (error) {
       console.error('❌ Registration failed:', error)
-      setErrors({ submit: 'Registration failed. Please try again.' })
+      setErrors({ submit: t('auth.signup.errors.registrationFailed') })
     }
   }
 
@@ -177,7 +179,7 @@ export default function SignupForm() {
 
   return (
     <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-center mb-6">Create Account</h2>
+      <h2 className="text-2xl font-bold text-center mb-6">{t('auth.signup.title')}</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Test Form Button */}
@@ -186,13 +188,13 @@ export default function SignupForm() {
           onClick={() => console.log('🚀 Test Form button clicked!')}
           className="w-full bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 mb-4"
         >
-          Test Form
+          {t('auth.signup.testFormButton')}
         </button>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-              First Name *
+              {t('auth.signup.firstNameLabel')} *
             </label>
             <input
               type="text"
@@ -203,14 +205,14 @@ export default function SignupForm() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.firstName ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="First Name"
+              placeholder={t('auth.signup.firstNamePlaceholder')}
             />
             {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
           </div>
 
           <div>
             <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-              Last Name *
+              {t('auth.signup.lastNameLabel')} *
             </label>
             <input
               type="text"
@@ -221,7 +223,7 @@ export default function SignupForm() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.lastName ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Last Name"
+              placeholder={t('auth.signup.lastNamePlaceholder')}
             />
             {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
           </div>
@@ -229,7 +231,7 @@ export default function SignupForm() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email *
+            {t('auth.signup.emailLabel')} *
           </label>
           <input
             type="email"
@@ -240,7 +242,7 @@ export default function SignupForm() {
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.email ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder="Email"
+            placeholder={t('auth.signup.emailPlaceholder')}
           />
           {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
         </div>
@@ -248,7 +250,7 @@ export default function SignupForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password *
+              {t('auth.signup.passwordLabel')} *
             </label>
             <input
               type="password"
@@ -259,14 +261,14 @@ export default function SignupForm() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.password ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Password"
+              placeholder={t('auth.signup.passwordPlaceholder')}
             />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Confirm Password *
+              {t('auth.signup.confirmPasswordLabel')} *
             </label>
             <input
               type="password"
@@ -277,7 +279,7 @@ export default function SignupForm() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Confirm Password"
+              placeholder={t('auth.signup.confirmPasswordPlaceholder')}
             />
             {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
           </div>
@@ -286,7 +288,7 @@ export default function SignupForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
-              Age *
+              {t('auth.signup.ageLabel')} *
             </label>
             <input
               type="number"
@@ -299,14 +301,14 @@ export default function SignupForm() {
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.age ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Age"
+              placeholder={t('auth.signup.agePlaceholder')}
             />
             {errors.age && <p className="text-red-500 text-xs mt-1">{errors.age}</p>}
           </div>
 
           <div>
             <label htmlFor="grade" className="block text-sm font-medium text-gray-700 mb-1">
-              Grade Level *
+              {t('auth.signup.gradeLabel')} *
             </label>
             <select
               id="grade"
@@ -317,7 +319,7 @@ export default function SignupForm() {
                 errors.grade ? 'border-red-500' : 'border-gray-300'
               }`}
             >
-              <option value="">Select Grade</option>
+              <option value="">{t('auth.signup.selectGradePlaceholder')}</option>
               {availableGrades.map(grade => (
                 <option key={grade} value={grade}>{grade}</option>
               ))}
@@ -328,7 +330,7 @@ export default function SignupForm() {
 
         <div>
           <label htmlFor="school" className="block text-sm font-medium text-gray-700 mb-1">
-            School/Institution *
+            {t('auth.signup.schoolLabel')} *
           </label>
           <input
             type="text"
@@ -339,14 +341,14 @@ export default function SignupForm() {
             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
               errors.school ? 'border-red-500' : 'border-gray-300'
             }`}
-            placeholder="School/Institution"
+            placeholder={t('auth.signup.schoolPlaceholder')}
           />
           {errors.school && <p className="text-red-500 text-xs mt-1">{errors.school}</p>}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Interests *
+            {t('auth.signup.interestsLabel')} *
           </label>
           <div className="grid grid-cols-2 gap-2">
             {availableLanguages.map(language => (
@@ -366,7 +368,7 @@ export default function SignupForm() {
 
         <div>
           <label htmlFor="nativeLanguage" className="block text-sm font-medium text-gray-700 mb-1">
-            Native Language *
+            {t('auth.signup.nativeLanguageLabel')} *
           </label>
           <select
             id="nativeLanguage"
@@ -377,7 +379,7 @@ export default function SignupForm() {
               errors.nativeLanguage ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            <option value="">Select Native Language</option>
+            <option value="">{t('auth.signup.selectNativeLanguagePlaceholder')}</option>
             {availableLanguages.map(language => (
               <option key={language} value={language}>{language}</option>
             ))}
@@ -387,7 +389,7 @@ export default function SignupForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Target Languages *
+            {t('auth.signup.targetLanguagesLabel')} *
           </label>
           <div className="grid grid-cols-2 gap-2">
             {availableLanguages.map(language => (
@@ -417,7 +419,7 @@ export default function SignupForm() {
           onClick={() => console.log('🚀 Submit button clicked!')}
           className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Creating Account...' : 'Create Account'}
+          {isLoading ? t('auth.signup.creatingAccountButton') : t('auth.signup.createAccountButton')}
         </button>
       </form>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/Button'
 import { getLanguageColor, getLevelColor } from '@/lib/utils'
 import { AssessmentModal } from '@/components/AssessmentModal'
@@ -18,82 +19,8 @@ import {
   Play
 } from 'lucide-react'
 
-const languages = [
-  {
-    name: 'Tagalog',
-    nativeName: 'Wikang Tagalog',
-    description: 'Learn the national language of the Philippines with cultural context and modern usage.',
-    flag: '🇵🇭',
-    level: 'beginner',
-    students: 2500,
-    lessons: 80,
-    duration: '3-6 months',
-    features: ['Cultural Context', 'Modern Usage', 'Regional Variations', 'Formal vs Informal'],
-    color: 'lang-tagalog'
-  },
-  {
-    name: 'English',
-    nativeName: 'English',
-    description: 'Master English for academic success, career advancement, and global communication.',
-    flag: '🇺🇸',
-    level: 'beginner',
-    students: 3200,
-    lessons: 120,
-    duration: '6-12 months',
-    features: ['Business English', 'Academic Writing', 'Conversation Skills', 'Grammar Mastery'],
-    color: 'lang-english'
-  },
-  {
-    name: 'Korean',
-    nativeName: '한국어',
-    description: 'Learn Korean for K-pop culture, business opportunities, and travel to South Korea.',
-    flag: '🇰🇷',
-    level: 'intermediate',
-    students: 1800,
-    lessons: 95,
-    duration: '8-15 months',
-    features: ['Hangul Writing', 'K-pop Culture', 'Business Korean', 'Travel Phrases'],
-    color: 'lang-korean'
-  },
-  {
-    name: 'Japanese',
-    nativeName: '日本語',
-    description: 'Master Japanese for anime, manga, business, and cultural exchange with Japan.',
-    flag: '🇯🇵',
-    level: 'intermediate',
-    students: 1600,
-    lessons: 110,
-    duration: '10-18 months',
-    features: ['Hiragana & Katakana', 'Anime & Manga', 'Business Japanese', 'Cultural Etiquette'],
-    color: 'lang-japanese'
-  },
-  {
-    name: 'Chinese',
-    nativeName: '中文',
-    description: 'Learn Chinese for business opportunities, cultural understanding, and global trade.',
-    flag: '🇨🇳',
-    level: 'advanced',
-    students: 1200,
-    lessons: 85,
-    duration: '12-20 months',
-    features: ['Simplified Characters', 'Business Chinese', 'Cultural Context', 'Mandarin Pronunciation'],
-    color: 'lang-chinese'
-  },
-  {
-    name: 'Spanish',
-    nativeName: 'Español',
-    description: 'Learn Spanish for business, travel, and cultural connections with Spanish-speaking countries.',
-    flag: '🇪🇸',
-    level: 'beginner',
-    students: 900,
-    lessons: 70,
-    duration: '6-10 months',
-    features: ['Latin American Spanish', 'Business Spanish', 'Travel Phrases', 'Cultural Context'],
-    color: 'lang-spanish'
-  }
-]
-
 export function LanguagesSection() {
+  const { t } = useLanguage()
   const { isAuthenticated } = useAuthStore()
   const [isAssessmentOpen, setIsAssessmentOpen] = useState(false)
   const [showAllCourses, setShowAllCourses] = useState(false)
@@ -133,6 +60,81 @@ export function LanguagesSection() {
     }
   }
 
+  const languages = [
+    {
+      name: t('languages.tagalog'),
+      nativeName: t('languages.tagalog.native'),
+      description: t('languages.tagalog.description'),
+      flag: '🇵🇭',
+      level: t('languages.level.beginner'),
+      students: 2500,
+      lessons: 80,
+      duration: '3-6',
+      features: [t('languages.features.cultural'), t('languages.features.modern'), t('languages.features.regional'), t('languages.features.formal')],
+      color: 'lang-tagalog'
+    },
+    {
+      name: t('languages.english'),
+      nativeName: t('languages.english.native'),
+      description: t('languages.english.description'),
+      flag: '🇺🇸',
+      level: t('languages.level.beginner'),
+      students: 3200,
+      lessons: 120,
+      duration: '6-12',
+      features: [t('languages.features.business'), t('languages.features.academic'), t('languages.features.conversation'), t('languages.features.grammar')],
+      color: 'lang-english'
+    },
+    {
+      name: t('languages.korean'),
+      nativeName: t('languages.korean.native'),
+      description: t('languages.korean.description'),
+      flag: '🇰🇷',
+      level: t('languages.level.intermediate'),
+      students: 1800,
+      lessons: 95,
+      duration: '8-15',
+      features: [t('languages.features.hangul'), t('languages.features.kpop'), t('languages.features.businessKorean'), t('languages.features.travel')],
+      color: 'lang-korean'
+    },
+    {
+      name: t('languages.japanese'),
+      nativeName: t('languages.japanese.native'),
+      description: t('languages.japanese.description'),
+      flag: '🇯🇵',
+      level: t('languages.level.intermediate'),
+      students: 1600,
+      lessons: 110,
+      duration: '10-18',
+      features: [t('languages.features.hiragana'), t('languages.features.anime'), t('languages.features.businessJapanese'), t('languages.features.etiquette')],
+      color: 'lang-japanese'
+    },
+    {
+      name: t('languages.chinese'),
+      nativeName: t('languages.chinese.native'),
+      description: t('languages.chinese.description'),
+      flag: '🇨🇳',
+      level: t('languages.level.advanced'),
+      students: 1200,
+      lessons: 85,
+      duration: '12-20',
+      features: [t('languages.features.characters'), t('languages.features.businessChinese'), t('languages.features.culturalContext'), t('languages.features.mandarin')],
+      color: 'lang-chinese'
+    },
+    {
+      name: t('languages.spanish'),
+      nativeName: t('languages.spanish.native'),
+      description: t('languages.spanish.description'),
+      flag: '🇪🇸',
+      level: t('languages.level.beginner'),
+      students: 900,
+      lessons: 70,
+      duration: '6-10',
+      features: [t('languages.features.latin'), t('languages.features.businessSpanish'), t('languages.features.travel'), t('languages.features.culturalContext')],
+      color: 'lang-spanish'
+    }
+  ]
+
   return (
     <section className="py-20 bg-gray-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -145,12 +147,10 @@ export function LanguagesSection() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Language Journey
+            {t('languages.chooseYourJourney')}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            From Tagalog fundamentals to advanced business languages, we offer comprehensive 
-            courses designed for students worldwide. Our special expertise in Filipino languages 
-            and Asian cultures makes us the perfect choice for global learners.
+            {t('languages.chooseYourJourneyDescription')}
           </p>
         </motion.div>
 
@@ -204,15 +204,15 @@ export function LanguagesSection() {
                   <div className="grid grid-cols-3 gap-4 mb-6 text-center">
                     <div>
                       <div className="text-lg font-bold text-primary-600">{language.students}</div>
-                      <div className="text-xs text-gray-500">Students</div>
+                      <div className="text-xs text-gray-500">{t('languages.students')}</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-secondary-600">{language.lessons}</div>
-                      <div className="text-xs text-gray-500">Lessons</div>
+                      <div className="text-xs text-gray-500">{t('languages.lessons')}</div>
                     </div>
                     <div>
                       <div className="text-lg font-bold text-accent-600">{language.duration}</div>
-                      <div className="text-xs text-gray-500">Duration</div>
+                      <div className="text-xs text-gray-500">{t('languages.duration.months')}</div>
                     </div>
                   </div>
 
@@ -222,7 +222,7 @@ export function LanguagesSection() {
                     onClick={() => handleStartLearning(language.name.toLowerCase())}
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    {isAuthenticated ? 'Enroll Now' : 'Start Learning'}
+                    {isAuthenticated ? t('languages.enrollNow') : t('languages.startLearning')}
                   </Button>
                 </div>
               </div>
@@ -240,11 +240,10 @@ export function LanguagesSection() {
         >
           <div className="bg-gradient-to-r from-primary-600 to-secondary-600 rounded-2xl p-8 text-white">
             <h3 className="text-2xl font-bold mb-4">
-              Can't Decide? Take Our Language Assessment!
+              {t('languages.assessment.title')}
             </h3>
             <p className="text-primary-100 max-w-2xl mx-auto mb-6">
-              Our AI-powered assessment will help you choose the perfect language and level 
-              based on your goals, interests, and current skills.
+              {t('languages.assessment.description')}
             </p>
                           <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button 
@@ -253,7 +252,7 @@ export function LanguagesSection() {
                   className="bg-white text-primary-600 hover:bg-gray-50"
                   onClick={() => setIsAssessmentOpen(true)}
                 >
-                  Take Assessment
+                  {t('languages.assessment.takeAssessment')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -261,7 +260,7 @@ export function LanguagesSection() {
                   className="border-white text-white hover:bg-white hover:text-primary-600 transition-colors"
                   onClick={() => setShowAllCourses(true)}
                 >
-                  View All Courses
+                  {t('languages.assessment.viewAllCourses')}
                 </Button>
               </div>
           </div>

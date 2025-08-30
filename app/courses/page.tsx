@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { useAuthStore, useCoursesStore } from '@/stores'
 import { Header } from '@/components/Header'
 import { CourseDetailsModal } from '@/components/CourseDetailsModal'
+import { useLanguage } from '@/contexts/LanguageContext'
 import toast from 'react-hot-toast'
 import { recordCourseBrowsing, recordLearningActivity } from '@/lib/learningActivity'
 
@@ -134,6 +135,7 @@ const mockCourses = [
 export default function CoursesPage() {
   const { isAuthenticated, user } = useAuthStore()
   const { enrollInCourse, getEnrollment } = useCoursesStore()
+  const { t } = useLanguage()
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<string>('')
@@ -302,10 +304,9 @@ export default function CoursesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Explore Our Courses</h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('courses.page.title')}</h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
-            Discover language courses designed to help you achieve fluency with interactive lessons, 
-            expert instructors, and practical learning approaches.
+            {t('courses.page.subtitle')}
           </p>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-2xl mx-auto">
             <div className="flex items-center justify-center space-x-2 text-green-700">
@@ -331,7 +332,7 @@ export default function CoursesPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search courses..."
+                placeholder={t('courses.page.search.placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -344,7 +345,7 @@ export default function CoursesPage() {
               onChange={(e) => setSelectedLanguage(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Languages</option>
+              <option value="">{t('courses.page.filter.language')}</option>
               {languages.map(language => (
                 <option key={language} value={language}>{language}</option>
               ))}
@@ -356,7 +357,7 @@ export default function CoursesPage() {
               onChange={(e) => setSelectedLevel(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">All Levels</option>
+              <option value="">{t('courses.page.filter.level')}</option>
               {levels.map(level => (
                 <option key={level} value={level}>
                   {level.charAt(0) + level.slice(1).toLowerCase()}
@@ -374,7 +375,7 @@ export default function CoursesPage() {
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="enrolledOnly" className="ml-2 text-sm text-gray-700">
-                Show enrolled only
+                {t('courses.page.filter.enrolledOnly')}
               </label>
             </div>
 
@@ -390,7 +391,7 @@ export default function CoursesPage() {
               className="flex items-center justify-center"
             >
               <Filter className="w-4 h-4 mr-2" />
-              Clear Filters
+              {t('courses.page.filter.clear')}
             </Button>
           </div>
         </motion.div>
@@ -492,7 +493,7 @@ export default function CoursesPage() {
                     ))}
                     {course.features.length > 2 && (
                       <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-md">
-                        +{course.features.length - 2} more
+                        {t('courses.page.course.moreFeatures').replace('{count}', (course.features.length - 2).toString())}
                       </span>
                     )}
                   </div>
@@ -505,25 +506,25 @@ export default function CoursesPage() {
                       FREE
                     </span>
                     <span className="text-sm text-green-600 font-medium ml-2">
-                      All lessons unlocked
+                      {t('courses.page.course.allLessonsUnlocked')}
                     </span>
                   </div>
                   {isEnrolledInCourse(course.id) ? (
-                    <Button
-                      onClick={() => handleContinue(course.id)}
-                      variant="outline"
-                      className="px-4 py-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                    >
-                      <BookOpen className="w-4 h-4 mr-2" />
-                      Continue
-                    </Button>
+                                          <Button
+                        onClick={() => handleContinue(course.id)}
+                        variant="outline"
+                        className="px-4 py-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                      >
+                        <BookOpen className="w-4 h-4 mr-2" />
+                        {t('courses.page.course.continue')}
+                      </Button>
                   ) : (
                     <Button
                       onClick={() => handleOpenCourseDetails(course)}
                       className="px-4 py-2 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Get Free Access
+                      {t('courses.page.course.getFreeAccess')}
                     </Button>
                   )}
                 </div>
@@ -540,9 +541,9 @@ export default function CoursesPage() {
             className="text-center py-12"
           >
             <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('courses.page.noResults.title')}</h3>
             <p className="text-gray-600 mb-6">
-              Try adjusting your search criteria or browse all available courses.
+              {t('courses.page.noResults.description')}
             </p>
             <Button
               onClick={() => {
@@ -551,7 +552,7 @@ export default function CoursesPage() {
                 setSelectedLanguage('')
               }}
             >
-              Show All Courses
+              {t('courses.page.noResults.button')}
             </Button>
           </motion.div>
         )}
@@ -563,9 +564,9 @@ export default function CoursesPage() {
           transition={{ delay: 0.5 }}
           className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-center text-white"
         >
-          <h2 className="text-2xl font-bold mb-4">Not sure where to start?</h2>
+          <h2 className="text-2xl font-bold mb-4">{t('courses.page.cta.title')}</h2>
           <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            Take our language assessment to discover your current level and get personalized course recommendations.
+            {t('courses.page.cta.description')}
           </p>
           <Button
             variant="outline"
@@ -573,7 +574,7 @@ export default function CoursesPage() {
             onClick={() => window.location.href = '/assessment'}
           >
             <Target className="w-4 h-4 mr-2" />
-              Take Assessment
+              {t('courses.page.cta.button')}
           </Button>
         </motion.div>
         </div>

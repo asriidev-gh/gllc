@@ -6,11 +6,15 @@ import { Trophy, Star, Target, BookOpen, Clock, Award, Medal, Crown, Globe, Mess
 import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { recordLearningActivity } from '@/lib/learningActivity'
 
 export default function AchievementsPage() {
   const { user, isAuthenticated } = useAuthStore()
   const router = useRouter()
+  const { t, language } = useLanguage()
+  
+
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
   const [achievementDetails, setAchievementDetails] = useState<any[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
@@ -70,11 +74,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'first_course',
-        title: 'First Steps',
-        description: 'Enrolled in your first course',
+        title: t('achievements.page.achievements.firstSteps.title'),
+        description: t('achievements.page.achievements.firstSteps.description'),
         icon: '📚',
         unlocked: true,
-        category: 'Course Enrollment',
+        category: t('achievements.page.achievements.category.courseEnrollment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -84,11 +88,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'multiple_courses',
-        title: 'Course Collector',
-        description: `Enrolled in ${courses.length} courses`,
+        title: t('achievements.page.achievements.courseCollector.title'),
+        description: t('achievements.page.achievements.courseCollector.description').replace('{count}', courses.length.toString()),
         icon: '🎯',
         unlocked: true,
-        category: 'Course Enrollment',
+        category: t('achievements.page.achievements.category.courseEnrollment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -98,11 +102,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'first_lesson',
-        title: 'Lesson Learner',
-        description: 'Completed your first lesson',
+        title: t('achievements.page.achievements.lessonLearner.title'),
+        description: t('achievements.page.achievements.lessonLearner.description'),
         icon: '✅',
         unlocked: true,
-        category: 'Lesson Completion',
+        category: t('achievements.page.achievements.category.lessonCompletion'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -112,11 +116,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'five_lessons',
-        title: 'Getting Started',
-        description: 'Completed 5 lessons',
+        title: t('achievements.page.achievements.gettingStarted.title'),
+        description: t('achievements.page.achievements.gettingStarted.description'),
         icon: '🚀',
         unlocked: true,
-        category: 'Lesson Completion',
+        category: t('achievements.page.achievements.category.lessonCompletion'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -124,11 +128,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'ten_lessons',
-        title: 'Steady Progress',
-        description: 'Completed 10 lessons',
-        icon: '📈',
+        title: t('achievements.page.achievements.steadyProgress.title'),
+        description: t('achievements.page.achievements.steadyProgress.description'),
+        icon: '🚀',
         unlocked: true,
-        category: 'Lesson Completion',
+        category: t('achievements.page.achievements.category.lessonCompletion'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -136,11 +140,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'twenty_five_lessons',
-        title: 'Lesson Master',
-        description: 'Completed 25 lessons',
+        title: t('achievements.page.achievements.lessonMaster.title'),
+        description: t('achievements.page.achievements.lessonMaster.description'),
         icon: '👑',
         unlocked: true,
-        category: 'Lesson Completion',
+        category: t('achievements.page.achievements.category.lessonCompletion'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -152,11 +156,11 @@ export default function AchievementsPage() {
         achievementCount++
         achievements.push({
           id: 'progress_25',
-          title: 'Quarter Way There',
-          description: '25% course progress achieved',
+                  title: t('achievements.page.achievements.quarterWay.title'),
+        description: t('achievements.page.achievements.quarterWay.description'),
           icon: '🎯',
           unlocked: true,
-          category: 'Progress Milestones',
+          category: t('achievements.page.achievements.category.progressMilestones'),
           unlockedAt: new Date().toISOString().split('T')[0]
         })
       }
@@ -164,11 +168,11 @@ export default function AchievementsPage() {
         achievementCount++
         achievements.push({
           id: 'progress_50',
-          title: 'Halfway Point',
-          description: '50% course progress achieved',
+                  title: t('achievements.page.achievements.halfway.title'),
+        description: t('achievements.page.achievements.halfway.description'),
           icon: '🎯',
           unlocked: true,
-          category: 'Progress Milestones',
+          category: t('achievements.page.achievements.category.progressMilestones'),
           unlockedAt: new Date().toISOString().split('T')[0]
         })
       }
@@ -176,11 +180,11 @@ export default function AchievementsPage() {
         achievementCount++
         achievements.push({
           id: 'progress_75',
-          title: 'Almost There',
-          description: '75% course progress achieved',
+                  title: t('achievements.page.achievements.almostThere.title'),
+        description: t('achievements.page.achievements.almostThere.description'),
           icon: '🎯',
           unlocked: true,
-          category: 'Progress Milestones',
+          category: t('achievements.page.achievements.category.progressMilestones'),
           unlockedAt: new Date().toISOString().split('T')[0]
         })
       }
@@ -188,11 +192,11 @@ export default function AchievementsPage() {
         achievementCount++
         achievements.push({
           id: 'progress_100',
-          title: 'Course Champion',
-          description: '100% course progress achieved',
+                  title: t('achievements.page.achievements.courseChampion.title'),
+        description: t('achievements.page.achievements.courseChampion.description'),
           icon: '🏆',
           unlocked: true,
-          category: 'Progress Milestones',
+          category: t('achievements.page.achievements.category.progressMilestones'),
           unlockedAt: new Date().toISOString().split('T')[0]
         })
       }
@@ -204,11 +208,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'streak_3',
-        title: 'Getting in the Habit',
-        description: '3-day learning streak',
+        title: t('achievements.page.achievements.gettingInHabit.title'),
+        description: t('achievements.page.achievements.gettingInHabit.description'),
         icon: '🔥',
         unlocked: true,
-        category: 'Learning Streaks',
+        category: t('achievements.page.achievements.category.learningStreaks'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -216,11 +220,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'streak_7',
-        title: 'Week Warrior',
-        description: '7-day learning streak',
+        title: t('achievements.page.achievements.weekWarrior.title'),
+        description: t('achievements.page.achievements.weekWarrior.description'),
         icon: '🔥',
         unlocked: true,
-        category: 'Learning Streaks',
+        category: t('achievements.page.achievements.category.learningStreaks'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -228,11 +232,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'streak_14',
-        title: 'Fortnight Fighter',
-        description: '14-day learning streak',
+        title: t('achievements.page.achievements.fortnightFighter.title'),
+        description: t('achievements.page.achievements.fortnightFighter.description'),
         icon: '🔥',
         unlocked: true,
-        category: 'Learning Streaks',
+        category: t('achievements.page.achievements.category.learningStreaks'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -240,11 +244,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'streak_30',
-        title: 'Monthly Master',
-        description: '30-day learning streak',
+        title: t('achievements.page.achievements.monthlyMaster.title'),
+        description: t('achievements.page.achievements.monthlyMaster.description'),
         icon: '🔥',
         unlocked: true,
-        category: 'Learning Streaks',
+        category: t('achievements.page.achievements.category.learningStreaks'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -255,11 +259,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'languages_2',
-        title: 'Bilingual Beginner',
-        description: `Learning ${uniqueLanguages.size} languages`,
+        title: t('achievements.page.achievements.bilingualBeginner.title'),
+        description: t('achievements.page.achievements.bilingualBeginner.description').replace('{count}', uniqueLanguages.size.toString()),
         icon: '🌍',
         unlocked: true,
-        category: 'Language Diversity',
+        category: t('achievements.page.achievements.category.languageDiversity'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -267,11 +271,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'languages_3',
-        title: 'Polyglot in Progress',
-        description: `Learning ${uniqueLanguages.size} languages`,
+        title: t('achievements.page.achievements.polyglotInProgress.title'),
+        description: t('achievements.page.achievements.polyglotInProgress.description').replace('{count}', uniqueLanguages.size.toString()),
         icon: '🌍',
         unlocked: true,
-        category: 'Language Diversity',
+        category: t('achievements.page.achievements.category.languageDiversity'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -282,11 +286,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'first_assessment',
-        title: 'Knowledge Tester',
-        description: 'Completed your first course assessment',
+        title: t('achievements.page.achievements.knowledgeTester.title'),
+        description: t('achievements.page.achievements.knowledgeTester.description'),
         icon: '📝',
         unlocked: true,
-        category: 'Assessment',
+        category: t('achievements.page.achievements.category.assessment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -294,11 +298,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'multiple_assessments',
-        title: 'Assessment Ace',
-        description: `Completed ${completedAssessments} course assessments`,
+        title: t('achievements.page.achievements.assessmentAce.title'),
+        description: t('achievements.page.achievements.assessmentAce.description').replace('{count}', completedAssessments.toString()),
         icon: '🎯',
         unlocked: true,
-        category: 'Assessment',
+        category: t('achievements.page.achievements.category.assessment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -311,11 +315,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'high_score',
-        title: 'High Achiever',
-        description: 'Scored 80% or higher on an assessment',
+        title: t('achievements.page.achievements.highAchiever.title'),
+        description: t('achievements.page.achievements.highAchiever.description'),
         icon: '⭐',
         unlocked: true,
-        category: 'Assessment',
+        category: t('achievements.page.achievements.category.assessment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -323,11 +327,11 @@ export default function AchievementsPage() {
       achievementCount++
       achievements.push({
         id: 'excellent_scores',
-        title: 'Excellence Expert',
-        description: `Scored 80%+ on ${highScoringAssessments} assessments`,
+        title: t('achievements.page.achievements.excellenceExpert.title'),
+        description: t('achievements.page.achievements.excellenceExpert.description').replace('{count}', highScoringAssessments.toString()),
         icon: '🏆',
         unlocked: true,
-        category: 'Assessment',
+        category: t('achievements.page.achievements.category.assessment'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -391,7 +395,7 @@ export default function AchievementsPage() {
             
             return {
               id: enrollment.id,
-              name: enrollment.name || enrollment.title || 'Unknown Course',
+              name: enrollment.name || enrollment.title || t('achievements.page.unknownCourse'),
               language: enrollment.language,
               flag: enrollment.flag,
               level: enrollment.level,
@@ -561,7 +565,7 @@ export default function AchievementsPage() {
         <div className="min-h-screen bg-gray-50 py-12">
           <div className="max-w-6xl mx-auto px-4">
             <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">Please sign in to view your achievements</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{t('achievements.page.signInRequired')}</h1>
             </div>
           </div>
         </div>
@@ -583,8 +587,8 @@ export default function AchievementsPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full mb-4">
               <Trophy className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Your Achievements</h1>
-            <p className="text-xl text-gray-600">Track your progress and celebrate your language learning milestones</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">{t('achievements.page.title')}</h1>
+            <p className="text-xl text-gray-600">{t('achievements.page.subtitle')}</p>
           </motion.div>
 
           {/* Stats Overview */}
@@ -599,15 +603,15 @@ export default function AchievementsPage() {
                 <BookOpen className="w-6 h-6 text-blue-600" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{stats.totalLessons}</h3>
-              <p className="text-sm text-gray-600">Total Lessons</p>
+              <p className="text-sm text-gray-600">{t('achievements.page.stats.totalLessons')}</p>
             </div>
             
             <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-3">
                 <Clock className="w-6 h-6 text-green-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">{stats.streakDays} days</h3>
-              <p className="text-sm text-gray-600">Study Streak</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-1">{stats.streakDays} {t('dashboard.days')}</h3>
+              <p className="text-sm text-gray-600">{t('achievements.page.stats.streakDays')}</p>
             </div>
             
             <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
@@ -615,7 +619,7 @@ export default function AchievementsPage() {
                 <BookOpen className="w-6 h-6 text-purple-600" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{enrolledCourses.length}</h3>
-              <p className="text-sm text-gray-600">Courses</p>
+              <p className="text-sm text-gray-600">{t('achievements.page.stats.totalCourses')}</p>
             </div>
             
             <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
@@ -623,7 +627,7 @@ export default function AchievementsPage() {
                 <Trophy className="w-6 h-6 text-yellow-600" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{achievementDetails.length}</h3>
-              <p className="text-sm text-gray-600">Achievements</p>
+              <p className="text-sm text-gray-600">{t('achievements.page.stats.achievements')}</p>
             </div>
           </motion.div>
 
@@ -637,9 +641,9 @@ export default function AchievementsPage() {
             >
               <div className="bg-white rounded-xl shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Achievements</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{t('achievements.page.stats.achievements')}</h2>
                   <span className="text-sm text-gray-600">
-                    {achievementDetails.filter(a => a.unlocked).length} of {achievementDetails.length} unlocked
+                    {achievementDetails.filter(a => a.unlocked).length} of {achievementDetails.length} {t('achievements.page.unlocked')}
                   </span>
                 </div>
 
@@ -660,7 +664,7 @@ export default function AchievementsPage() {
                               {achievement.title}
                             </h3>
                             <span className="text-xs text-green-600 font-medium">
-                              Unlocked {achievement.unlockedAt}
+                              {t('achievements.page.unlocked')} {achievement.unlockedAt}
                             </span>
                           </div>
                           <p className="text-sm text-gray-600 mb-2">{achievement.description}</p>
@@ -683,7 +687,7 @@ export default function AchievementsPage() {
               className="lg:col-span-1"
             >
               <div className="bg-white rounded-xl shadow-sm border p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('achievements.page.recentActivity.title')}</h2>
                 
                 {recentActivity.length > 0 ? (
                   <div className="space-y-3">
@@ -711,8 +715,8 @@ export default function AchievementsPage() {
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Calendar className="w-8 h-8 text-gray-400" />
                     </div>
-                    <p className="text-gray-500">No recent activity yet</p>
-                    <p className="text-sm text-gray-400 mt-1">Start learning to see your activity here!</p>
+                    <p className="text-gray-500">{t('achievements.page.recentActivity.noActivity')}</p>
+                    <p className="text-sm text-gray-400 mt-1">{t('achievements.page.recentActivity.startLearning')}</p>
                   </div>
                 )}
               </div>
@@ -726,7 +730,7 @@ export default function AchievementsPage() {
             transition={{ delay: 0.4 }}
             className="mt-8 bg-white rounded-xl shadow-sm border p-6"
           >
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Enrolled Courses</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('achievements.page.enrolledCourses.title')}</h2>
             
             {enrolledCourses.length > 0 ? (
               <div className="space-y-4">
@@ -757,7 +761,7 @@ export default function AchievementsPage() {
                           {/* Progress Bar */}
                           <div className="mb-3">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-700">Progress</span>
+                              <span className="text-sm font-medium text-gray-700">{t('achievements.page.course.progress')}</span>
                               <span className="text-sm font-semibold text-blue-600">
                                 {course.progress}%
                               </span>
@@ -774,26 +778,26 @@ export default function AchievementsPage() {
                           {course.assessmentCompleted ? (
                             <div className="flex items-center space-x-2 text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                               <Target className="w-4 h-4 text-green-600" />
-                              <span className="text-green-700 font-medium">Assessment: {course.assessmentScore}%</span>
+                              <span className="text-green-700 font-medium">{t('achievements.page.course.assessmentScore').replace('{score}', course.assessmentScore?.toString() || '0')}</span>
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 (course.assessmentScore || 0) >= 70 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
+                                {(course.assessmentScore || 0) >= 70 ? t('achievements.page.course.passed') : t('achievements.page.course.notPassed')}
                               </span>
                             </div>
                           ) : course.isCompleted && course.certificate ? (
                             <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200">
                               <div className="flex items-center space-x-2 text-sm">
                                 <Target className="w-4 h-4 text-yellow-600" />
-                                <span className="text-yellow-700 font-medium">Assessment not taken yet</span>
+                                <span className="text-yellow-700 font-medium">{t('achievements.page.course.assessmentNotTaken')}</span>
                               </div>
                               <button
                                 onClick={() => router.push(`/assessment?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`)}
                                 className="px-3 py-1 text-xs bg-yellow-600 hover:bg-yellow-700 text-white border-0 rounded"
                               >
-                                Take Assessment
+                                {t('achievements.page.course.takeAssessment')}
                               </button>
                             </div>
                           ) : null}
@@ -802,7 +806,7 @@ export default function AchievementsPage() {
                           <div className="flex items-center space-x-4 text-xs text-gray-600 mt-2">
                             <span className="flex items-center">
                               <BookOpen className="w-3 h-3 mr-1" />
-                              {course.completedLessons}/{course.totalLessons} lessons
+                              {course.completedLessons}/{course.totalLessons} {t('achievements.page.course.lessons')}
                             </span>
                             <span className="flex items-center">
                               <Clock className="w-3 h-3 mr-1" />
@@ -821,7 +825,7 @@ export default function AchievementsPage() {
                           onClick={() => router.push(`/courses/${course.id}`)}
                           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
                         >
-                          {course.isCompleted && course.certificate ? 'Review Course' : 'Continue Learning'}
+                          {course.isCompleted && course.certificate ? t('achievements.page.reviewCourses') : t('achievements.page.continueLearning')}
                         </button>
                       </div>
                     </div>
@@ -833,13 +837,13 @@ export default function AchievementsPage() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <BookOpen className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-500">No courses enrolled yet</p>
-                <p className="text-sm text-gray-400 mt-1">Enroll in courses to see your progress here!</p>
+                <p className="text-gray-500">{t('achievements.page.enrolledCourses.noCourses')}</p>
+                                  <p className="text-sm text-gray-400 mt-1">{t('achievements.page.enrolledCourses.startLearning')}</p>
                 <button
                   onClick={() => router.push('/courses')}
                   className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
-                  Browse Courses
+                  {t('achievements.page.course.browseCourses')}
                 </button>
               </div>
             )}
@@ -853,23 +857,22 @@ export default function AchievementsPage() {
             className="mt-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-center text-white"
           >
             <Award className="w-16 h-16 mx-auto mb-4 text-blue-200" />
-            <h2 className="text-2xl font-bold mb-4">Keep Up the Great Work!</h2>
-            <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-              You're making excellent progress in your language learning journey. 
-              Every lesson completed brings you closer to fluency!
-            </p>
+            <h2 className="text-2xl font-bold mb-4">{t('achievements.page.keepUpGreatWork.title')}</h2>
+                          <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
+                {t('achievements.page.keepUpGreatWork.description')}
+              </p>
             <div className="flex justify-center space-x-4">
               <button 
                 onClick={() => router.push('/dashboard')}
                 className="px-6 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
               >
-                Continue Learning
+                {t('achievements.page.continueLearning')}
               </button>
               <button 
                 onClick={() => router.push('/courses')}
                 className="px-6 py-3 border border-white text-white rounded-lg font-medium hover:bg-white hover:text-blue-600 transition-colors"
               >
-                Explore Courses
+                {t('achievements.page.exploreCourses')}
               </button>
             </div>
           </motion.div>

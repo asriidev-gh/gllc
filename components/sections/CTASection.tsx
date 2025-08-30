@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/Button'
 import { AssessmentModal } from '@/components/AssessmentModal'
 import { 
@@ -13,22 +14,23 @@ import {
   Globe
 } from 'lucide-react'
 
-const benefits = [
-  'Access to 500+ video lessons',
-  'AI-powered personalized learning',
-  'Study groups and community',
-  'Progress tracking and certificates',
-  'Mobile-friendly platform',
-  '24/7 learning support'
-]
-
-const languages = ['Tagalog', 'English', 'Korean', 'Japanese', 'Chinese', 'Spanish']
-
 export function CTASection() {
+  const { t } = useLanguage()
   const [email, setEmail] = useState('')
   const [selectedLanguage, setSelectedLanguage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isAssessmentOpen, setIsAssessmentOpen] = useState(false)
+
+  const benefits = [
+    t('cta.benefits.videoLessons'),
+    t('cta.benefits.aiLearning'),
+    t('cta.benefits.studyGroups'),
+    t('cta.benefits.progressTracking'),
+    t('cta.benefits.mobileFriendly'),
+    t('cta.benefits.support')
+  ]
+
+  const languages = [t('languages.tagalog'), t('languages.english'), t('languages.korean'), t('languages.japanese'), t('languages.chinese'), t('languages.spanish')]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,19 +69,18 @@ export function CTASection() {
               viewport={{ once: true }}
             >
               <h2 className="text-4xl sm:text-5xl font-bold mb-6 leading-tight">
-                Start Your Language Learning Journey{' '}
-                <span className="text-yellow-300">Today</span>
+                {t('cta.title')}{' '}
+                <span className="text-yellow-300">{t('cta.titleHighlight')}</span>
               </h2>
               
               <p className="text-xl text-primary-100 mb-8 leading-relaxed">
-                Join thousands of students worldwide who are already mastering new languages. 
-                Get instant access to our platform and start learning for free!
+                {t('cta.subtitle')}
               </p>
 
               {/* Benefits */}
               <div className="mb-8">
                 <h3 className="text-lg font-semibold mb-4 text-yellow-300">
-                  What You'll Get:
+                  {t('cta.benefits.title')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {benefits.map((benefit, index) => (
@@ -102,15 +103,15 @@ export function CTASection() {
               <div className="flex items-center space-x-6 text-sm text-primary-200">
                 <div className="flex items-center space-x-2">
                   <Users className="w-5 h-5" />
-                  <span>10,000+ students</span>
+                  <span>{t('cta.socialProof.students')}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Star className="w-5 h-5 text-yellow-400" />
-                  <span>4.9/5 rating</span>
+                  <span>{t('cta.socialProof.rating')}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Award className="w-5 h-5 text-yellow-400" />
-                  <span>95% success rate</span>
+                  <span>{t('cta.socialProof.successRate')}</span>
                 </div>
               </div>
             </motion.div>
@@ -124,14 +125,14 @@ export function CTASection() {
             >
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
                 <h3 className="text-2xl font-bold mb-6 text-center">
-                  Get Free Access Now
+                  {t('cta.form.title')}
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {/* Email Input */}
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-primary-100 mb-2">
-                      Email Address
+                      {t('cta.form.email.label')}
                     </label>
                     <input
                       type="email"
@@ -140,14 +141,14 @@ export function CTASection() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-primary-200 focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-transparent"
-                      placeholder="Enter your email address"
+                      placeholder={t('cta.form.email.placeholder')}
                     />
                   </div>
 
                   {/* Language Selection */}
                   <div>
                     <label htmlFor="language" className="block text-sm font-medium text-primary-100 mb-2">
-                      I want to learn
+                      {t('cta.form.language.label')}
                     </label>
                     <select
                       id="language"
@@ -156,7 +157,7 @@ export function CTASection() {
                       required
                       className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-transparent"
                     >
-                      <option value="">Select a language</option>
+                      <option value="">{t('cta.form.language.placeholder')}</option>
                       {languages.map((language) => (
                         <option key={language} value={language} className="text-gray-900">
                           {language}
@@ -174,11 +175,11 @@ export function CTASection() {
                     {isSubmitting ? (
                       <div className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900 mr-2"></div>
-                        Setting up your account...
+                        {t('cta.form.submit.setup')}
                       </div>
                     ) : (
                       <div className="flex items-center justify-center">
-                        Start Learning Free
+                        {t('cta.form.submit.start')}
                         <ArrowRight className="w-5 h-5 ml-2" />
                       </div>
                     )}
@@ -186,10 +187,10 @@ export function CTASection() {
 
                   {/* Terms */}
                   <p className="text-xs text-primary-200 text-center">
-                    By signing up, you agree to our{' '}
-                    <a href="#" className="text-yellow-300 hover:underline">Terms of Service</a>
-                    {' '}and{' '}
-                    <a href="#" className="text-yellow-300 hover:underline">Privacy Policy</a>
+                    {t('cta.form.terms')}{' '}
+                    <a href="#" className="text-yellow-300 hover:underline">{t('cta.form.terms.service')}</a>
+                    {' '}{t('cta.form.terms.and')}{' '}
+                    <a href="#" className="text-yellow-300 hover:underline">{t('cta.form.terms.privacy')}</a>
                   </p>
                 </form>
 
@@ -198,15 +199,15 @@ export function CTASection() {
                   <div className="flex items-center justify-center space-x-4 text-xs text-primary-200">
                     <div className="flex items-center space-x-1">
                       <Globe className="w-4 h-4" />
-                      <span>SSL Secure</span>
+                      <span>{t('cta.trust.ssl')}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <CheckCircle className="w-4 h-4 text-green-400" />
-                      <span>No Credit Card</span>
+                      <span>{t('cta.trust.noCard')}</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Award className="w-4 h-4 text-yellow-400" />
-                      <span>Instant Access</span>
+                      <span>{t('cta.trust.instant')}</span>
                     </div>
                   </div>
                 </div>
@@ -224,18 +225,17 @@ export function CTASection() {
           >
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
               <h3 className="text-2xl font-bold mb-4">
-                Questions? We're Here to Help!
+                {t('cta.bottom.title')}
               </h3>
               <p className="text-primary-100 max-w-2xl mx-auto mb-6">
-                Our team of language learning experts is ready to guide you on your journey. 
-                Contact us for personalized recommendations and support.
+                {t('cta.bottom.subtitle')}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary-600">
-                  Contact Support
+                  {t('cta.bottom.contact')}
                 </Button>
                 <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-primary-600">
-                  Schedule Demo
+                  {t('cta.bottom.demo')}
                 </Button>
               </div>
             </div>

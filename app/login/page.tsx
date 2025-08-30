@@ -7,11 +7,13 @@ import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
+import { useLanguage } from '@/contexts/LanguageContext'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const router = useRouter()
   const { login, isAuthenticated, isLoading } = useAuthStore()
+  const { t } = useLanguage()
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +38,7 @@ export default function LoginPage() {
     e.preventDefault()
     
     if (!email || !password) {
-      toast.error('Please fill in all fields')
+      toast.error(t('auth.login.error.fillFields'))
       return
     }
 
@@ -54,7 +56,7 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error('Login failed:', error)
-      toast.error('Login failed. Please try again.')
+      toast.error(t('auth.login.error.failed'))
     }
   }
 
@@ -93,116 +95,97 @@ export default function LoginPage() {
               className="absolute top-24 left-4 flex items-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back to Home</span>
+              <span>{t('auth.login.backToHome')}</span>
             </Button>
             
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your account to continue learning</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">{t('auth.login.title')}</h2>
+            <p className="text-gray-600">{t('auth.login.subtitle')}</p>
           </div>
 
-          {/* Login Form */}
-          <motion.form
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            onSubmit={handleSubmit}
-            className="bg-white rounded-xl shadow-sm border p-8 space-y-6"
-          >
-            {/* Email Field */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter your email"
-                />
+          {/* Form */}
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('auth.login.email')}
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter your email"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  {t('auth.login.password')}
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+            <div className="flex flex-col space-y-3">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? t('ui.loading') : t('auth.login.submit')}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDemoLogin}
+                className="w-full"
+                disabled={isLoading}
+              >
+                {t('auth.login.demo')}
+              </Button>
             </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 text-lg font-semibold"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Signing In...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-
-            {/* Demo Login Button */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-              className="w-full py-3"
-            >
-              Try Demo Account
-            </Button>
-
-            {/* Sign Up Link */}
             <div className="text-center">
-              <p className="text-gray-600">
+              <p className="text-sm text-gray-600">
                 Don't have an account?{' '}
                 <button
                   type="button"
                   onClick={() => router.push('/signup')}
-                  className="text-primary-600 hover:text-primary-500 font-medium"
+                  className="font-medium text-primary-600 hover:text-primary-500"
                 >
                   Sign up here
                 </button>
               </p>
             </div>
-          </motion.form>
-
-          {/* Additional Info */}
-          <div className="text-center text-sm text-gray-500">
-            <p>By signing in, you agree to our Terms of Service and Privacy Policy</p>
-          </div>
+          </form>
         </motion.div>
       </div>
     </>

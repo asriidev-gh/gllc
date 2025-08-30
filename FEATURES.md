@@ -1,5 +1,27 @@
 # 🌟 Language Training Center for Kids - Features
 
+## 🌍 **Comprehensive Internationalization (i18n) System (v3.0.4)**
+
+### **Multi-Language Support**
+- **5 Supported Languages**: English, Spanish, Tagalog, Korean, and Japanese
+- **Dynamic Language Switching**: Real-time language changes with persistent user preferences
+- **Localized Content**: All UI elements, achievements, settings, and course content properly translated
+- **Cultural Adaptation**: Content adapted for different cultural contexts and learning preferences
+
+### **Translation Management**
+- **Centralized Translation System**: Single source of truth for all language content
+- **Context-Aware Translations**: Proper context for different UI sections and components
+- **Fallback Handling**: Graceful fallback to English for missing translations
+- **Persistent Language Selection**: User language preference saved in localStorage
+
+### **Localized User Experience**
+- **Header & Navigation**: Brand name and navigation items in user's preferred language
+- **Achievement System**: All achievement titles, descriptions, and categories localized
+- **Settings Interface**: Complete settings page with translated quick actions and forms
+- **Course Content**: Course descriptions, buttons, and status messages in local language
+
+---
+
 ## 🎯 **Smart Video Player (v3.0.3)**
 
 ### **Professional Control Layout**

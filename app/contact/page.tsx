@@ -1,6 +1,11 @@
+'use client'
+
 import { Header } from '@/components/Header'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export default function ContactPage() {
+  const { t } = useLanguage()
+  
   return (
     <>
       <Header />
@@ -8,28 +13,28 @@ export default function ContactPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Contact Us
+              {t('contact.page.title')}
             </h1>
             <p className="text-xl text-gray-600">
-              Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+              {t('contact.page.subtitle')}
             </p>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('contact.page.getInTouch.title')}</h2>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Email</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('contact.page.getInTouch.email')}</h3>
                     <p className="text-gray-600">support@globallanguagetraining.com</p>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Phone</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('contact.page.getInTouch.phone')}</h3>
                     <p className="text-gray-600">+1 (555) 123-4567</p>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Address</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('contact.page.getInTouch.address')}</h3>
                     <p className="text-gray-600">
                       123 Language Learning Street<br />
                       Education City, EC 12345<br />
@@ -40,53 +45,53 @@ export default function ContactPage() {
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Send a Message</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('contact.page.sendMessage.title')}</h2>
                 <form className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
+                      {t('contact.page.form.name')}
                     </label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Your name"
+                      placeholder={t('contact.page.form.namePlaceholder')}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
+                      {t('contact.page.form.email')}
                     </label>
                     <input
                       type="email"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="your@email.com"
+                      placeholder={t('contact.page.form.emailPlaceholder')}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Subject
+                      {t('contact.page.form.subject')}
                     </label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="How can we help?"
+                      placeholder={t('contact.page.form.subjectPlaceholder')}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Message
+                      {t('contact.page.form.message')}
                     </label>
                     <textarea
                       rows={4}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder="Your message..."
+                      placeholder={t('contact.page.form.messagePlaceholder')}
                     ></textarea>
                   </div>
                   <button
                     type="submit"
                     className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors"
                   >
-                    Send Message
+                    {t('contact.page.form.sendButton')}
                   </button>
                 </form>
               </div>

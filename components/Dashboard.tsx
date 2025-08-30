@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { 
   BookOpen, 
   Bug,
@@ -66,6 +67,7 @@ interface DashboardStats {
 
 export function Dashboard() {
   const { user, isAuthenticated } = useAuthStore()
+  const { t } = useLanguage()
   const router = useRouter()
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
   const [stats, setStats] = useState<DashboardStats>({
@@ -1196,20 +1198,20 @@ export function Dashboard() {
               
               <div>
                 <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900">
-                  Welcome back, {user?.name || 'Student'}! 👋
+                  {t('dashboard.welcome')}, {user?.name || 'Student'}! 👋
                 </h1>
                 <p className="text-sm md:text-base text-gray-600 mt-1">
-                  Continue your language learning journey
+                  {t('dashboard.continueJourney')}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-center lg:justify-end space-x-4 md:space-x-6">
               <div className="text-center lg:text-right">
-                <p className="text-xs md:text-sm text-gray-500">Learning Streak</p>
-                <p className="text-lg md:text-2xl font-bold text-primary-600">{stats.streakDays} days 🔥</p>
+                <p className="text-xs md:text-sm text-gray-500">{t('dashboard.learningStreak')}</p>
+                <p className="text-lg md:text-2xl font-bold text-primary-600">{stats.streakDays} {t('dashboard.days')} 🔥</p>
               </div>
               <div className="text-center lg:text-right">
-                <p className="text-xs md:text-sm text-gray-500">Total Achievements</p>
+                <p className="text-xs md:text-sm text-gray-500">{t('dashboard.totalAchievements')}</p>
                 <p className="text-lg md:text-2xl font-bold text-secondary-600">{stats.achievements} 🏆</p>
               </div>
             </div>
@@ -1232,9 +1234,9 @@ export function Dashboard() {
                   <span className="text-xl md:text-2xl">🎉</span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold">Welcome to Global Language Training Center!</h2>
+                  <h2 className="text-lg md:text-xl lg:text-2xl font-bold">{t('dashboard.welcomeMessage.title')}</h2>
                   <p className="text-sm md:text-base text-green-100 mt-1">
-                    Your account has been created successfully. Start exploring our courses and begin your language learning journey!
+                    {t('dashboard.welcomeMessage.subtitle')}
                   </p>
                 </div>
               </div>
@@ -1261,7 +1263,7 @@ export function Dashboard() {
                 <BookOpen className="w-4 h-4 md:w-6 md:h-6 text-blue-600" />
               </div>
               <div className="ml-2 md:ml-4">
-                <p className="text-xs md:text-sm font-medium text-gray-600">Enrolled Courses</p>
+                <p className="text-xs md:text-sm font-medium text-gray-600">{t('dashboard.stats.enrolledCourses')}</p>
                 <p className="text-lg md:text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
               </div>
             </div>
@@ -1278,7 +1280,7 @@ export function Dashboard() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Completed Lessons</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.completedLessons')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.completedLessons}</p>
               </div>
             </div>
@@ -1295,7 +1297,7 @@ export function Dashboard() {
                 <Clock className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Time</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.totalTime')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalTimeSpent}</p>
               </div>
             </div>
@@ -1312,7 +1314,7 @@ export function Dashboard() {
                 <Star className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Avg. Rating</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.avgRating')}</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.averageRating}</p>
               </div>
             </div>
@@ -1322,9 +1324,9 @@ export function Dashboard() {
         {/* Quick Actions */}
         <div className="mb-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.quickActions.title')}</h2>
             <p className="text-gray-600 mt-1">
-              Get started quickly with these options
+              {t('dashboard.quickActions.subtitle')}
             </p>
           </div>
           <div className="p-6">
@@ -1336,8 +1338,8 @@ export function Dashboard() {
               >
                 <BookOpen className="w-6 h-6 mr-3" />
                 <div className="text-left">
-                  <div className="font-semibold">Browse All Courses</div>
-                  <div className="text-sm text-gray-500">Discover new languages to learn</div>
+                  <div className="font-semibold">{t('dashboard.quickActions.browseCourses')}</div>
+                  <div className="text-sm text-gray-500">{t('dashboard.quickActions.browseCoursesSubtitle')}</div>
                 </div>
               </Button>
               
@@ -1348,8 +1350,8 @@ export function Dashboard() {
               >
                 <Target className="w-6 h-6 mr-3" />
                 <div className="text-left">
-                  <div className="font-semibold">Take Assessment</div>
-                  <div className="text-sm text-gray-500">Find your perfect starting level</div>
+                  <div className="font-semibold">{t('dashboard.quickActions.takeAssessment')}</div>
+                  <div className="text-sm text-gray-500">{t('dashboard.quickActions.takeAssessmentSubtitle')}</div>
                 </div>
               </Button>
               
@@ -1360,8 +1362,8 @@ export function Dashboard() {
               >
                 <Award className="w-6 h-6 mr-3" />
                 <div className="text-left">
-                  <div className="font-semibold">Assessment History</div>
-                  <div className="text-sm text-gray-500">Review your past results</div>
+                  <div className="font-semibold">{t('dashboard.quickActions.assessmentHistory')}</div>
+                  <div className="text-sm text-gray-500">{t('dashboard.quickActions.assessmentHistorySubtitle')}</div>
                 </div>
               </Button>
             </div>
@@ -1373,9 +1375,9 @@ export function Dashboard() {
           <div className="px-4 md:px-6 py-4 border-b border-gray-200">
             <div className="flex flex-col md:flex-row md:items-center justify-between space-y-3 md:space-y-0">
               <div>
-                <h2 className="text-lg md:text-xl font-semibold text-gray-900">Your Enrolled Courses</h2>
+                <h2 className="text-lg md:text-xl font-semibold text-gray-900">{t('dashboard.enrolledCourses.title')}</h2>
                 <p className="text-sm md:text-base text-gray-600 mt-1">
-                  Continue where you left off or start a new lesson
+                  {t('dashboard.enrolledCourses.subtitle')}
                 </p>
               </div>
               <Button 
@@ -1385,7 +1387,7 @@ export function Dashboard() {
                 className="w-full md:w-auto"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
-                Browse More
+                {t('dashboard.enrolledCourses.browseMore')}
               </Button>
             </div>
           </div>
@@ -1394,9 +1396,9 @@ export function Dashboard() {
             {enrolledCourses.length === 0 ? (
               <div className="text-center py-8 md:py-12">
                 <BookOpen className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No courses enrolled yet</h3>
+                <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">{t('dashboard.enrolledCourses.noCourses.title')}</h3>
                 <p className="text-sm md:text-base text-gray-600 mb-6">
-                  Start your language learning journey by enrolling in a course
+                  {t('dashboard.enrolledCourses.noCourses.subtitle')}
                 </p>
                 <div className="space-y-4">
                   <Button 
@@ -1404,10 +1406,10 @@ export function Dashboard() {
                     onClick={() => router.push('/courses')}
                   >
                     <BookOpen className="w-4 h-4 mr-2" />
-                    Browse All Courses
+                    {t('dashboard.enrolledCourses.noCourses.button')}
                   </Button>
                   <p className="text-xs md:text-sm text-gray-500">
-                    Discover languages like English, Tagalog, Korean, Japanese, and more!
+                    {t('dashboard.discoverLanguages')}
                   </p>
                 </div>
               </div>
@@ -1438,7 +1440,7 @@ export function Dashboard() {
                                   title="Click to view certificate"
                                 >
                                   <Award className="w-3 h-3 mr-1" />
-                                  Certificate
+                                  {t('common.certificate')}
                                 </button>
                               )}
                             </div>
@@ -1460,7 +1462,7 @@ export function Dashboard() {
                           {/* Progress Bar */}
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs md:text-sm font-medium text-gray-700">Progress</span>
+                              <span className="text-xs md:text-sm font-medium text-gray-700">{t('achievements.page.course.progress')}</span>
                               <span className={`text-xs md:text-sm font-semibold ${getProgressColor(course.progress)}`}>
                                 {course.progress}%
                               </span>
@@ -1479,7 +1481,7 @@ export function Dashboard() {
                             {course.isCompleted && course.certificate && (
                               <div className="flex items-center space-x-2 text-xs md:text-sm bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                                 <CheckCircle className="w-3 h-3 md:w-4 md:h-4 text-green-600" />
-                                <span className="text-green-700 font-medium">🎉 Course Completed!</span>
+                                <span className="text-green-700 font-medium">🎉 {t('dashboard.courseStatus.completed')}</span>
                                 {course.completionDate && (
                                   <span className="text-gray-500">
                                     on {new Date(course.completionDate).toLocaleDateString()}
@@ -1509,7 +1511,7 @@ export function Dashboard() {
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200 space-y-2 sm:space-y-0">
                                 <div className="flex items-center space-x-2 text-xs md:text-sm">
                                   <Target className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" />
-                                  <span className="text-yellow-700 font-medium">Assessment not taken yet</span>
+                                  <span className="text-yellow-700 font-medium">{t('dashboard.courseStatus.assessmentNotTaken')}</span>
                                 </div>
                                 <Button
                                   onClick={() => takeAssessment(course)}
@@ -1517,7 +1519,7 @@ export function Dashboard() {
                                   className="bg-yellow-600 hover:bg-yellow-700 text-white border-0 w-full sm:w-auto"
                                 >
                                   <Target className="w-3 h-3 mr-1" />
-                                  Take Assessment
+                                  {t('dashboard.courseStatus.takeAssessment')}
                                 </Button>
                               </div>
                             ) : null}
@@ -1526,7 +1528,7 @@ export function Dashboard() {
                             <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs text-gray-600">
                               <span className="flex items-center">
                                 <BookOpen className="w-3 h-3 mr-1" />
-                                {course.completedLessons}/{course.totalLessons} lessons
+                                {course.completedLessons}/{course.totalLessons} {t('dashboard.courseStatus.lessons')}
                               </span>
                               <span className="flex items-center">
                                 <Clock className="w-3 h-3 mr-1" />
@@ -1553,16 +1555,16 @@ export function Dashboard() {
                           }`}
                         >
                           {course.isCompleted && course.certificate ? (
-                            <>
-                              <Target className="w-4 h-4 mr-2" />
-                              Retake Course
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-2" />
-                              Continue
-                            </>
-                          )}
+                                                          <>
+                                <Target className="w-4 h-4 mr-2" />
+                                {t('dashboard.courseCard.takeAssessment')}
+                              </>
+                            ) : (
+                              <>
+                                <Play className="w-4 h-4 mr-2" />
+                                {t('dashboard.courseCard.continue')}
+                              </>
+                            )}
                         </Button>
                         
                         {/* Secondary Action Buttons - Mobile Grid */}
@@ -1595,7 +1597,7 @@ export function Dashboard() {
                           title="Remove this course from your enrolled courses"
                         >
                           <X className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                          Unenroll
+                          {t('dashboard.courseCard.removeCourse')}
                         </Button>
                       </div>
                     </div>
@@ -1608,7 +1610,7 @@ export function Dashboard() {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="text-center">
                 <p className="text-sm md:text-base text-gray-600 mb-4">
-                  Want to learn more languages? Explore our complete course catalog
+                  {t('dashboard.enrolledCourses.subtitle')}
                 </p>
                 <Button 
                   variant="outline"
@@ -1616,7 +1618,7 @@ export function Dashboard() {
                   onClick={() => router.push('/courses')}
                 >
                   <BookOpen className="w-4 h-4 mr-2" />
-                  Browse All Courses
+                  {t('dashboard.enrolledCourses.browseMore')}
                 </Button>
               </div>
             </div>
@@ -1628,9 +1630,9 @@ export function Dashboard() {
         {/* Achievements Breakdown */}
         <div className="mt-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">Your Achievements</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.achievements.title')}</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {achievementDetails.length} of 20+ possible achievements unlocked
+              {achievementDetails.length} of 20+ {t('dashboard.achievements.subtitle')}
             </p>
           </div>
           <div className="p-6">
@@ -1662,8 +1664,8 @@ export function Dashboard() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Trophy className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-500">No achievements unlocked yet</p>
-                <p className="text-sm text-gray-400 mt-1">Start learning to earn your first achievement!</p>
+                <p className="text-gray-500">{t('dashboard.recentActivity.noActivity')}</p>
+                <p className="text-sm text-gray-400 mt-1">{t('dashboard.recentActivity.noActivity.subtitle')}</p>
               </div>
             )}
           </div>
@@ -1672,7 +1674,7 @@ export function Dashboard() {
         {/* Recent Activity */}
         <div className="mt-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Activity</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.recentActivity.title')}</h2>
             <div className="flex items-center space-x-3">
               {/* Date Filter */}
               <select
@@ -1680,7 +1682,7 @@ export function Dashboard() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">All Time</option>
+                <option value="">{t('dashboard.recentActivity.allTime')}</option>
                 <option value="7">Last 7 days</option>
                 <option value="30">Last 30 days</option>
                 <option value="90">Last 90 days</option>
@@ -1691,7 +1693,7 @@ export function Dashboard() {
                 onClick={() => setShowAllActivities(!showAllActivities)}
                 className="text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium"
               >
-                {showAllActivities ? 'Show Recent' : 'View All'}
+                {showAllActivities ? 'Show Recent' : t('dashboard.recentActivity.viewAll')}
               </button>
               
               {/* Refresh Button */}
@@ -1735,8 +1737,8 @@ export function Dashboard() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Calendar className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-500">No recent activity yet</p>
-                <p className="text-sm text-gray-400 mt-1">Start learning to see your activity here!</p>
+                <p className="text-gray-500">{t('dashboard.recentActivity.noActivity')}</p>
+                <p className="text-sm text-gray-400 mt-1">{t('dashboard.recentActivity.noActivity.subtitle')}</p>
               </div>
             )}
           </div>
@@ -1750,7 +1752,7 @@ export function Dashboard() {
             {/* Certificate Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Certificate of Completion</h2>
+                <h2 className="text-2xl font-bold">{t('common.certificateOfCompletion')}</h2>
                 <Button
                   onClick={() => setShowCertificateModal(false)}
                   variant="ghost"
@@ -1766,7 +1768,7 @@ export function Dashboard() {
               <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-8 text-center">
                 <div className="text-6xl mb-4">🏆</div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  Certificate of Completion
+                  {t('common.certificateOfCompletion')}
                 </h1>
                 <p className="text-lg text-gray-600 mb-6">
                   This is to certify that
@@ -1799,14 +1801,14 @@ export function Dashboard() {
                   onClick={() => setShowCertificateModal(false)}
                   variant="outline"
                 >
-                  Close
+                  {t('common.close')}
                 </Button>
                 <Button 
                   onClick={() => downloadCertificatePDF(selectedCourseForModal)}
                   className="bg-primary-600 hover:bg-primary-700"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download PDF
+                  {t('common.downloadCertificate')}
                 </Button>
               </div>
             </div>
@@ -1821,7 +1823,7 @@ export function Dashboard() {
             {/* Assessment Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">Assessment Results</h2>
+                <h2 className="text-2xl font-bold">{t('assessment.page.result.title')}</h2>
                 <Button
                   onClick={() => setShowAssessmentModal(false)}
                   variant="ghost"
@@ -1891,7 +1893,7 @@ export function Dashboard() {
                   onClick={() => setShowAssessmentModal(false)}
                   variant="outline"
                 >
-                  Close
+                  {t('common.close')}
                 </Button>
                 <Button 
                   onClick={() => {
@@ -1912,17 +1914,16 @@ export function Dashboard() {
       {showUnenrollConfirm && courseToUnenroll && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Unenrollment</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.courseCard.removeConfirm.title')}</h3>
             <p className="text-gray-700 mb-6">
-              Are you sure you want to unenroll from <strong>{courseToUnenroll.name}</strong>?
-              This action cannot be undone.
+              {t('dashboard.courseCard.removeConfirm.message')}
             </p>
             <div className="flex justify-center space-x-3">
               <Button variant="outline" onClick={() => setShowUnenrollConfirm(false)}>
-                Cancel
+                {t('dashboard.courseCard.removeConfirm.cancel')}
               </Button>
               <Button variant="destructive" onClick={confirmUnenroll}>
-                Unenroll
+                {t('dashboard.courseCard.removeConfirm.confirm')}
               </Button>
             </div>
           </div>
@@ -1934,7 +1935,7 @@ export function Dashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Assessment History</h3>
+              <h3 className="text-2xl font-bold text-gray-900">{t('dashboard.assessmentHistory.title')}</h3>
               <button
                 onClick={() => setShowAssessmentHistory(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -1946,9 +1947,9 @@ export function Dashboard() {
             {getAssessmentHistory().length === 0 ? (
               <div className="text-center py-12">
                 <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h4 className="text-lg font-medium text-gray-900 mb-2">No Assessment History</h4>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.assessmentHistory.noResults.title')}</h4>
                 <p className="text-gray-600 mb-6">
-                  You haven't completed any language assessments yet. Take your first assessment to discover your language level!
+                  {t('dashboard.assessmentHistory.noResults.subtitle')}
                 </p>
                 <div className="space-y-3">
                   <Button 
@@ -1959,13 +1960,13 @@ export function Dashboard() {
                     className="bg-primary-600 hover:bg-primary-700"
                   >
                     <Target className="w-4 h-4 mr-2" />
-                    Take Your First Assessment
+                    {t('dashboard.assessmentHistory.noResults.button')}
                   </Button>
                   <Button 
                     onClick={() => setShowAssessmentHistory(false)}
                     variant="outline"
                   >
-                    Close
+                    {t('common.close')}
                   </Button>
                 </div>
               </div>
@@ -1989,35 +1990,24 @@ export function Dashboard() {
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                       <div>
-                        <span className="font-medium">Type:</span>
-                        <span className="ml-2">{assessment.type}</span>
+                        <span className="font-medium">{t('dashboard.assessmentHistory.result.language')}:</span>
+                        <span className="ml-2">{assessment.language}</span>
                       </div>
                       <div>
-                        <span className="font-medium">Score:</span>
+                        <span className="font-medium">{t('dashboard.assessmentHistory.result.level')}:</span>
+                        <span className="ml-2">{assessment.level}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">{t('dashboard.assessmentHistory.result.score')}:</span>
                         <span className="ml-2">{assessment.score}/{assessment.maxScore}</span>
                       </div>
                       <div>
-                        <span className="font-medium">Status:</span>
-                        <span className={`ml-2 font-medium ${
-                          assessment.score >= 70 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {assessment.score >= 70 ? 'Passed' : 'Not Passed'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Completed:</span>
+                        <span className="font-medium">{t('dashboard.assessmentHistory.result.timeSpent')}:</span>
                         <span className="ml-2">
-                          {new Date(assessment.completedAt).toLocaleDateString()}
+                          {Math.floor(assessment.timeSpent / 60)}m {assessment.timeSpent % 60}s
                         </span>
                       </div>
                     </div>
-                    
-                    {assessment.timeSpent > 0 && (
-                      <div className="text-sm text-gray-600 mb-3">
-                        <span className="font-medium">Time Spent:</span>
-                        <span className="ml-2">{Math.floor(assessment.timeSpent / 60)}m {assessment.timeSpent % 60}s</span>
-                      </div>
-                    )}
                     
                     <div className="flex justify-end space-x-3">
                       <Button 
@@ -2028,7 +2018,7 @@ export function Dashboard() {
                           router.push('/assessment')
                         }}
                       >
-                        Take Another Assessment
+                        {t('dashboard.assessmentHistory.result.takeAnother')}
                       </Button>
                     </div>
                   </div>

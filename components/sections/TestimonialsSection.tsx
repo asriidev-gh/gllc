@@ -1,78 +1,81 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { Star, Quote } from 'lucide-react'
 
-const testimonials = [
-  {
-    name: 'Maria Santos',
-    age: 12,
-    grade: 'Grade 6',
-    school: 'Manila Elementary School',
-    language: 'Tagalog',
-    rating: 5,
-    content: 'I used to struggle with Tagalog, but now I can speak confidently with my grandparents. The videos make learning fun and easy!',
-    avatar: '👧',
-    achievement: 'Completed Basic Tagalog Course'
-  },
-  {
-    name: 'Juan Dela Cruz',
-    age: 16,
-    grade: 'Grade 10',
-    school: 'Quezon City High School',
-    language: 'English',
-    rating: 5,
-    content: 'My English improved dramatically! I can now participate in class discussions and write better essays. The AI exams really help me practice.',
-    avatar: '👦',
-    achievement: 'Advanced to Intermediate Level'
-  },
-  {
-    name: 'Ana Kim',
-    age: 20,
-    grade: 'College Student',
-    school: 'University of the Philippines',
-    language: 'Korean',
-    rating: 5,
-    content: 'Learning Korean for my future career in international business. The cultural context and business vocabulary are exactly what I need.',
-    avatar: '👩‍🎓',
-    achievement: 'Business Korean Certificate'
-  },
-  {
-    name: 'Carlos Tanaka',
-    age: 18,
-    grade: 'Grade 12',
-    school: 'Makati Science High School',
-    language: 'Japanese',
-    rating: 5,
-    content: 'I love anime and manga, so learning Japanese was perfect! The platform makes complex grammar easy to understand.',
-    avatar: '👨‍🎓',
-    achievement: 'JLPT N5 Preparation'
-  },
-  {
-    name: 'Isabella Wang',
-    age: 25,
-    grade: 'Young Professional',
-    school: 'Ateneo Graduate School',
-    language: 'Chinese',
-    rating: 5,
-    content: 'Learning Chinese for business opportunities. The platform\'s focus on practical business language is excellent.',
-    avatar: '👩‍💼',
-    achievement: 'Business Chinese Proficiency'
-  },
-  {
-    name: 'Miguel Rodriguez',
-    age: 14,
-    grade: 'Grade 8',
-    school: 'Cebu International School',
-    language: 'Spanish',
-    rating: 5,
-    content: 'Spanish is so much fun to learn! The interactive lessons and study groups help me stay motivated.',
-    avatar: '👨‍🎓',
-    achievement: 'Spanish Conversation Skills'
-  }
-]
-
 export function TestimonialsSection() {
+  const { t } = useLanguage()
+
+  const testimonials = [
+    {
+      name: 'Maria Santos',
+      age: 12,
+      grade: 'Grade 6',
+      school: 'Manila Elementary School',
+      language: t('languages.tagalog'),
+      rating: 5,
+      content: 'I used to struggle with Tagalog, but now I can speak confidently with my grandparents. The videos make learning fun and easy!',
+      avatar: '👧',
+      achievement: 'Completed Basic Tagalog Course'
+    },
+    {
+      name: 'Juan Dela Cruz',
+      age: 16,
+      grade: 'Grade 10',
+      school: 'Quezon City High School',
+      language: t('languages.english'),
+      rating: 5,
+      content: 'My English improved dramatically! I can now participate in class discussions and write better essays. The AI exams really help me practice.',
+      avatar: '👦',
+      achievement: 'Advanced to Intermediate Level'
+    },
+    {
+      name: 'Ana Kim',
+      age: 20,
+      grade: 'College Student',
+      school: 'University of the Philippines',
+      language: t('languages.korean'),
+      rating: 5,
+      content: 'Learning Korean for my future career in international business. The cultural context and business vocabulary are exactly what I need.',
+      avatar: '👩‍🎓',
+      achievement: 'Business Korean Certificate'
+    },
+    {
+      name: 'Carlos Tanaka',
+      age: 18,
+      grade: 'Grade 12',
+      school: 'Makati Science High School',
+      language: t('languages.japanese'),
+      rating: 5,
+      content: 'I love anime and manga, so learning Japanese was perfect! The platform makes complex grammar easy to understand.',
+      avatar: '👨‍🎓',
+      achievement: 'JLPT N5 Preparation'
+    },
+    {
+      name: 'Isabella Wang',
+      age: 25,
+      grade: 'Young Professional',
+      school: 'Ateneo Graduate School',
+      language: t('languages.chinese'),
+      rating: 5,
+      content: 'Learning Chinese for business opportunities. The platform\'s focus on practical business language is excellent.',
+      avatar: '👩‍💼',
+      achievement: 'Business Chinese Proficiency'
+    },
+    {
+      name: 'Miguel Rodriguez',
+      age: 14,
+      grade: 'Grade 8',
+      school: 'Cebu International School',
+      language: t('languages.spanish'),
+      rating: 5,
+      content: 'Spanish is so much fun to learn! The interactive lessons and study groups help me stay motivated.',
+      avatar: '👨‍🎓',
+      achievement: 'Spanish Conversation Skills'
+    }
+  ]
+
   return (
     <section className="py-20 bg-white">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,11 +88,10 @@ export function TestimonialsSection() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-            Success Stories from Students Worldwide
+            {t('testimonials.title')}
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Hear from real students around the world who have transformed their language skills and achieved their learning goals 
-            through our platform.
+            {t('testimonials.subtitle')}
           </p>
         </motion.div>
 
@@ -162,24 +164,24 @@ export function TestimonialsSection() {
         >
           <div className="bg-gradient-to-r from-primary-50 to-secondary-50 rounded-2xl p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-8">
-              Our Impact in Numbers
+              {t('testimonials.stats.title')}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
               <div className="text-center">
                 <div className="text-4xl font-bold text-primary-600 mb-2">95%</div>
-                <div className="text-gray-600">Student Satisfaction</div>
+                <div className="text-gray-600">{t('testimonials.stats.satisfaction')}</div>
               </div>
               <div className="text-center">
                 <div className="text-4xl font-bold text-secondary-600 mb-2">10,000+</div>
-                <div className="text-gray-600">Active Learners</div>
+                <div className="text-gray-600">{t('testimonials.stats.learners')}</div>
               </div>
               <div className="text-center">
                 <div className="text-4xl font-bold text-accent-600 mb-2">500+</div>
-                <div className="text-gray-600">Video Lessons</div>
+                <div className="text-gray-600">{t('testimonials.stats.lessons')}</div>
               </div>
               <div className="text-center">
                 <div className="text-4xl font-bold text-success-600 mb-2">85%</div>
-                <div className="text-gray-600">Completion Rate</div>
+                <div className="text-gray-600">{t('testimonials.stats.completion')}</div>
               </div>
             </div>
           </div>
@@ -195,18 +197,17 @@ export function TestimonialsSection() {
         >
           <div className="bg-gradient-to-r from-primary-600 to-secondary-600 rounded-2xl p-8 text-white">
             <h3 className="text-2xl font-bold mb-4">
-              Ready to Start Your Language Journey?
+              {t('testimonials.cta.title')}
             </h3>
             <p className="text-primary-100 max-w-2xl mx-auto mb-6">
-              Join thousands of Filipino students who are already mastering new languages 
-              and opening doors to new opportunities.
+              {t('testimonials.cta.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="btn-primary text-lg px-8 py-3">
-                Get Started Free
+                {t('testimonials.cta.getStarted')}
               </button>
               <button className="btn-outline text-lg px-8 py-3 border-white text-white hover:bg-white hover:text-primary-600">
-                View Success Stories
+                {t('testimonials.cta.viewStories')}
               </button>
             </div>
           </div>

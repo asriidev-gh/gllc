@@ -21,11 +21,13 @@ import {
   Info
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 
 
 export default function AuditPage() {
   const { user, actionLogs, getUserActionLogs } = useAuthStore()
+  const { t } = useLanguage()
   
   // Debug logging
   console.log('🔍 AUDIT PAGE - Action Logs:', actionLogs)
@@ -220,9 +222,9 @@ export default function AuditPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
                 <Shield className="w-8 h-8 text-blue-600 mr-3" />
-                Audit & Security Logs
+                {t('audit.page.title')}
               </h1>
-              <p className="text-gray-600 mt-2">Monitor user activities and security events</p>
+              <p className="text-gray-600 mt-2">{t('audit.page.subtitle')}</p>
             </div>
             <div className="flex space-x-3">
               <Button
@@ -254,7 +256,7 @@ export default function AuditPage() {
                 <BarChart3 className="w-6 h-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Actions</p>
+                <p className="text-sm font-medium text-gray-600">{t('audit.page.stats.totalActions')}</p>
                 <p className="text-2xl font-bold text-gray-900">{totalActions}</p>
               </div>
             </div>
@@ -266,7 +268,7 @@ export default function AuditPage() {
                 <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Today's Actions</p>
+                <p className="text-sm font-medium text-gray-600">{t('audit.page.stats.todayActions')}</p>
                 <p className="text-2xl font-bold text-gray-900">{todayActions}</p>
               </div>
             </div>
@@ -290,7 +292,7 @@ export default function AuditPage() {
                 <User className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active Users</p>
+                <p className="text-sm font-medium text-gray-600">{t('audit.page.stats.activeUsers')}</p>
                 <p className="text-2xl font-bold text-gray-900">{uniqueUsersCount}</p>
               </div>
             </div>
@@ -309,7 +311,7 @@ export default function AuditPage() {
           <div className="p-6 border-b bg-gray-50">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center">
               <Filter className="w-5 h-5 mr-2 text-blue-600" />
-              Filters & Search
+              {t('audit.page.filter.title')}
             </h2>
           </div>
           

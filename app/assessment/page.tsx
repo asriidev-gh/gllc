@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import { Header } from '@/components/Header'
+import { useLanguage } from '@/contexts/LanguageContext'
 import { recordLearningActivity } from '@/lib/learningActivity'
 
 interface Question {
@@ -258,6 +259,7 @@ export default function AssessmentPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuthStore()
+  const { t } = useLanguage()
   
   // Get course context from URL parameters
   const courseId = searchParams.get('courseId')
@@ -545,9 +547,9 @@ export default function AssessmentPage() {
                 <Target className="w-12 h-12 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Course Assessment</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('course_assessment_title')}</h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Test your knowledge and understanding of the course material
+              {t('course_assessment_description')}
             </p>
           </motion.div>
 
@@ -559,8 +561,8 @@ export default function AssessmentPage() {
               className="bg-white rounded-xl p-6 shadow-lg"
             >
               <Brain className="w-8 h-8 text-blue-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Smart Assessment</h3>
-              <p className="text-gray-600">Adaptive questions that adjust to your skill level</p>
+              <h3 className="text-lg font-semibold mb-2">{t('smart_assessment_title')}</h3>
+              <p className="text-gray-600">{t('smart_assessment_description')}</p>
             </motion.div>
 
             <motion.div
@@ -570,8 +572,8 @@ export default function AssessmentPage() {
               className="bg-white rounded-xl p-6 shadow-lg"
             >
               <Clock className="w-8 h-8 text-green-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Quick & Easy</h3>
-              <p className="text-gray-600">Takes only 5-10 minutes to complete</p>
+              <h3 className="text-lg font-semibold mb-2">{t('quick_easy_title')}</h3>
+              <p className="text-gray-600">{t('quick_easy_description')}</p>
             </motion.div>
 
             <motion.div
@@ -581,8 +583,8 @@ export default function AssessmentPage() {
               className="bg-white rounded-xl p-6 shadow-lg"
             >
               <Award className="w-8 h-8 text-purple-600 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Personalized Results</h3>
-              <p className="text-gray-600">Get custom course recommendations</p>
+              <h3 className="text-lg font-semibold mb-2">{t('personalized_results_title')}</h3>
+              <p className="text-gray-600">{t('personalized_results_description')}</p>
             </motion.div>
           </div>
 
@@ -596,7 +598,7 @@ export default function AssessmentPage() {
               onClick={() => setCurrentStep('course-assessment')}
               className="px-8 py-4 text-lg"
             >
-              Start Assessment
+              {t('start_assessment_button')}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </motion.div>
@@ -622,7 +624,7 @@ export default function AssessmentPage() {
               className="flex items-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Exit Assessment</span>
+              <span>{t('exit_assessment_button')}</span>
             </Button>
           </div>
           
@@ -630,10 +632,10 @@ export default function AssessmentPage() {
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm font-medium text-gray-600">
-                Question {currentQuestionIndex + 1} of {courseAssessmentQuestions.length}
+                                 {t('assessment.page.question.progress').replace('{current}', (currentQuestionIndex + 1).toString()).replace('{total}', courseAssessmentQuestions.length.toString())}
               </span>
               <span className="text-sm font-medium text-gray-600">
-                {courseName || 'Course'} Assessment
+                                 {(courseName || 'Course')} Assessment
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -654,7 +656,7 @@ export default function AssessmentPage() {
             <div className="flex items-center mb-6">
               <Target className="w-6 h-6 text-blue-600 mr-3" />
               <span className="text-sm font-medium text-gray-600 capitalize">
-                Course Assessment • Question {currentQuestionIndex + 1}
+                                 Course Assessment • Question {currentQuestionIndex + 1}
               </span>
             </div>
 
@@ -692,13 +694,13 @@ export default function AssessmentPage() {
                 disabled={currentQuestionIndex === 0}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous
+                {t('previous_button')}
               </Button>
               <Button
                 onClick={nextQuestion}
                 disabled={answers[currentQuestion.id] === undefined}
               >
-                {isLastQuestion ? 'Finish Assessment' : 'Next'}
+                {isLastQuestion ? t('finish_assessment_button') : t('next_button')}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
@@ -725,9 +727,9 @@ export default function AssessmentPage() {
               <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertTriangle className="w-8 h-8 text-yellow-600" />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Exit Assessment?</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{t('exit_assessment_confirmation_title')}</h2>
               <p className="text-gray-600 mb-6">
-                You've answered some questions. Are you sure you want to exit? Your progress will be lost.
+                {t('exit_assessment_confirmation_message')}
               </p>
               <div className="flex space-x-3">
                 <Button
@@ -735,13 +737,13 @@ export default function AssessmentPage() {
                   onClick={() => setShowExitConfirm(false)}
                   className="flex-1"
                 >
-                  Continue Assessment
+                  {t('continue_assessment_button')}
                 </Button>
                 <Button
                   onClick={confirmExit}
                   className="flex-1 bg-red-600 hover:bg-red-700"
                 >
-                  Exit Assessment
+                  {t('exit_assessment_button')}
                 </Button>
               </div>
             </motion.div>
@@ -775,9 +777,9 @@ export default function AssessmentPage() {
                 <Award className="w-12 h-12 text-white" />
               </div>
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Course Assessment Complete!</h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('course_assessment_complete_title')}</h1>
             <p className="text-xl text-gray-600">
-              Here are your {assessmentResult.language} course assessment results
+                             Here are your {assessmentResult.language} course assessment results
             </p>
           </motion.div>
 
@@ -788,35 +790,35 @@ export default function AssessmentPage() {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-xl p-8 shadow-lg"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Your Results</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('your_results_title')}</h2>
               
               <div className="text-center mb-6">
                 <div className="text-6xl font-bold text-blue-600 mb-2">
                   {assessmentResult.percentage}%
                 </div>
                 <div className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${levelColor[assessmentResult.level]}`}>
-                  {assessmentResult.level.charAt(0).toUpperCase() + assessmentResult.level.slice(1)} Level
+                                     {assessmentResult.level.charAt(0).toUpperCase() + assessmentResult.level.slice(1)} Level
                 </div>
               </div>
 
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between">
-                  <span>Score:</span>
+                  <span>{t('score_label')}:</span>
                   <span className="font-semibold">{assessmentResult.score} / {assessmentResult.maxScore}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Language:</span>
+                  <span>{t('language_label')}:</span>
                   <span className="font-semibold">{assessmentResult.language}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Level:</span>
+                  <span>{t('level_label')}:</span>
                   <span className="font-semibold capitalize">{assessmentResult.level}</span>
                 </div>
               </div>
 
               {assessmentResult.strengths.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-2">Strengths:</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('strengths_title')}:</h3>
                   <ul className="space-y-1">
                     {assessmentResult.strengths.map((strength, index) => (
                       <li key={index} className="flex items-center text-green-600">
@@ -830,7 +832,7 @@ export default function AssessmentPage() {
 
               {assessmentResult.improvements.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Areas for Improvement:</h3>
+                  <h3 className="font-semibold text-gray-900 mb-2">{t('areas_for_improvement_title')}:</h3>
                   <ul className="space-y-1">
                     {assessmentResult.improvements.map((improvement, index) => (
                       <li key={index} className="flex items-center text-orange-600">
@@ -849,7 +851,7 @@ export default function AssessmentPage() {
               animate={{ opacity: 1, x: 0 }}
               className="bg-white rounded-xl p-8 shadow-lg"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Recommended Courses</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('recommended_courses_title')}</h2>
               
               {assessmentResult.recommendedCourses.length > 0 ? (
                 <div className="space-y-4 mb-6">
@@ -857,26 +859,26 @@ export default function AssessmentPage() {
                     <div key={index} className="border border-gray-200 rounded-lg p-4">
                       <h3 className="font-semibold text-gray-900 mb-1">{course}</h3>
                       <p className="text-sm text-gray-600">
-                        Perfect for your {assessmentResult.level} level
+                                                 Perfect for your {assessmentResult.level} level
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-gray-600 mb-6">
-                  Based on your results, we recommend exploring our {assessmentResult.language} courses to continue your learning journey.
+                                     Based on your results, we recommend exploring our {assessmentResult.language} courses to continue your learning journey.
                 </p>
               )}
 
                             <div className="space-y-3">
                 <Button onClick={() => router.push('/dashboard')} className="w-full">
                   <BookOpen className="w-4 h-4 mr-2" />
-                  Back to Dashboard
+                  {t('back_to_dashboard_button')}
                 </Button>
  
                 <Button variant="outline" onClick={restartAssessment} className="w-full">
                   <Target className="w-4 h-4 mr-2" />
-                  Take Another Assessment
+                  {t('take_another_assessment_button')}
                 </Button>
               </div>
             </motion.div>
