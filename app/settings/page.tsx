@@ -8,6 +8,7 @@ import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
 import { useLanguage } from '@/contexts/LanguageContext'
 import toast from 'react-hot-toast'
+import { RoleSwitcher } from '@/components/RoleSwitcher'
 
 // Settings interfaces
 interface AppearanceSettings {
@@ -489,6 +490,11 @@ export default function SettingsPage() {
                   </div>
                 </Button>
               </div>
+            </div>
+
+            {/* Role Switcher - For Demo Purposes */}
+            <div className="p-6 border-t border-gray-200">
+              <RoleSwitcher />
             </div>
 
             {/* Dynamic Settings Sections - Only shown when activated */}

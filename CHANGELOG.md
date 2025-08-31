@@ -5,6 +5,42 @@ All notable changes to the Language Training Center for Kids project will be doc
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.5] - 2025-01-25
+
+### ✨ Added
+- **Advanced User Filtering & Search System**: Real-time search and filtering for user management
+- **Real-Time Search**: Instant search by user names and email addresses
+- **Role-Based Filtering**: Filter users by Student, Teacher, Admin, or SuperAdmin roles
+- **Status-Based Filtering**: Filter by Active, Inactive, or Suspended account status
+- **Combined Filters**: Multiple filters work together seamlessly for precise results
+- **Professional Filter Interface**: Clean, responsive filter controls with search icon
+- **Results Counter**: Shows "Showing X of Y users" for clear feedback
+- **Clear Filters Button**: One-click reset for all filters to default state
+
+### 🔧 Changed
+- **AdminDashboard Component**: Enhanced with comprehensive filtering and search capabilities
+- **User Management Interface**: Updated with professional search and filter UI
+- **Filter State Management**: Added search, role, and status filter state variables
+- **User List Rendering**: Table now shows filtered results instead of all users
+
+### 🐛 Fixed
+- **User Discovery**: Efficient user search and filtering for large user lists
+- **Admin Workflow**: Streamlined user management with advanced filtering tools
+- **Interface Consistency**: Professional appearance across all filter elements
+
+### 🎨 Improved
+- **User Experience**: Professional filtering interface with instant results
+- **Admin Efficiency**: Quick user discovery and management capabilities
+- **Responsive Design**: Optimized filter layout for all device sizes
+- **Visual Feedback**: Clear indication of active filters and result counts
+
+### 🌍 Language Support
+- **Filter Translations**: Complete translations for all filter and search elements
+- **5 Languages**: English, Spanish, Tagalog, Korean, and Japanese support
+- **Professional Terminology**: Enterprise-grade translations for global accessibility
+
+---
+
 ## [3.0.4] - 2025-08-28
 
 ### ✨ Added

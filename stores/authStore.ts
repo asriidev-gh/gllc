@@ -6,7 +6,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN'
+  role: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN'
   age: number
   grade: string
   school: string
@@ -17,6 +17,12 @@ export interface User {
   createdAt?: string
   updatedAt?: string
   password?: string // For demo purposes only - in production this would be hashed
+  
+  // Role-specific fields
+  permissions?: string[]
+  isActive?: boolean
+  lastLogin?: string
+  loginCount?: number
 }
 
 export interface UserAction {
@@ -50,6 +56,7 @@ export interface AuthState {
     interests: string[]
     nativeLanguage: string
     targetLanguages: string[]
+    role?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN'
   }) => Promise<User>
   logout: () => void
   clearAuth: () => void
@@ -60,7 +67,95 @@ export interface AuthState {
   logUserAction: (action: string, details: string) => void
   getUserActionLogs: (userId: string) => UserAction[]
   updateUserAvatar: (avatar: string | null) => void
+  
+  // Role-based actions
+  hasPermission: (permission: string) => boolean
+  hasRole: (role: User['role']) => boolean
+  canAccess: (resource: string, action: string) => boolean
+  getRolePermissions: (role: User['role']) => string[]
+  updateUserRole: (userId: string, newRole: User['role']) => Promise<boolean>
+  deactivateUser: (userId: string) => Promise<boolean>
+  activateUser: (userId: string) => Promise<boolean>
+  getDashboardUrl: (role: User['role']) => string
 }
+
+// Role-based permission system
+export const ROLE_PERMISSIONS = {
+  STUDENT: [
+    'view_courses',
+    'enroll_courses',
+    'take_lessons',
+    'view_progress',
+    'take_assessments',
+    'view_achievements',
+    'update_profile',
+    'view_certificates'
+  ],
+  TEACHER: [
+    'view_courses',
+    'create_courses',
+    'edit_courses',
+    'delete_courses',
+    'view_students',
+    'grade_assessments',
+    'view_analytics',
+    'manage_lessons',
+    'view_progress',
+    'update_profile'
+  ],
+  ADMIN: [
+    'view_courses',
+    'create_courses',
+    'edit_courses',
+    'delete_courses',
+    'view_students',
+    'view_teachers',
+    'manage_users',
+    'view_analytics',
+    'manage_system',
+    'view_audit_logs',
+    'update_profile'
+  ],
+  SUPERADMIN: [
+    'view_courses',
+    'create_courses',
+    'edit_courses',
+    'delete_courses',
+    'view_students',
+    'view_teachers',
+    'view_admins',
+    'manage_users',
+    'manage_roles',
+    'view_analytics',
+    'manage_system',
+    'view_audit_logs',
+    'system_configuration',
+    'update_profile'
+  ]
+} as const
+
+export const RESOURCE_PERMISSIONS = {
+  courses: {
+    view: ['STUDENT', 'TEACHER', 'ADMIN', 'SUPERADMIN'],
+    create: ['TEACHER', 'ADMIN', 'SUPERADMIN'],
+    edit: ['TEACHER', 'ADMIN', 'SUPERADMIN'],
+    delete: ['ADMIN', 'SUPERADMIN']
+  },
+  users: {
+    view: ['TEACHER', 'ADMIN', 'SUPERADMIN'],
+    create: ['ADMIN', 'SUPERADMIN'],
+    edit: ['ADMIN', 'SUPERADMIN'],
+    delete: ['SUPERADMIN']
+  },
+  system: {
+    view: ['ADMIN', 'SUPERADMIN'],
+    configure: ['SUPERADMIN']
+  },
+  analytics: {
+    view: ['TEACHER', 'ADMIN', 'SUPERADMIN'],
+    export: ['ADMIN', 'SUPERADMIN']
+  }
+} as const
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -81,7 +176,31 @@ export const useAuthStore = create<AuthState>()(
           // Simulate API call
           await new Promise(resolve => setTimeout(resolve, 1000))
           
-          // For demo purposes, accept any email/password combination
+          // Role-based demo login
+          let userRole: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN' = 'STUDENT'
+          let userName = email.split('@')[0]
+          
+          // Check for specific demo accounts
+          if (email === 'teacher@example.com' && password === 'password') {
+            userRole = 'TEACHER'
+            userName = 'Demo Teacher'
+          } else if (email === 'admin@example.com' && password === 'password') {
+            userRole = 'ADMIN'
+            userName = 'Demo Admin'
+          } else if (email === 'superadmin@example.com' && password === 'password') {
+            userRole = 'SUPERADMIN'
+            userName = 'Demo Super Admin'
+          } else if (email === 'student@example.com' && password === 'password') {
+            userRole = 'STUDENT'
+            userName = 'Demo Student'
+          } else {
+            // For any other email/password combination, create a student user
+            userRole = 'STUDENT'
+            userName = email.split('@')[0]
+          }
+          
+          console.log('🎭 Demo login detected for role:', userRole)
+          
           // Check if this user has logged in before by looking at login history
           const loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '{}')
           const userLoginHistory = loginHistory[email] || { count: 0, firstLogin: null, lastLogin: null }
@@ -89,6 +208,7 @@ export const useAuthStore = create<AuthState>()(
           
           console.log('🔍 Login History Check:', {
             email,
+            userRole,
             userLoginHistory,
             isReturningUser,
             loginCount: userLoginHistory.count
@@ -104,8 +224,8 @@ export const useAuthStore = create<AuthState>()(
           const user: User = {
             id: isReturningUser ? userLoginHistory.userId || `user_${Date.now()}` : `user_${Date.now()}`,
             email,
-            name: email.split('@')[0],
-            role: 'STUDENT',
+            name: userName,
+            role: userRole,
             age: 25,
             grade: 'College',
             school: 'Demo University',
@@ -542,6 +662,129 @@ export const useAuthStore = create<AuthState>()(
       getUserActionLogs: (userId: string) => {
         const { actionLogs } = get()
         return actionLogs.filter(log => log.userId === userId)
+      },
+
+      // Role-based permission functions
+      hasPermission: (permission: string) => {
+        const { user } = get()
+        if (!user) return false
+        
+        const userPermissions = ROLE_PERMISSIONS[user.role] || []
+        return userPermissions.includes(permission)
+      },
+
+      hasRole: (role: User['role']) => {
+        const { user } = get()
+        return user?.role === role
+      },
+
+      canAccess: (resource: string, action: string) => {
+        const { user } = get()
+        if (!user) return false
+        
+        const resourcePerms = RESOURCE_PERMISSIONS[resource as keyof typeof RESOURCE_PERMISSIONS]
+        if (!resourcePerms) return false
+        
+        const allowedRoles = resourcePerms[action as keyof typeof resourcePerms]
+        if (!allowedRoles) return false
+        
+        return allowedRoles.includes(user.role)
+      },
+
+      getRolePermissions: (role: User['role']) => {
+        return ROLE_PERMISSIONS[role] || []
+      },
+
+      updateUserRole: async (userId: string, newRole: User['role']) => {
+        const { user } = get()
+        if (!user || !user.canAccess('users', 'edit')) {
+          throw new Error('Insufficient permissions to update user role')
+        }
+
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Log the role change action
+        const actionLog: UserAction = {
+          id: `action_${Date.now()}`,
+          userId: user.id,
+          action: 'ROLE_UPDATE',
+          details: `Role updated for user ${userId} to ${newRole}`,
+          timestamp: new Date().toISOString()
+        }
+        
+        set((state) => ({
+          actionLogs: [...state.actionLogs, actionLog]
+        }))
+        
+        console.log('✅ User role updated successfully')
+        return true
+      },
+
+      deactivateUser: async (userId: string) => {
+        const { user } = get()
+        if (!user || !user.canAccess('users', 'edit')) {
+          throw new Error('Insufficient permissions to deactivate user')
+        }
+
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Log the deactivation action
+        const actionLog: UserAction = {
+          id: `action_${Date.now()}`,
+          userId: user.id,
+          action: 'USER_DEACTIVATION',
+          details: `User ${userId} deactivated`,
+          timestamp: new Date().toISOString()
+        }
+        
+        set((state) => ({
+          actionLogs: [...state.actionLogs, actionLog]
+        }))
+        
+        console.log('✅ User deactivated successfully')
+        return true
+      },
+
+      activateUser: async (userId: string) => {
+        const { user } = get()
+        if (!user || !user.canAccess('users', 'edit')) {
+          throw new Error('Insufficient permissions to activate user')
+        }
+
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Log the activation action
+        const actionLog: UserAction = {
+          id: `action_${Date.now()}`,
+          userId: user.id,
+          action: 'USER_ACTIVATION',
+          details: `User ${userId} activated`,
+          timestamp: new Date().toISOString()
+        }
+        
+        set((state) => ({
+          actionLogs: [...state.actionLogs, actionLog]
+        }))
+        
+        console.log('✅ User activated successfully')
+        return true
+      },
+
+      // Get dashboard URL based on user role
+      getDashboardUrl: (role: User['role']) => {
+        switch (role) {
+          case 'TEACHER':
+            return '/dashboard?role=teacher'
+          case 'ADMIN':
+          case 'SUPERADMIN':
+            return '/dashboard?role=admin'
+          case 'STUDENT':
+          default:
+            return '/dashboard?role=student'
+        }
       }
     }),
     {

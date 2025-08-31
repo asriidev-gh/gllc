@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { X, Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface LoginFormProps {
   onClose: () => void
@@ -16,7 +17,8 @@ interface LoginFormProps {
 
 export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: LoginFormProps) {
   const router = useRouter()
-  const { login } = useAuthStore()
+  const { login, getDashboardUrl } = useAuthStore()
+  const { t } = useLanguage()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -55,7 +57,7 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
     
     try {
       // Use the auth context login function
-      await login(formData.email, formData.password)
+      const user = await login(formData.email, formData.password)
       
       // If onSuccess callback exists, call it (for course enrollment flow)
       if (onSuccess) {
@@ -69,10 +71,13 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
         console.log('Closing form...')
         onClose()
         
-        // Redirect to dashboard
-        console.log('Redirecting to dashboard...')
-        router.push('/dashboard')
-        console.log('✅ Redirect completed')
+        // Get the appropriate dashboard URL based on user role
+        const dashboardUrl = getDashboardUrl(user.role)
+        console.log(`🎯 Redirecting ${user.role} to: ${dashboardUrl}`)
+        
+        // Redirect to role-specific dashboard
+        router.push(dashboardUrl)
+        console.log('✅ Role-based redirect completed')
       }
       
     } catch (error) {
@@ -212,10 +217,26 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
 
           {/* Demo Account Info */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Demo Account (for testing):</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <p><strong>Email:</strong> student@example.com</p>
-              <p><strong>Password:</strong> (any password works in demo)</p>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              {t('login.demoAccounts.title') || 'Demo Accounts (for testing)'}
+            </h4>
+            <div className="text-xs text-gray-600 space-y-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <p><strong>{t('login.demoAccounts.student') || 'Student'}:</strong> student@example.com / password</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <p><strong>{t('login.demoAccounts.teacher') || 'Teacher'}:</strong> teacher@example.com / password</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                <p><strong>{t('login.demoAccounts.admin') || 'Admin'}:</strong> admin@example.com / password</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <p><strong>{t('login.demoAccounts.superAdmin') || 'Super Admin'}:</strong> superadmin@example.com / password</p>
+              </div>
             </div>
           </div>
         </div>

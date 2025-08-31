@@ -1,5 +1,35 @@
 # 🌟 Language Training Center for Kids - Features
 
+## 🔍 **Advanced User Filtering & Search System (v3.0.5)**
+
+### **Real-Time Search & Filtering**
+- **Name & Email Search**: Instant search across user names and email addresses
+- **Role-Based Filtering**: Filter users by Student, Teacher, Admin, or SuperAdmin roles
+- **Status-Based Filtering**: Filter by Active, Inactive, or Suspended account status
+- **Combined Filters**: Multiple filters work together seamlessly for precise results
+- **Dynamic Results**: Real-time filtering with instant updates as you type or select
+
+### **Professional Filter Interface**
+- **Search Bar**: Prominent search input with search icon and placeholder text
+- **Filter Dropdowns**: Clean, responsive filter controls for role and status
+- **Results Counter**: Shows "Showing X of Y users" for clear feedback
+- **Clear Filters**: One-click button to reset all filters to default state
+- **Responsive Design**: Optimized layout for desktop, tablet, and mobile devices
+
+### **Multi-Language Support**
+- **5 Languages**: Complete translations for English, Spanish, Tagalog, Korean, and Japanese
+- **Professional Terminology**: Enterprise-grade translations for all filter elements
+- **Cultural Adaptation**: Language-specific terminology and descriptions
+- **Consistent UX**: Same filtering experience across all supported languages
+
+### **Performance & Security**
+- **Efficient Filtering**: Optimized search and filter algorithms
+- **Real-time Updates**: Instant results without page reloads
+- **Permission Respect**: Filters respect user access levels and permissions
+- **Data Protection**: Filtered results maintain security boundaries
+
+---
+
 ## 🌍 **Comprehensive Internationalization (i18n) System (v3.0.4)**
 
 ### **Multi-Language Support**

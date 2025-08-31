@@ -33,6 +33,9 @@ import { Button } from '@/components/ui/Button'
 import { useAuthStore } from '@/stores'
 import toast from 'react-hot-toast'
 import { recordLearningActivity as recordLearningActivityUtil, getRecentActivities } from '@/lib/learningActivity'
+import { TeacherDashboard } from './TeacherDashboard'
+import { AdminDashboard } from './AdminDashboard'
+import { RoleBasedAccess } from './RoleBasedAccess'
 
 interface EnrolledCourse {
   id: string
@@ -66,9 +69,47 @@ interface DashboardStats {
 }
 
 export function Dashboard() {
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, getDashboardUrl } = useAuthStore()
   const { t } = useLanguage()
   const router = useRouter()
+
+  // Handle role-based routing from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user) {
+      const urlParams = new URLSearchParams(window.location.search)
+      const roleParam = urlParams.get('role')
+      
+      if (roleParam) {
+        console.log(`🎯 Dashboard accessed with role parameter: ${roleParam}`)
+        console.log(`👤 Current user role: ${user.role}`)
+        
+        // Validate that the URL role matches the user's actual role
+        if (roleParam === 'teacher' && user.role === 'TEACHER') {
+          console.log('✅ Teacher dashboard access confirmed')
+        } else if (roleParam === 'admin' && (user.role === 'ADMIN' || user.role === 'SUPERADMIN')) {
+          console.log('✅ Admin/SuperAdmin dashboard access confirmed')
+        } else if (roleParam === 'student' && user.role === 'STUDENT') {
+          console.log('✅ Student dashboard access confirmed')
+        } else {
+          console.log('⚠️ Role mismatch detected, redirecting to appropriate dashboard')
+          // Redirect to the correct dashboard based on user's actual role
+          const correctUrl = getDashboardUrl(user.role)
+          router.replace(correctUrl)
+        }
+      }
+    }
+  }, [user, router, getDashboardUrl])
+
+  // Role-based dashboard routing
+  if (user?.role === 'TEACHER') {
+    return <TeacherDashboard />
+  }
+
+  if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
+    return <AdminDashboard />
+  }
+
+  // Student dashboard (default)
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,

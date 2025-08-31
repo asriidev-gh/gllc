@@ -171,7 +171,13 @@ For support and questions:
 
 ## 🔄 Version History
 
-### v3.0.4 (Current)
+### v3.0.5 (Current)
+- 🔍 **NEW**: Advanced User Filtering & Search System
+  - Real-time search by user name and email addresses
+  - Role-based filtering (Student, Teacher, Admin, SuperAdmin)
+  - Status-based filtering (Active, Inactive, Suspended)
+  - Combined filters with instant results and result counters
+  - Professional filter interface with clear filters functionality
 - 🌍 **NEW**: Comprehensive Internationalization (i18n) System
   - Full translation support for English, Spanish, Tagalog, Korean, and Japanese
   - Dynamic language switching with persistent user preferences

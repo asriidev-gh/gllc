@@ -12,7 +12,10 @@ import {
   X,
   BookOpen,
   Trophy,
-  Settings
+  Settings,
+  GraduationCap,
+  Shield,
+  Crown
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
@@ -137,6 +140,34 @@ export function Header() {
                       <Button variant="outline" className="flex items-center space-x-2">
                         <BookOpen className="w-4 h-4" />
                         <span>{t('header.dashboard')}</span>
+                      </Button>
+                    </Link>
+                  )}
+
+                  {/* Role-based navigation */}
+                  {user?.role === 'TEACHER' && (
+                    <Link href="/dashboard">
+                      <Button variant="outline" className="flex items-center space-x-2">
+                        <GraduationCap className="w-4 h-4" />
+                        <span>{t('header.teacherDashboard') || 'Teacher Dashboard'}</span>
+                      </Button>
+                    </Link>
+                  )}
+
+                  {user?.role === 'ADMIN' && (
+                    <Link href="/dashboard">
+                      <Button variant="outline" className="flex items-center space-x-2">
+                        <Shield className="w-4 h-4" />
+                        <span>{t('header.adminDashboard') || 'Admin Dashboard'}</span>
+                      </Button>
+                    </Link>
+                  )}
+
+                  {user?.role === 'SUPERADMIN' && (
+                    <Link href="/dashboard">
+                      <Button variant="outline" className="flex items-center space-x-2">
+                        <Crown className="w-4 h-4" />
+                        <span>{t('header.superAdminDashboard') || 'Super Admin Dashboard'}</span>
                       </Button>
                     </Link>
                   )}
