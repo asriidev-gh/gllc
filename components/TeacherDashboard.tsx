@@ -215,7 +215,7 @@ export const TeacherDashboard: React.FC = () => {
             className="space-y-6"
           >
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {/* Total Courses Card */}
               <motion.div 
                 whileHover={{ scale: 1.02, y: -2 }}
@@ -255,7 +255,7 @@ export const TeacherDashboard: React.FC = () => {
                       {t('teacher.dashboard.stats.totalStudents') || 'Total Students'}
                     </p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {students.reduce((sum, student) => sum + student.enrolledCourses, 0)}
+                      {students.length}
                     </p>
                   </div>
                   <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
@@ -323,6 +323,34 @@ export const TeacherDashboard: React.FC = () => {
                     {t('teacher.dashboard.stats.clickToViewAnalytics') || 'Click to view analytics'}
                   </span>
                   <ArrowRight className="w-4 h-4 text-purple-600 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </motion.div>
+
+              {/* Total Enrollments Card */}
+              <motion.div 
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={navigateToStudents}
+                className="bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-indigo-200 group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">
+                      {t('teacher.dashboard.stats.totalEnrollments') || 'Total Enrollments'}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {courses.reduce((sum, course) => sum + course.students, 0)}
+                    </p>
+                  </div>
+                  <div className="p-3 bg-indigo-100 rounded-lg group-hover:bg-indigo-200 transition-colors">
+                    <Clock className="w-6 h-6 text-indigo-600" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                  <span className="text-xs text-indigo-600 font-medium">
+                    {t('teacher.dashboard.stats.clickToViewStudents') || 'Click to view students'}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-indigo-600 group-hover:translate-x-1 transition-transform" />
                 </div>
               </motion.div>
             </div>

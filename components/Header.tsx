@@ -36,8 +36,10 @@ export function Header() {
   // Check if we're on the dashboard page
   const isOnDashboard = pathname === '/dashboard'
 
-  // Check if we're on any user workspace page (dashboard, profile, settings, achievements, course learning)
-  const isOnUserWorkspace = ['/dashboard', '/profile', '/settings', '/achievements', '/assessment'].includes(pathname) || pathname.startsWith('/courses/')
+  // Check if we're on any user workspace page (dashboard, profile, settings, achievements for students only, course learning)
+  const isOnUserWorkspace = ['/dashboard', '/profile', '/settings', '/assessment'].includes(pathname) || 
+    (user?.role === 'STUDENT' && pathname === '/achievements') || 
+    pathname.startsWith('/courses/')
 
   const handleLogout = () => {
     logout()
@@ -124,7 +126,7 @@ export function Header() {
               
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
-                  {/* Dashboard button - Show when on user workspace pages (profile, settings, achievements) */}
+                  {/* Dashboard button - Show when on user workspace pages (profile, settings, achievements for students only) */}
                   {isOnUserWorkspace && pathname !== '/dashboard' && (
                     <Link href="/dashboard">
                       <Button variant="outline" className="flex items-center space-x-2">
@@ -198,10 +200,13 @@ export function Header() {
                           <User className="w-4 h-4 mr-2" />
                           {t('header.profile')}
                         </Link>
-                        <Link href="/achievements" className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
-                          <Trophy className="w-4 h-4 mr-2" />
-                          {t('header.achievements')}
-                        </Link>
+                        {/* Only show achievements for students */}
+                        {user?.role === 'STUDENT' && (
+                          <Link href="/achievements" className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <Trophy className="w-4 h-4 mr-2" />
+                            {t('header.achievements')}
+                          </Link>
+                        )}
                         <Link href="/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
                           <Settings className="w-4 h-4 mr-2" />
                           {t('header.settings')}
@@ -288,10 +293,13 @@ export function Header() {
                     <User className="w-4 h-4 inline mr-2" />
                     {t('header.profile')}
                   </Link>
-                  <Link href="/achievements" className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
-                    <Trophy className="w-4 h-4 inline mr-2" />
-                    {t('header.achievements')}
-                  </Link>
+                  {/* Only show achievements for students */}
+                  {user?.role === 'STUDENT' && (
+                    <Link href="/achievements" className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
+                      <Trophy className="w-4 h-4 inline mr-2" />
+                      {t('header.achievements')}
+                    </Link>
+                  )}
                   <Link href="/settings" className="block px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">
                     <Settings className="w-4 h-4 inline mr-2" />
                     {t('header.settings')}
