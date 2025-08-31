@@ -18,6 +18,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import { CreateCourseModal } from './CreateCourseModal'
 
 interface Course {
   id: string
@@ -47,6 +48,7 @@ export const TeacherDashboard: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([])
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'analytics'>('overview')
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'draft' | 'archived'>('all')
+  const [isCreateCourseModalOpen, setIsCreateCourseModalOpen] = useState(false)
 
   useEffect(() => {
     // Load mock data for demo
@@ -137,6 +139,13 @@ export const TeacherDashboard: React.FC = () => {
 
   const navigateToProgress = () => {
     setActiveTab('analytics')
+  }
+
+  const handleCourseCreated = (newCourse: Course) => {
+    setCourses(prev => [newCourse, ...prev])
+    // Switch to courses tab to show the new course
+    setActiveTab('courses')
+    setActiveFilter('all')
   }
 
   // Get filtered courses based on active filter
@@ -394,7 +403,10 @@ export const TeacherDashboard: React.FC = () => {
                 {t('teacher.dashboard.courses.title') || 'My Courses'}
               </h2>
               {canCreateCourse && (
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+                <button 
+                  onClick={() => setIsCreateCourseModalOpen(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                >
                   <Plus className="w-4 h-4" />
                   <span>{t('teacher.dashboard.courses.create') || 'Create Course'}</span>
                 </button>
@@ -590,6 +602,13 @@ export const TeacherDashboard: React.FC = () => {
             </div>
           </motion.div>
         )}
+
+        {/* Create Course Modal */}
+        <CreateCourseModal
+          isOpen={isCreateCourseModalOpen}
+          onClose={() => setIsCreateCourseModalOpen(false)}
+          onCourseCreated={handleCourseCreated}
+        />
       </div>
     </div>
   )
