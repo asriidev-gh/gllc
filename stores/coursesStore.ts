@@ -15,6 +15,10 @@ export interface Course {
   category: string[]
   createdAt: string
   updatedAt: string
+  students: number
+  rating: number
+  features: string[]
+  flag?: string
 }
 
 export interface Enrollment {
@@ -36,6 +40,7 @@ export interface CoursesState {
   
   // Actions
   fetchCourses: () => Promise<Course[]>
+  addCourse: (course: Course) => void
   enrollInCourse: (courseId: string, userId: string) => Promise<Enrollment>
   updateProgress: (enrollmentId: string, lessonId: string, progress: number) => void
   getEnrolledCourses: (userId: string) => Course[]
@@ -72,7 +77,11 @@ export const useCoursesStore = create<CoursesState>()(
               price: 99.99,
               category: ['Language', 'Beginner'],
               createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
+              students: 2500,
+              rating: 4.8,
+              features: ['Interactive Lessons', 'Speaking Practice', 'Grammar Exercises', 'Vocabulary Building'],
+              flag: '🇺🇸'
             },
             {
               id: 'course_2',
@@ -86,7 +95,11 @@ export const useCoursesStore = create<CoursesState>()(
               price: 79.99,
               category: ['Language', 'Conversation'],
               createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
+              students: 1200,
+              rating: 4.9,
+              features: ['Conversation Practice', 'Cultural Context', 'Pronunciation Guide', 'Real-life Scenarios'],
+              flag: '🇵🇭'
             },
             {
               id: 'course_3',
@@ -100,7 +113,11 @@ export const useCoursesStore = create<CoursesState>()(
               price: 119.99,
               category: ['Language', 'Culture'],
               createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
+              students: 3400,
+              rating: 4.7,
+              features: ['Hangul Writing', 'K-Culture', 'Grammar Basics', 'Listening Practice'],
+              flag: '🇰🇷'
             }
           ]
           
@@ -110,6 +127,11 @@ export const useCoursesStore = create<CoursesState>()(
           set({ isLoading: false })
           throw error
         }
+      },
+
+      // Add a new course
+      addCourse: (course: Course) => {
+        set(state => ({ courses: [course, ...state.courses] }))
       },
 
       // Enroll in course

@@ -134,7 +134,7 @@ const mockCourses = [
 
 export default function CoursesPage() {
   const { isAuthenticated, user } = useAuthStore()
-  const { enrollInCourse, getEnrollment } = useCoursesStore()
+  const { enrollInCourse, getEnrollment, courses, fetchCourses } = useCoursesStore()
   const { t } = useLanguage()
   
   const [searchTerm, setSearchTerm] = useState('')
@@ -167,7 +167,10 @@ export default function CoursesPage() {
     return storeEnrolled
   }
   
-  const filteredCourses = mockCourses.filter(course => {
+  // Prefer store courses if available, otherwise fall back to mock
+  const list = (courses && courses.length > 0) ? courses : mockCourses
+
+  const filteredCourses = list.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.language.toLowerCase().includes(searchTerm.toLowerCase())
@@ -290,8 +293,8 @@ export default function CoursesPage() {
     setSelectedCourse(null)
   }
 
-  const languages = Array.from(new Set(mockCourses.map(course => course.language)))
-  const levels = Array.from(new Set(mockCourses.map(course => course.level)))
+  const languages = Array.from(new Set(list.map(course => course.language)))
+  const levels = Array.from(new Set(list.map(course => course.level)))
 
   return (
     <>
@@ -400,11 +403,11 @@ export default function CoursesPage() {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <p className="text-gray-600">
-              Showing {filteredCourses.length} of {mockCourses.length} courses
+              Showing {filteredCourses.length} of {list.length} courses
             </p>
             {isAuthenticated && (
               <p className="text-sm text-gray-500">
-                You're enrolled in {mockCourses.filter(course => isEnrolledInCourse(course.id)).length} courses
+                You're enrolled in {list.filter(course => isEnrolledInCourse(course.id)).length} courses
               </p>
             )}
           </div>
@@ -422,7 +425,7 @@ export default function CoursesPage() {
             >
               {/* Course Image */}
               <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center relative">
-                <div className="text-6xl">{course.flag}</div>
+                <div className="text-6xl">{course.flag || '🌍'}</div>
                 {isEnrolledInCourse(course.id) && (
                   <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
                     <CheckCircle className="w-3 h-3 mr-1" />
@@ -465,7 +468,7 @@ export default function CoursesPage() {
                   </div>
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-1" />
-                    {course.students.toLocaleString()}
+                    {(course.students || 0).toLocaleString()}
                   </div>
                 </div>
 
@@ -473,17 +476,17 @@ export default function CoursesPage() {
                 <div className="flex items-center mb-4">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="ml-1 text-sm font-medium">{course.rating}</span>
+                    <span className="ml-1 text-sm font-medium">{course.rating || 0}</span>
                   </div>
                   <span className="text-gray-400 text-sm ml-2">
-                    ({course.students.toLocaleString()} students)
+                    ({(course.students || 0).toLocaleString()} students)
                   </span>
                 </div>
 
                 {/* Features */}
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-1">
-                    {course.features.slice(0, 2).map((feature, featureIndex) => (
+                    {(course.features || []).slice(0, 2).map((feature, featureIndex) => (
                       <span
                         key={featureIndex}
                         className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md"
@@ -491,9 +494,9 @@ export default function CoursesPage() {
                         {feature}
                       </span>
                     ))}
-                    {course.features.length > 2 && (
+                    {(course.features || []).length > 2 && (
                       <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-md">
-                        {t('courses.page.course.moreFeatures').replace('{count}', (course.features.length - 2).toString())}
+                        {t('courses.page.course.moreFeatures').replace('{count}', ((course.features || []).length - 2).toString())}
                       </span>
                     )}
                   </div>

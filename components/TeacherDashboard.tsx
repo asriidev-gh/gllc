@@ -143,7 +143,6 @@ export const TeacherDashboard: React.FC = () => {
 
   const handleCourseCreated = (newCourse: Course) => {
     setCourses(prev => [newCourse, ...prev])
-    // Switch to courses tab to show the new course
     setActiveTab('courses')
     setActiveFilter('all')
   }
@@ -404,7 +403,15 @@ export const TeacherDashboard: React.FC = () => {
               </h2>
               {canCreateCourse && (
                 <button 
-                  onClick={() => setIsCreateCourseModalOpen(true)}
+                  onClick={() => {
+                    // Prefer dedicated create page for future-proofing
+                    try {
+                      // Use router to navigate to create wizard
+                      router.push('/courses/create')
+                    } catch {
+                      setIsCreateCourseModalOpen(true)
+                    }
+                  }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
