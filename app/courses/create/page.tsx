@@ -399,15 +399,15 @@ export default function CreateCoursePage(): JSX.Element {
           <h1 className="text-xl font-semibold text-gray-900">{editId ? 'Edit Course' : 'Create Course'}</h1>
         </div>
         <div className="flex items-center space-x-2">
-          {step === 2 && (
-            <button
-              onClick={goBack}
-              className="px-3 py-2 inline-flex items-center border rounded-lg text-gray-700 hover:bg-gray-50"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </button>
-          )}
           <button
+            type="button"
+            onClick={step === 2 ? goBack : () => router.back()}
+            className="px-3 py-2 inline-flex items-center border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back
+          </button>
+          <button
+            type="button"
             onClick={goNext}
             className="px-4 py-2 inline-flex items-center bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
