@@ -10,10 +10,16 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { recordLearningActivity } from '@/lib/learningActivity'
 
 export default function AchievementsPage() {
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, getDashboardUrl } = useAuthStore()
   const router = useRouter()
   const { t, language } = useLanguage()
-  
+
+  // Achievements is student-only; teachers/admins must not see this view
+  useEffect(() => {
+    if (user && user.role !== 'STUDENT') {
+      router.replace(getDashboardUrl(user.role))
+    }
+  }, [user, router, getDashboardUrl])
 
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
   const [achievementDetails, setAchievementDetails] = useState<any[]>([])
@@ -554,9 +560,13 @@ export default function AchievementsPage() {
       router.push('/')
       return
     }
+    if (user && user.role !== 'STUDENT') {
+      router.replace(getDashboardUrl(user.role))
+      return
+    }
     
     loadEnrolledCourses()
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user, router, getDashboardUrl])
 
   if (!user) {
     return (
@@ -568,6 +578,18 @@ export default function AchievementsPage() {
               <h1 className="text-2xl font-bold text-gray-900">{t('achievements.page.signInRequired')}</h1>
             </div>
           </div>
+        </div>
+      </>
+    )
+  }
+
+  // Do not render student-only content for teachers/admins (redirect runs in useEffect)
+  if (user.role !== 'STUDENT') {
+    return (
+      <>
+        <Header />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
         </div>
       </>
     )

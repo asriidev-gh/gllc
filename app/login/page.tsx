@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, isAuthenticated, isLoading } = useAuthStore()
+  const { login, isAuthenticated, isLoading, getDashboardUrl, user } = useAuthStore()
   const { t } = useLanguage()
   
   const [email, setEmail] = useState('')
@@ -22,17 +22,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     // Check if user is already authenticated
-    if (isAuthenticated) {
-      // Check if there's a redirect URL in the query params
+    if (isAuthenticated && user) {
       const urlParams = new URLSearchParams(window.location.search)
       const redirect = urlParams.get('redirect')
       if (redirect) {
-        router.push(redirect)
+        router.replace(redirect)
       } else {
-        router.push('/dashboard')
+        router.replace(getDashboardUrl(user.role))
       }
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, user, router, getDashboardUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,16 +42,13 @@ export default function LoginPage() {
     }
 
     try {
-      await login(email, password)
-      
-      // Check if there's a redirect URL
+      const user = await login(email, password)
       const urlParams = new URLSearchParams(window.location.search)
       const redirect = urlParams.get('redirect')
-      
       if (redirect) {
-        router.push(redirect)
+        router.replace(redirect)
       } else {
-        router.push('/dashboard')
+        router.replace(getDashboardUrl(user.role))
       }
     } catch (error) {
       console.error('Login failed:', error)
@@ -62,16 +58,13 @@ export default function LoginPage() {
 
   const handleDemoLogin = async () => {
     try {
-      await login('student@example.com', 'demo123')
-      
-      // Check if there's a redirect URL
+      const user = await login('student@example.com', 'demo123')
       const urlParams = new URLSearchParams(window.location.search)
       const redirect = urlParams.get('redirect')
-      
       if (redirect) {
         router.push(redirect)
       } else {
-        router.push('/dashboard')
+        router.push(getDashboardUrl(user.role))
       }
     } catch (error) {
       console.error('Demo login failed:', error)

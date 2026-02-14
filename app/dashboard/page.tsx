@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Dashboard } from '@/components/Dashboard'
 import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
@@ -10,8 +10,19 @@ import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const searchParams = useSearchParams()
+  const { isAuthenticated, isLoading, user, getDashboardUrl } = useAuthStore()
   const { t } = useLanguage()
+
+  // Ensure teachers/admins land on their role-specific URL so they never see student view
+  useEffect(() => {
+    if (!user || isLoading) return
+    const roleParam = searchParams.get('role')
+    const expectedRole = user.role === 'TEACHER' ? 'teacher' : user.role === 'ADMIN' || user.role === 'SUPERADMIN' ? 'admin' : 'student'
+    if ((user.role === 'TEACHER' || user.role === 'ADMIN' || user.role === 'SUPERADMIN') && roleParam !== expectedRole) {
+      router.replace(getDashboardUrl(user.role))
+    }
+  }, [user, isLoading, searchParams, router, getDashboardUrl])
 
   useEffect(() => {
     // Add a small delay to ensure authentication state is properly loaded

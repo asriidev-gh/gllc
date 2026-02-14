@@ -26,7 +26,11 @@ import {
   ListOrdered,
   PlayCircle,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  UserCog,
+  Shield,
+  Crown,
+  Lock
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
@@ -58,10 +62,10 @@ interface Student {
 
 export const TeacherDashboard: React.FC = () => {
   const { t } = useLanguage()
-  const { user, hasPermission } = useAuthStore()
-  const { courses: storeCourses, addCourse, deleteCourse, updateCourse } = useCoursesStore()
+  const { user, hasPermission, registeredUsers, setUserPassword, updateUserStatusAndRemarks, createUserAsAdmin, updateUserRole } = useAuthStore()
+  const { courses: storeCourses, addCourse, deleteCourse, updateCourse, enrollments } = useCoursesStore()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'analytics'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'analytics' | 'users'>('overview')
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'draft' | 'inactive'>('all')
   const [isCreateCourseModalOpen, setIsCreateCourseModalOpen] = useState(false)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
@@ -91,12 +95,57 @@ export const TeacherDashboard: React.FC = () => {
     }))
   }, [storeCourses])
 
-  // Mock students data (could later come from enrollments)
-  const [students] = useState<Student[]>([
-    { id: '1', name: 'Maria Santos', email: 'maria@example.com', enrolledCourses: 3, progress: 78, lastActive: '2024-01-25' },
-    { id: '2', name: 'Juan Dela Cruz', email: 'juan@example.com', enrolledCourses: 2, progress: 65, lastActive: '2024-01-24' },
-    { id: '3', name: 'Ana Rodriguez', email: 'ana@example.com', enrolledCourses: 4, progress: 92, lastActive: '2024-01-25' }
-  ])
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
+
+  // Teacher's course IDs (admin: all courses; teacher: only courses they created)
+  const teacherCourseIds = useMemo(
+    () =>
+      isAdmin
+        ? storeCourses.map((c) => c.id)
+        : storeCourses.filter((c) => c.instructor === user?.name).map((c) => c.id),
+    [storeCourses, user?.name, isAdmin]
+  )
+
+  // Students: admin = all registered students (any enrollment); teacher = only enrolled in their courses
+  const students: Student[] = useMemo(() => {
+    const enrollmentsInScope = isAdmin
+      ? (enrollments || [])
+      : (enrollments || []).filter((e) => teacherCourseIds.includes(e.courseId))
+    const list = isAdmin
+      ? (registeredUsers || []).filter((u) => u.role === 'STUDENT')
+      : (registeredUsers || []).filter((u) => {
+          const enrolledStudentIds = Array.from(new Set(enrollmentsInScope.map((e) => e.userId)))
+          return u.role === 'STUDENT' && enrolledStudentIds.includes(u.id)
+        })
+    return list.map((u) => {
+      const userEnrollments = enrollmentsInScope.filter((e) => e.userId === u.id)
+      const enrolledCourses = userEnrollments.length
+      const progress =
+        enrolledCourses > 0
+          ? Math.round(
+              userEnrollments.reduce((sum, e) => sum + e.progress, 0) / enrolledCourses
+            )
+          : 0
+      const lastAccessed = userEnrollments
+        .map((e) => e.lastAccessedAt)
+        .filter(Boolean)
+        .sort()
+        .pop()
+      const lastActive = lastAccessed
+        ? new Date(lastAccessed).toISOString().split('T')[0]
+        : u.createdAt
+        ? new Date(u.createdAt).toISOString().split('T')[0]
+        : '—'
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        enrolledCourses,
+        progress,
+        lastActive,
+      }
+    })
+  }, [registeredUsers, enrollments, teacherCourseIds, isAdmin])
 
   // Navigation functions for stats cards
   const navigateToCourses = () => {
@@ -338,10 +387,61 @@ export const TeacherDashboard: React.FC = () => {
   }
 
   // Reset filter when switching tabs
-  const handleTabChange = (tab: 'overview' | 'courses' | 'students' | 'analytics') => {
+  const handleTabChange = (tab: 'overview' | 'courses' | 'students' | 'analytics' | 'users') => {
     setActiveTab(tab)
     if (tab !== 'courses') {
       setActiveFilter('all')
+    }
+  }
+
+  // Users list (all registered users) for admin/superadmin – filter by role, name, email
+  const [usersRoleFilter, setUsersRoleFilter] = useState<'all' | 'ADMIN' | 'SUPERADMIN' | 'TEACHER' | 'STUDENT'>('all')
+  const [usersNameFilter, setUsersNameFilter] = useState('')
+  const [usersEmailFilter, setUsersEmailFilter] = useState('')
+  const [usersStatusFilter, setUsersStatusFilter] = useState<'all' | 'ACTIVE' | 'INACTIVE' | 'BLOCKED'>('all')
+  const [userToChangePassword, setUserToChangePassword] = useState<{ id: string; name: string } | null>(null)
+  const [userToEditInfo, setUserToEditInfo] = useState<{ id: string; name: string; status: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'; remarks: string } | null>(null)
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false)
+  const [createUserName, setCreateUserName] = useState('')
+  const [createUserEmail, setCreateUserEmail] = useState('')
+  const [createUserPassword, setCreateUserPassword] = useState('')
+  const [createUserConfirm, setCreateUserConfirm] = useState('')
+  const [createUserRole, setCreateUserRole] = useState<'ADMIN' | 'TEACHER' | 'STUDENT'>('STUDENT')
+  const [createUserError, setCreateUserError] = useState('')
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [editingRoleUserId, setEditingRoleUserId] = useState<string | null>(null)
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(null)
+  const [changePasswordNew, setChangePasswordNew] = useState('')
+  const [changePasswordConfirm, setChangePasswordConfirm] = useState('')
+  const [changePasswordError, setChangePasswordError] = useState('')
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const allUsers = useMemo(() => registeredUsers || [], [registeredUsers])
+  const filteredUsers = useMemo(() => {
+    let list = allUsers
+    if (usersRoleFilter !== 'all') {
+      list = list.filter((u) => u.role === usersRoleFilter)
+    }
+    if (usersStatusFilter !== 'all') {
+      list = list.filter((u) => (u.status || 'ACTIVE') === usersStatusFilter)
+    }
+    const nameLower = usersNameFilter.trim().toLowerCase()
+    if (nameLower) {
+      list = list.filter((u) => (u.name || '').toLowerCase().includes(nameLower))
+    }
+    const emailLower = usersEmailFilter.trim().toLowerCase()
+    if (emailLower) {
+      list = list.filter((u) => (u.email || '').toLowerCase().includes(emailLower))
+    }
+    return list
+  }, [allUsers, usersRoleFilter, usersStatusFilter, usersNameFilter, usersEmailFilter])
+
+  const formatDateTime = (iso: string | null | undefined) => {
+    if (!iso) return '—'
+    try {
+      const d = new Date(iso)
+      return isNaN(d.getTime()) ? '—' : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+    } catch {
+      return '—'
     }
   }
 
@@ -360,10 +460,10 @@ export const TeacherDashboard: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {t('teacher.dashboard.title') || 'Teacher Dashboard'}
+            {isAdmin ? (t('admin.dashboard.title') || 'Admin Dashboard') : (t('teacher.dashboard.title') || 'Teacher Dashboard')}
           </h1>
           <p className="text-gray-600">
-            {t('teacher.dashboard.subtitle') || 'Manage your courses and monitor student progress'}
+            {isAdmin ? (t('admin.dashboard.subtitle') || 'System overview, courses, and all students') : (t('teacher.dashboard.subtitle') || 'Manage your courses and monitor student progress')}
           </p>
         </div>
 
@@ -374,6 +474,7 @@ export const TeacherDashboard: React.FC = () => {
               { id: 'overview', label: t('teacher.dashboard.tabs.overview') || 'Overview', icon: BarChart3 },
               { id: 'courses', label: t('teacher.dashboard.tabs.courses') || 'Courses', icon: BookOpen },
               { id: 'students', label: t('teacher.dashboard.tabs.students') || 'Students', icon: Users },
+              ...(isAdmin ? [{ id: 'users' as const, label: t('admin.dashboard.tabs.users') || 'Users', icon: UserCog }] : []),
               { id: 'analytics', label: t('teacher.dashboard.tabs.analytics') || 'Analytics', icon: TrendingUp }
             ].map((tab) => {
               const Icon = tab.icon
@@ -775,6 +876,645 @@ export const TeacherDashboard: React.FC = () => {
                 </table>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {isAdmin && activeTab === 'users' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {t('admin.dashboard.users.title') || 'User Management'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateUserModalOpen(true)
+                  setCreateUserName('')
+                  setCreateUserEmail('')
+                  setCreateUserPassword('')
+                  setCreateUserConfirm('')
+                  setCreateUserRole('STUDENT')
+                  setCreateUserError('')
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                {t('admin.dashboard.users.createUserButton') || 'Create user'}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { key: 'all' as const, label: t('admin.dashboard.users.allRoles') || 'All' },
+                { key: 'SUPERADMIN' as const, label: t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin' },
+                { key: 'ADMIN' as const, label: t('admin.dashboard.users.roleAdmin') || 'Admin' },
+                { key: 'TEACHER' as const, label: t('admin.dashboard.users.roleTeacher') || 'Teacher' },
+                { key: 'STUDENT' as const, label: t('admin.dashboard.users.roleStudent') || 'Student' }
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setUsersRoleFilter(key)}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    usersRoleFilter === key
+                      ? 'bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.user') || 'User'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.role') || 'Role'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.createdAt') || 'Created at'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.lastLogin') || 'Last login'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.status') || 'Status'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.remarks') || 'Remarks'}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.actions') || 'Actions'}
+                      </th>
+                    </tr>
+                    <tr className="bg-gray-100/80 dark:bg-gray-700/50">
+                      <th className="px-6 py-2">
+                        <input
+                          type="text"
+                          value={usersNameFilter}
+                          onChange={(e) => setUsersNameFilter(e.target.value)}
+                          placeholder={t('admin.dashboard.users.searchPlaceholder') || 'Filter by name...'}
+                          className="w-full min-w-[120px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </th>
+                      <th className="px-6 py-2">
+                        <select
+                          value={usersRoleFilter}
+                          onChange={(e) => setUsersRoleFilter(e.target.value as typeof usersRoleFilter)}
+                          className="w-full min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="all">{t('admin.dashboard.users.allRoles') || 'All'}</option>
+                          <option value="SUPERADMIN">{t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin'}</option>
+                          <option value="ADMIN">{t('admin.dashboard.users.roleAdmin') || 'Admin'}</option>
+                          <option value="TEACHER">{t('admin.dashboard.users.roleTeacher') || 'Teacher'}</option>
+                          <option value="STUDENT">{t('admin.dashboard.users.roleStudent') || 'Student'}</option>
+                        </select>
+                      </th>
+                      <th className="px-6 py-2">
+                        <input
+                          type="text"
+                          value={usersEmailFilter}
+                          onChange={(e) => setUsersEmailFilter(e.target.value)}
+                          placeholder={t('admin.dashboard.users.filterByEmail') || 'Filter by email...'}
+                          className="w-full min-w-[140px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </th>
+                      <th className="px-6 py-2" />
+                      <th className="px-6 py-2" />
+                      <th className="px-6 py-2">
+                        <select
+                          value={usersStatusFilter}
+                          onChange={(e) => setUsersStatusFilter(e.target.value as typeof usersStatusFilter)}
+                          className="w-full min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="all">{t('admin.dashboard.users.allStatuses') || 'All'}</option>
+                          <option value="ACTIVE">{t('admin.dashboard.users.statusActive') || 'Active'}</option>
+                          <option value="INACTIVE">{t('admin.dashboard.users.statusInactive') || 'Inactive'}</option>
+                          <option value="BLOCKED">{t('admin.dashboard.users.statusBlocked') || 'Blocked'}</option>
+                        </select>
+                      </th>
+                      <th className="px-6 py-2" />
+                      <th className="px-6 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          {t('admin.dashboard.users.noUsers') || 'No users match the filter.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((u) => (
+                        <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{u.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {editingRoleUserId === u.id ? (
+                              <div className="flex items-center gap-2">
+                                <select
+                                  defaultValue={u.role}
+                                  disabled={!!updatingRoleUserId}
+                                  className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 min-w-[120px]"
+                                  onChange={async (e) => {
+                                    const newRole = e.target.value as 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN'
+                                    if (newRole === u.role) {
+                                      setEditingRoleUserId(null)
+                                      return
+                                    }
+                                    setUpdatingRoleUserId(u.id)
+                                    try {
+                                      await updateUserRole(u.id, newRole)
+                                      setEditingRoleUserId(null)
+                                    } catch (err) {
+                                      console.error(err)
+                                    } finally {
+                                      setUpdatingRoleUserId(null)
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    if (!updatingRoleUserId) setEditingRoleUserId(null)
+                                  }}
+                                  autoFocus
+                                >
+                                  {(user?.role === 'SUPERADMIN' || u.role === 'SUPERADMIN') && (
+                                    <option value="SUPERADMIN">{t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin'}</option>
+                                  )}
+                                  <option value="ADMIN">{t('admin.dashboard.users.roleAdmin') || 'Admin'}</option>
+                                  <option value="TEACHER">{t('admin.dashboard.users.roleTeacher') || 'Teacher'}</option>
+                                  <option value="STUDENT">{t('admin.dashboard.users.roleStudent') || 'Student'}</option>
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRoleUserId(null)}
+                                  className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                  title={t('admin.dashboard.users.cancel') || 'Cancel'}
+                                  aria-label="Cancel"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-full ${
+                                  u.role === 'SUPERADMIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' :
+                                  u.role === 'ADMIN' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                                  u.role === 'TEACHER' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                  'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                }`}>
+                                  {u.role === 'SUPERADMIN' && <Crown className="w-3.5 h-3.5" />}
+                                  {u.role === 'ADMIN' && <Shield className="w-3.5 h-3.5" />}
+                                  {u.role === 'TEACHER' && <GraduationCap className="w-3.5 h-3.5" />}
+                                  {u.role === 'STUDENT' && <Users className="w-3.5 h-3.5" />}
+                                  {u.role === 'SUPERADMIN' ? (t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin') :
+                                   u.role === 'ADMIN' ? (t('admin.dashboard.users.roleAdmin') || 'Admin') :
+                                   u.role === 'TEACHER' ? (t('admin.dashboard.users.roleTeacher') || 'Teacher') :
+                                   (t('admin.dashboard.users.roleStudent') || 'Student')}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingRoleUserId(u.id)}
+                                  className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded"
+                                  title={t('admin.dashboard.users.editRole') || 'Edit role'}
+                                  aria-label={t('admin.dashboard.users.editRole') || 'Edit role'}
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {u.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                            {formatDateTime(u.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                            {formatDateTime(u.lastLogin ?? undefined)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-full ${
+                              (u.status || 'ACTIVE') === 'ACTIVE' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                              (u.status || 'ACTIVE') === 'BLOCKED' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                              'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            }`}>
+                              {(u.status || 'ACTIVE') === 'ACTIVE' ? (t('admin.dashboard.users.statusActive') || 'Active') :
+                               (u.status || 'ACTIVE') === 'BLOCKED' ? (t('admin.dashboard.users.statusBlocked') || 'Blocked') :
+                               (t('admin.dashboard.users.statusInactive') || 'Inactive')}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 max-w-[200px] truncate" title={u.remarks || ''}>
+                            {u.remarks || '—'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserToEditInfo({
+                                    id: u.id,
+                                    name: u.name,
+                                    status: (u.status as 'ACTIVE' | 'INACTIVE' | 'BLOCKED') || 'ACTIVE',
+                                    remarks: u.remarks || ''
+                                  })
+                                }}
+                                className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                title={t('admin.dashboard.users.editStatusRemarks') || 'Edit status & remarks'}
+                              >
+                                <Edit className="w-4 h-4" />
+                                {t('admin.dashboard.users.updateStatus') || 'Update status'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setUserToChangePassword({ id: u.id, name: u.name })
+                                  setChangePasswordNew('')
+                                  setChangePasswordConfirm('')
+                                  setChangePasswordError('')
+                                }}
+                                className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                                title={t('admin.dashboard.users.changePassword') || 'Change password'}
+                              >
+                                <Lock className="w-4 h-4" />
+                                {t('admin.dashboard.users.changePassword') || 'Change password'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Change password modal */}
+            <AnimatePresence>
+              {userToChangePassword && (
+                <div key={userToChangePassword.id} className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/60"
+                    onClick={() => { setUserToChangePassword(null); setChangePasswordError('') }}
+                  />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Lock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {t('admin.dashboard.users.changePassword') || 'Change password'}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {userToChangePassword.name}
+                        </p>
+                      </div>
+                    </div>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault()
+                        setChangePasswordError('')
+                        if (changePasswordNew.length < 6) {
+                          setChangePasswordError(t('admin.dashboard.users.passwordMinLength') || 'Password must be at least 6 characters')
+                          return
+                        }
+                        if (changePasswordNew !== changePasswordConfirm) {
+                          setChangePasswordError(t('auth.signup.errors.passwordMismatch') || 'Passwords do not match')
+                          return
+                        }
+                        setIsChangingPassword(true)
+                        try {
+                          await setUserPassword(userToChangePassword.id, changePasswordNew)
+                          setUserToChangePassword(null)
+                          setChangePasswordNew('')
+                          setChangePasswordConfirm('')
+                        } catch (err) {
+                          setChangePasswordError(err instanceof Error ? err.message : 'Failed to update password')
+                        } finally {
+                          setIsChangingPassword(false)
+                        }
+                      }}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.newPassword') || 'New password'}
+                        </label>
+                        <input
+                          type="password"
+                          value={changePasswordNew}
+                          onChange={(e) => setChangePasswordNew(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.confirmNewPassword') || 'Confirm new password'}
+                        </label>
+                        <input
+                          type="password"
+                          value={changePasswordConfirm}
+                          onChange={(e) => setChangePasswordConfirm(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      {changePasswordError && (
+                        <p className="text-sm text-red-600 dark:text-red-400">{changePasswordError}</p>
+                      )}
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => { setUserToChangePassword(null); setChangePasswordError('') }}
+                          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        >
+                          {t('admin.dashboard.users.cancel') || 'Cancel'}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isChangingPassword}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isChangingPassword ? (t('admin.dashboard.users.updating') || 'Updating...') : (t('admin.dashboard.users.updatePassword') || 'Update password')}
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Edit status & remarks modal */}
+            <AnimatePresence>
+              {userToEditInfo && (
+                <div key={`edit-${userToEditInfo.id}`} className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/60"
+                    onClick={() => setUserToEditInfo(null)}
+                  />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <Edit className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {t('admin.dashboard.users.editStatusRemarks') || 'Edit status & remarks'}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{userToEditInfo.name}</p>
+                      </div>
+                    </div>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        updateUserStatusAndRemarks(userToEditInfo.id, {
+                          status: userToEditInfo.status,
+                          remarks: userToEditInfo.remarks
+                        })
+                        setUserToEditInfo(null)
+                      }}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.status') || 'Status'}
+                        </label>
+                        <select
+                          value={userToEditInfo.status}
+                          onChange={(e) => setUserToEditInfo((prev) => prev ? { ...prev, status: e.target.value as 'ACTIVE' | 'INACTIVE' | 'BLOCKED' } : null)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="ACTIVE">{t('admin.dashboard.users.statusActive') || 'Active'}</option>
+                          <option value="INACTIVE">{t('admin.dashboard.users.statusInactive') || 'Inactive'}</option>
+                          <option value="BLOCKED">{t('admin.dashboard.users.statusBlocked') || 'Blocked'}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.remarks') || 'Remarks'}
+                        </label>
+                        <textarea
+                          value={userToEditInfo.remarks}
+                          onChange={(e) => setUserToEditInfo((prev) => prev ? { ...prev, remarks: e.target.value } : null)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 resize-none"
+                          placeholder={t('admin.dashboard.users.remarksPlaceholder') || 'Optional notes...'}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setUserToEditInfo(null)}
+                          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        >
+                          {t('admin.dashboard.users.cancel') || 'Cancel'}
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                          {t('admin.dashboard.users.save') || 'Save'}
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
+            {/* Create user modal */}
+            <AnimatePresence>
+              {isCreateUserModalOpen && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 bg-black/60"
+                    onClick={() => setIsCreateUserModalOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <UserCog className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {t('admin.dashboard.users.createUserButton') || 'Create user'}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {t('admin.dashboard.users.createUserSubtitle') || 'Add a new user and assign a role'}
+                        </p>
+                      </div>
+                    </div>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault()
+                        setCreateUserError('')
+                        if (!createUserName.trim()) {
+                          setCreateUserError(t('admin.dashboard.users.createAdminUserNameRequired') || 'Name is required')
+                          return
+                        }
+                        if (!createUserEmail.trim()) {
+                          setCreateUserError(t('admin.dashboard.users.createAdminUserEmailRequired') || 'Email is required')
+                          return
+                        }
+                        if (createUserPassword.length < 6) {
+                          setCreateUserError(t('admin.dashboard.users.passwordMinLength') || 'Password must be at least 6 characters')
+                          return
+                        }
+                        if (createUserPassword !== createUserConfirm) {
+                          setCreateUserError(t('auth.signup.errors.passwordMismatch') || 'Passwords do not match')
+                          return
+                        }
+                        setIsCreatingUser(true)
+                        try {
+                          await createUserAsAdmin({
+                            name: createUserName.trim(),
+                            email: createUserEmail.trim(),
+                            password: createUserPassword,
+                            role: createUserRole
+                          })
+                          setIsCreateUserModalOpen(false)
+                          setCreateUserName('')
+                          setCreateUserEmail('')
+                          setCreateUserPassword('')
+                          setCreateUserConfirm('')
+                        } catch (err) {
+                          setCreateUserError(err instanceof Error ? err.message : 'Failed to create user')
+                        } finally {
+                          setIsCreatingUser(false)
+                        }
+                      }}
+                      className="space-y-4"
+                    >
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.createUser.name') || 'Name'}
+                        </label>
+                        <input
+                          type="text"
+                          value={createUserName}
+                          onChange={(e) => setCreateUserName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder={t('admin.dashboard.users.createUser.namePlaceholder') || 'Full name'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.createUser.email') || 'Email'}
+                        </label>
+                        <input
+                          type="email"
+                          value={createUserEmail}
+                          onChange={(e) => setCreateUserEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder="user@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.createUser.role') || 'Role'}
+                        </label>
+                        <select
+                          value={createUserRole}
+                          onChange={(e) => setCreateUserRole(e.target.value as 'ADMIN' | 'TEACHER' | 'STUDENT')}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="STUDENT">{t('admin.dashboard.users.roleStudent') || 'Student'}</option>
+                          <option value="TEACHER">{t('admin.dashboard.users.roleTeacher') || 'Teacher'}</option>
+                          <option value="ADMIN">{t('admin.dashboard.users.roleAdmin') || 'Admin'}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.createUser.password') || 'Password'}
+                        </label>
+                        <input
+                          type="password"
+                          value={createUserPassword}
+                          onChange={(e) => setCreateUserPassword(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {t('admin.dashboard.users.createUser.confirmPassword') || 'Confirm password'}
+                        </label>
+                        <input
+                          type="password"
+                          value={createUserConfirm}
+                          onChange={(e) => setCreateUserConfirm(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                          placeholder="••••••••"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      {createUserError && (
+                        <p className="text-sm text-red-600 dark:text-red-400">{createUserError}</p>
+                      )}
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsCreateUserModalOpen(false)}
+                          className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        >
+                          {t('admin.dashboard.users.cancel') || 'Cancel'}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isCreatingUser}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isCreatingUser ? (t('admin.dashboard.users.creating') || 'Creating...') : (t('admin.dashboard.users.createUserButton') || 'Create user')}
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 

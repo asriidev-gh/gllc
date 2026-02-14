@@ -34,7 +34,6 @@ import { useAuthStore } from '@/stores'
 import toast from 'react-hot-toast'
 import { recordLearningActivity as recordLearningActivityUtil, getRecentActivities } from '@/lib/learningActivity'
 import { TeacherDashboard } from './TeacherDashboard'
-import { AdminDashboard } from './AdminDashboard'
 import { RoleBasedAccess } from './RoleBasedAccess'
 
 interface EnrolledCourse {
@@ -100,16 +99,7 @@ export function Dashboard() {
     }
   }, [user, router, getDashboardUrl])
 
-  // Role-based dashboard routing
-  if (user?.role === 'TEACHER') {
-    return <TeacherDashboard />
-  }
-
-  if (user?.role === 'ADMIN' || user?.role === 'SUPERADMIN') {
-    return <AdminDashboard />
-  }
-
-  // Student dashboard (default)
+  // Student dashboard state (hooks must run unconditionally; only used when showing student dashboard)
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
@@ -132,6 +122,39 @@ export function Dashboard() {
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [showAssessmentHistory, setShowAssessmentHistory] = useState(false)
   const [selectedCourseForModal, setSelectedCourseForModal] = useState<EnrolledCourse | null>(null)
+
+  // Role-based dashboard routing (teacher and admin share same dashboard layout; admin sees all courses and all students)
+  // Return teacher dashboard as soon as we know user is teacher/admin/superadmin (after all hooks)
+  if (user && (user.role === 'TEACHER' || user.role === 'ADMIN' || user.role === 'SUPERADMIN')) {
+    return <TeacherDashboard />
+  }
+
+  // While authenticated but user not yet available (e.g. rehydrating), show loading to avoid flashing student dashboard for teachers
+  if (isAuthenticated && !user) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-600">{t('dashboard.page.loading')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only students may see the student dashboard; teachers/admins must never see it (redirect to their dashboard)
+  if (user && user.role !== 'STUDENT') {
+    if (typeof window !== 'undefined') {
+      router.replace(getDashboardUrl(user.role))
+    }
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-600">{t('dashboard.page.loading')}</p>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     // Check if user is authenticated

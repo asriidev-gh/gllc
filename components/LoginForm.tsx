@@ -71,12 +71,10 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
         console.log('Closing form...')
         onClose()
         
-        // Get the appropriate dashboard URL based on user role
+        // Redirect to role-specific dashboard (e.g. /dashboard?role=teacher for teachers)
         const dashboardUrl = getDashboardUrl(user.role)
         console.log(`🎯 Redirecting ${user.role} to: ${dashboardUrl}`)
-        
-        // Redirect to role-specific dashboard
-        router.push(dashboardUrl)
+        router.replace(dashboardUrl)
         console.log('✅ Role-based redirect completed')
       }
       

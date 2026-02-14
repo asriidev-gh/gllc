@@ -21,8 +21,12 @@ export interface User {
   // Role-specific fields
   permissions?: string[]
   isActive?: boolean
-  lastLogin?: string
+  lastLogin?: string | null
   loginCount?: number
+  /** Account status for admin display */
+  status?: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'
+  /** Admin notes about the user */
+  remarks?: string
 }
 
 export interface UserAction {
@@ -42,6 +46,8 @@ export interface AuthState {
   isAuthenticated: boolean
   isLoading: boolean
   actionLogs: UserAction[]
+  /** All registered users (persisted); used e.g. by teacher dashboard to list students */
+  registeredUsers: User[]
   
   // Actions
   login: (email: string, password: string) => Promise<User>
@@ -77,6 +83,12 @@ export interface AuthState {
   deactivateUser: (userId: string) => Promise<boolean>
   activateUser: (userId: string) => Promise<boolean>
   getDashboardUrl: (role: User['role']) => string
+  /** Admin/superadmin: set a user's password (by userId) */
+  setUserPassword: (userId: string, newPassword: string) => Promise<void>
+  /** Admin/superadmin: update a user's status and/or remarks */
+  updateUserStatusAndRemarks: (userId: string, updates: { status?: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'; remarks?: string }) => void
+  /** Admin/superadmin: create a new user (e.g. admin) without logging in as them */
+  createUserAsAdmin: (data: { name: string; email: string; password: string; role: 'ADMIN' | 'TEACHER' | 'STUDENT' }) => Promise<User>
 }
 
 // Role-based permission system
@@ -166,6 +178,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       actionLogs: [],
+      registeredUsers: [],
 
       // Login action
       login: async (email: string, password: string) => {
@@ -176,51 +189,82 @@ export const useAuthStore = create<AuthState>()(
           // Simulate API call
           await new Promise(resolve => setTimeout(resolve, 1000))
           
-          // Role-based demo login
+          const state = get()
+          const registered = state.registeredUsers || []
+          const emailLower = email.trim().toLowerCase()
+          const existingUser = registered.find((u) => (u.email || '').toLowerCase() === emailLower)
+          
+          // If user exists in registeredUsers (db), use their stored role and verify password
+          if (existingUser) {
+            const passwordMatch = (existingUser.password ?? '') === password
+            if (!passwordMatch) {
+              set({ isLoading: false })
+              throw new Error('Invalid email or password')
+            }
+            const now = new Date().toISOString()
+            const user: User = {
+              ...existingUser,
+              lastLogin: now,
+              password: password
+            }
+            const nextRegistered = registered.map((u) =>
+              u.id === existingUser.id ? { ...u, lastLogin: now } : u
+            )
+            const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            const actionLog: UserAction = {
+              id: `action_${Date.now()}`,
+              userId: user.id,
+              action: 'LOGIN',
+              details: `User logged in from ${email}`,
+              timestamp: now
+            }
+            set((s) => ({
+              ...s,
+              user,
+              token,
+              isAuthenticated: true,
+              isLoading: false,
+              actionLogs: [...s.actionLogs, actionLog],
+              registeredUsers: nextRegistered
+            }))
+            console.log('✅ Login successful (from registered users):', user.email, 'role:', user.role)
+            toast.success(`Welcome back, ${user.name}!`, { duration: 3000, position: 'top-right' })
+            return user
+          }
+          
+          // Not in registeredUsers: use demo accounts or create new student
           let userRole: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN' = 'STUDENT'
           let userName = email.split('@')[0]
-          
-          // Check for specific demo accounts
-          if (email === 'teacher@example.com' && password === 'password') {
+          const isDemoPassword = password === 'password' || password === 'demo123'
+          if (email === 'teacher@example.com' && isDemoPassword) {
             userRole = 'TEACHER'
             userName = 'Demo Teacher'
-          } else if (email === 'admin@example.com' && password === 'password') {
+          } else if (email === 'admin@example.com' && isDemoPassword) {
             userRole = 'ADMIN'
             userName = 'Demo Admin'
-          } else if (email === 'superadmin@example.com' && password === 'password') {
+          } else if (email === 'superadmin@example.com' && isDemoPassword) {
             userRole = 'SUPERADMIN'
             userName = 'Demo Super Admin'
-          } else if (email === 'student@example.com' && password === 'password') {
+          } else if (email === 'student@example.com' && isDemoPassword) {
             userRole = 'STUDENT'
             userName = 'Demo Student'
           } else {
-            // For any other email/password combination, create a student user
             userRole = 'STUDENT'
             userName = email.split('@')[0]
           }
           
-          console.log('🎭 Demo login detected for role:', userRole)
+          console.log('🎭 Demo/new login for role:', userRole)
           
-          // Check if this user has logged in before by looking at login history
           const loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '{}')
           const userLoginHistory = loginHistory[email] || { count: 0, firstLogin: null, lastLogin: null }
           const isReturningUser = userLoginHistory.count > 0
-          
-          console.log('🔍 Login History Check:', {
-            email,
-            userRole,
-            userLoginHistory,
-            isReturningUser,
-            loginCount: userLoginHistory.count
-          })
-          
-          // Load saved avatar from localStorage if user has one
           let savedAvatar = null
           if (isReturningUser) {
             const userData = JSON.parse(localStorage.getItem('users') || '{}')
             savedAvatar = userData[email]?.avatar || null
           }
           
+          const now = new Date().toISOString()
           const user: User = {
             id: isReturningUser ? userLoginHistory.userId || `user_${Date.now()}` : `user_${Date.now()}`,
             email,
@@ -233,14 +277,16 @@ export const useAuthStore = create<AuthState>()(
             nativeLanguage: 'Filipino',
             targetLanguages: ['English', 'Tagalog'],
             avatar: savedAvatar,
-            createdAt: isReturningUser ? userLoginHistory.firstLogin : new Date().toISOString(),
-            password: password // Store password for demo validation
+            createdAt: isReturningUser ? userLoginHistory.firstLogin : now,
+            lastLogin: now,
+            status: 'ACTIVE',
+            password: password
           }
           
           const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          
-          console.log('✅ Login successful:', user.email)
-          console.log('🔑 Token generated:', token)
+          console.log('✅ Login successful:', user.email, 'role:', user.role)
+
+          set((s) => ({ ...s, registeredUsers: [...(s.registeredUsers || []), user] }))
           
           // Log the login action
           const actionLog: UserAction = {
@@ -248,12 +294,11 @@ export const useAuthStore = create<AuthState>()(
             userId: user.id,
             action: 'LOGIN',
             details: `User logged in from ${email}`,
-            timestamp: new Date().toISOString()
+            timestamp: now
           }
           
           // Track login count for returning users
           const newLoginCount = userLoginHistory.count + 1
-          const now = new Date().toISOString()
           
           // Update login history
           loginHistory[email] = {
@@ -336,7 +381,9 @@ export const useAuthStore = create<AuthState>()(
             nativeLanguage: userData.nativeLanguage,
             targetLanguages: userData.targetLanguages,
             avatar: null,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            status: 'ACTIVE',
+            remarks: ''
           }
           
           const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -354,14 +401,18 @@ export const useAuthStore = create<AuthState>()(
             timestamp: new Date().toISOString()
           }
           
-          set((state) => ({
-            user: newUser,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-            actionLogs: [...state.actionLogs, actionLog]
-          }))
-          
+          set((state) => {
+            const existing = (state.registeredUsers || []).filter((u) => u.email !== newUser.email)
+            return {
+              user: newUser,
+              token,
+              isAuthenticated: true,
+              isLoading: false,
+              actionLogs: [...state.actionLogs, actionLog],
+              registeredUsers: [...existing, newUser]
+            }
+          })
+
           console.log('✅ User state updated in store')
           
           toast.success(`🎓 Welcome to Global Learning Center, ${newUser.name}! Your learning journey starts now! 🚀`, {
@@ -510,14 +561,24 @@ export const useAuthStore = create<AuthState>()(
           nativeLanguage: 'Filipino',
           targetLanguages: ['English', 'Tagalog'],
           avatar: null,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString(),
+          status: 'ACTIVE',
+          remarks: ''
         }
         
         const demoToken = `demo_token_${Date.now()}`
         
         console.log('✅ Demo user created:', demoUser.email)
         console.log('🔑 Demo token generated:', demoToken)
-        
+
+        set((state) => {
+          const existing = (state.registeredUsers || []).filter((u) => u.email !== demoUser.email)
+          return {
+            registeredUsers: [...existing, demoUser]
+          }
+        })
+
         // Log the demo user creation action
         const actionLog: UserAction = {
           id: `action_${Date.now()}`,
@@ -559,6 +620,80 @@ export const useAuthStore = create<AuthState>()(
         const isValid = user.password === currentPassword
         console.log('🔐 Password validation:', isValid ? 'SUCCESS' : 'FAILED')
         return isValid
+      },
+
+      // Admin: set another user's password (no current password required)
+      setUserPassword: async (userId: string, newPassword: string) => {
+        const { user, registeredUsers } = get()
+        if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN')) {
+          throw new Error('Only admin or superadmin can change another user\'s password')
+        }
+        if (!newPassword || newPassword.length < 6) {
+          throw new Error('Password must be at least 6 characters')
+        }
+        const target = (registeredUsers || []).find((u) => u.id === userId)
+        if (!target) throw new Error('User not found')
+        const updatedTarget = { ...target, password: newPassword }
+        const nextRegistered = (registeredUsers || []).map((u) =>
+          u.id === userId ? updatedTarget : u
+        )
+        set((state) => {
+          const next = { registeredUsers: nextRegistered }
+          if (state.user?.id === userId) {
+            (next as { user: User }).user = updatedTarget
+          }
+          return next
+        })
+      },
+
+      updateUserStatusAndRemarks: (userId: string, updates: { status?: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'; remarks?: string }) => {
+        const { user, registeredUsers } = get()
+        if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN')) return
+        const nextRegistered = (registeredUsers || []).map((u) =>
+          u.id === userId ? { ...u, ...(updates.status !== undefined && { status: updates.status }), ...(updates.remarks !== undefined && { remarks: updates.remarks }) } : u
+        )
+        set((state) => {
+          const next: { registeredUsers: User[]; user?: User } = { registeredUsers: nextRegistered }
+          if (state.user?.id === userId) {
+            const updated = nextRegistered.find((x) => x.id === userId)
+            if (updated) next.user = updated
+          }
+          return next
+        })
+      },
+
+      createUserAsAdmin: async (data) => {
+        const { user, registeredUsers } = get()
+        if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN')) {
+          throw new Error('Only admin or superadmin can create users')
+        }
+        if (!data.email?.trim()) throw new Error('Email is required')
+        if (!data.name?.trim()) throw new Error('Name is required')
+        if (!data.password || data.password.length < 6) throw new Error('Password must be at least 6 characters')
+        const existing = (registeredUsers || []).find((u) => u.email.toLowerCase() === data.email.trim().toLowerCase())
+        if (existing) throw new Error('A user with this email already exists')
+        const newUser: User = {
+          id: `user_${Date.now()}`,
+          email: data.email.trim(),
+          name: data.name.trim(),
+          role: data.role,
+          age: 0,
+          grade: '',
+          school: '',
+          interests: [],
+          nativeLanguage: '',
+          targetLanguages: [],
+          avatar: null,
+          createdAt: new Date().toISOString(),
+          status: 'ACTIVE',
+          remarks: '',
+          password: data.password
+        }
+        set((state) => ({
+          registeredUsers: [...(state.registeredUsers || []), newUser]
+        }))
+        toast.success(`User ${newUser.name} (${data.role}) created successfully.`)
+        return newUser
       },
 
       // Change password
@@ -696,15 +831,20 @@ export const useAuthStore = create<AuthState>()(
       },
 
       updateUserRole: async (userId: string, newRole: User['role']) => {
-        const { user } = get()
-        if (!user || !user.canAccess('users', 'edit')) {
+        const { user, canAccess, registeredUsers } = get()
+        if (!user || !canAccess('users', 'edit')) {
           throw new Error('Insufficient permissions to update user role')
         }
+        const target = (registeredUsers || []).find((u) => u.id === userId)
+        if (!target) throw new Error('User not found')
 
         // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Log the role change action
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        const nextRegistered = (registeredUsers || []).map((u) =>
+          u.id === userId ? { ...u, role: newRole } : u
+        )
+
         const actionLog: UserAction = {
           id: `action_${Date.now()}`,
           userId: user.id,
@@ -712,11 +852,18 @@ export const useAuthStore = create<AuthState>()(
           details: `Role updated for user ${userId} to ${newRole}`,
           timestamp: new Date().toISOString()
         }
-        
-        set((state) => ({
-          actionLogs: [...state.actionLogs, actionLog]
-        }))
-        
+
+        set((state) => {
+          const next: { registeredUsers: User[]; actionLogs: UserAction[]; user?: User } = {
+            registeredUsers: nextRegistered,
+            actionLogs: [...state.actionLogs, actionLog]
+          }
+          if (state.user?.id === userId) {
+            next.user = { ...state.user, role: newRole }
+          }
+          return next
+        })
+
         console.log('✅ User role updated successfully')
         return true
       },
@@ -793,7 +940,8 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         token: state.token,
         isAuthenticated: state.isAuthenticated,
-        actionLogs: state.actionLogs
+        actionLogs: state.actionLogs,
+        registeredUsers: state.registeredUsers
       }),
       onRehydrateStorage: () => (state) => {
         console.log('🔄 AUTH STORE REHYDRATED:', state)
