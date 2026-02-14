@@ -253,29 +253,29 @@ export default function AchievementsPage() {
       })
     }
     
-    // Achievement 7: Language Diversity
-    const uniqueLanguages = new Set(courses.map(course => course.language))
-    if (uniqueLanguages.size >= 2) {
+    // Achievement 7: Course Diversity
+    const uniqueSubjects = new Set(courses.map(course => (course as any).subject ?? course.language))
+    if (uniqueSubjects.size >= 2) {
       achievementCount++
       achievements.push({
-        id: 'languages_2',
-        title: t('achievements.page.achievements.bilingualBeginner.title'),
-        description: t('achievements.page.achievements.bilingualBeginner.description').replace('{count}', uniqueLanguages.size.toString()),
+        id: 'subjects_2',
+        title: t('achievements.page.achievements.diverseLearner.title'),
+        description: t('achievements.page.achievements.diverseLearner.description').replace('{count}', uniqueSubjects.size.toString()),
         icon: '🌍',
         unlocked: true,
-        category: t('achievements.page.achievements.category.languageDiversity'),
+        category: t('achievements.page.achievements.category.courseDiversity'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
-    if (uniqueLanguages.size >= 3) {
+    if (uniqueSubjects.size >= 3) {
       achievementCount++
       achievements.push({
-        id: 'languages_3',
-        title: t('achievements.page.achievements.polyglotInProgress.title'),
-        description: t('achievements.page.achievements.polyglotInProgress.description').replace('{count}', uniqueLanguages.size.toString()),
+        id: 'subjects_3',
+        title: t('achievements.page.achievements.multiSubjectExplorer.title'),
+        description: t('achievements.page.achievements.multiSubjectExplorer.description').replace('{count}', uniqueSubjects.size.toString()),
         icon: '🌍',
         unlocked: true,
-        category: t('achievements.page.achievements.category.languageDiversity'),
+        category: t('achievements.page.achievements.category.courseDiversity'),
         unlockedAt: new Date().toISOString().split('T')[0]
       })
     }
@@ -396,7 +396,7 @@ export default function AchievementsPage() {
             return {
               id: enrollment.id,
               name: enrollment.name || enrollment.title || t('achievements.page.unknownCourse'),
-              language: enrollment.language,
+              language: (enrollment as any).subject ?? enrollment.language,
               flag: enrollment.flag,
               level: enrollment.level,
               progress: progressPercentage,

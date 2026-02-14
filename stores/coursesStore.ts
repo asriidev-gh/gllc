@@ -1,11 +1,28 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+/** A lesson within a course section (used in course contents) */
+export interface CourseLessonContent {
+  id: string
+  name: string
+  description: string
+  durationMinutes: number
+  videoUrl?: string
+  thumbnailUrl?: string
+}
+
+/** A section/category of the course with its lessons */
+export interface CourseSectionContent {
+  id: string
+  name: string
+  lessons: CourseLessonContent[]
+}
+
 export interface Course {
   id: string
   title: string
   description: string
-  language: string
+  subject: string
   level: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
   duration: string
   lessons: number
@@ -19,6 +36,14 @@ export interface Course {
   rating: number
   features: string[]
   flag?: string
+  /** Full curriculum: sections and lessons (from create course flow) */
+  contents?: CourseSectionContent[]
+  /** Course status for teacher dashboard */
+  status?: 'active' | 'draft' | 'inactive' | 'archived'
+  /** Whether course includes a certificate on completion */
+  includesCertificate?: boolean
+  /** Whether course includes a final assessment */
+  includesFinalAssessment?: boolean
 }
 
 export interface Enrollment {
@@ -41,6 +66,8 @@ export interface CoursesState {
   // Actions
   fetchCourses: () => Promise<Course[]>
   addCourse: (course: Course) => void
+  updateCourse: (courseId: string, updates: Partial<Course>) => void
+  deleteCourse: (courseId: string) => void
   enrollInCourse: (courseId: string, userId: string) => Promise<Enrollment>
   updateProgress: (enrollmentId: string, lessonId: string, progress: number) => void
   getEnrolledCourses: (userId: string) => Course[]
@@ -69,7 +96,7 @@ export const useCoursesStore = create<CoursesState>()(
               id: 'course_1',
               title: 'English for Beginners',
               description: 'Learn basic English vocabulary and grammar',
-              language: 'English',
+              subject: 'English',
               level: 'BEGINNER',
               duration: '8 weeks',
               lessons: 24,
@@ -87,7 +114,7 @@ export const useCoursesStore = create<CoursesState>()(
               id: 'course_2',
               title: 'Tagalog Conversation',
               description: 'Master everyday Tagalog conversations',
-              language: 'Tagalog',
+              subject: 'Tagalog',
               level: 'INTERMEDIATE',
               duration: '6 weeks',
               lessons: 18,
@@ -105,7 +132,7 @@ export const useCoursesStore = create<CoursesState>()(
               id: 'course_3',
               title: 'Korean Essentials',
               description: 'Essential Korean phrases and culture',
-              language: 'Korean',
+              subject: 'Korean',
               level: 'BEGINNER',
               duration: '10 weeks',
               lessons: 30,
@@ -132,6 +159,26 @@ export const useCoursesStore = create<CoursesState>()(
       // Add a new course
       addCourse: (course: Course) => {
         set(state => ({ courses: [course, ...state.courses] }))
+      },
+
+      // Update an existing course
+      updateCourse: (courseId: string, updates: Partial<Course>) => {
+        const now = new Date().toISOString()
+        set(state => ({
+          courses: state.courses.map(c =>
+            c.id === courseId
+              ? { ...c, ...updates, updatedAt: now }
+              : c
+          )
+        }))
+      },
+
+      // Delete a course and its enrollments
+      deleteCourse: (courseId: string) => {
+        set(state => ({
+          courses: state.courses.filter(c => c.id !== courseId),
+          enrollments: state.enrollments.filter(e => e.courseId !== courseId)
+        }))
       },
 
       // Enroll in course

@@ -73,7 +73,7 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
         id: course.id,
         name: course.name,
         title: course.name, // Use name as title for compatibility
-        language: course.language,
+        language: course.subject ?? (course as any).language,
         flag: course.flag,
         level: course.level,
         progress: 0,

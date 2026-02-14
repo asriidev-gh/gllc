@@ -364,7 +364,7 @@ export const useAuthStore = create<AuthState>()(
           
           console.log('✅ User state updated in store')
           
-          toast.success(`🎓 Welcome to Global Language Training Center, ${newUser.name}! Your learning journey starts now! 🚀`, {
+          toast.success(`🎓 Welcome to Global Learning Center, ${newUser.name}! Your learning journey starts now! 🚀`, {
             duration: 4000,
             position: 'top-right',
             style: {

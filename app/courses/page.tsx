@@ -139,7 +139,7 @@ export default function CoursesPage() {
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<string>('')
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('')
+  const [selectedSubject, setSelectedSubject] = useState<string>('')
   const [showEnrolledOnly, setShowEnrolledOnly] = useState(false)
   const [isCourseDetailsModalOpen, setIsCourseDetailsModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<any>(null)
@@ -171,15 +171,16 @@ export default function CoursesPage() {
   const list = (courses && courses.length > 0) ? courses : mockCourses
 
   const filteredCourses = list.filter(course => {
+    const subjectOrLanguage = (course as any).subject ?? (course as any).language
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.language.toLowerCase().includes(searchTerm.toLowerCase())
-    
+                         (subjectOrLanguage || '').toLowerCase().includes(searchTerm.toLowerCase())
+
     const matchesLevel = !selectedLevel || course.level === selectedLevel
-    const matchesLanguage = !selectedLanguage || course.language === selectedLanguage
+    const matchesSubject = !selectedSubject || subjectOrLanguage === selectedSubject
     const matchesEnrolled = !showEnrolledOnly || isEnrolledInCourse(course.id)
     
-    return matchesSearch && matchesLevel && matchesLanguage && matchesEnrolled
+    return matchesSearch && matchesLevel && matchesSubject && matchesEnrolled
   })
 
   const handleEnroll = async (courseId: string) => {
@@ -261,7 +262,7 @@ export default function CoursesPage() {
       id: course.id,
       name: course.title, // This will be the course name displayed
       title: course.title, // Keep both for compatibility
-      language: course.language,
+      language: course.subject ?? (course as any).language,
       flag: course.flag,
       level: course.level,
       description: course.description,
@@ -293,7 +294,7 @@ export default function CoursesPage() {
     setSelectedCourse(null)
   }
 
-  const languages = Array.from(new Set(list.map(course => course.language)))
+  const subjects = Array.from(new Set(list.map(course => course.subject ?? (course as any).language)))
   const levels = Array.from(new Set(list.map(course => course.level)))
 
   return (
@@ -342,15 +343,15 @@ export default function CoursesPage() {
               />
             </div>
 
-            {/* Language Filter */}
+            {/* Subject Filter */}
             <select
-              value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="">{t('courses.page.filter.language')}</option>
-              {languages.map(language => (
-                <option key={language} value={language}>{language}</option>
+              <option value="">{t('courses.page.filter.subject')}</option>
+              {subjects.map(subject => (
+                <option key={subject} value={subject}>{subject}</option>
               ))}
             </select>
 

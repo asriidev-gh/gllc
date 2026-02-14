@@ -389,28 +389,28 @@ export function Dashboard() {
       })
     }
     
-    // Achievement 7: Language Diversity
-    const uniqueLanguages = new Set(courses.map(course => course.language))
-    if (uniqueLanguages.size >= 2) {
+    // Achievement 7: Course Diversity
+    const uniqueSubjects = new Set(courses.map(course => (course as any).subject ?? (course as any).language))
+    if (uniqueSubjects.size >= 2) {
       achievementCount++
       achievements.push({
-        id: 'languages_2',
-        title: 'Bilingual Beginner',
-        description: `Learning ${uniqueLanguages.size} languages`,
+        id: 'subjects_2',
+        title: 'Diverse Learner',
+        description: `Learning ${uniqueSubjects.size} subjects`,
         icon: '🌍',
         unlocked: true,
-        category: 'Language Diversity'
+        category: 'Course Diversity'
       })
     }
-    if (uniqueLanguages.size >= 3) {
+    if (uniqueSubjects.size >= 3) {
       achievementCount++
       achievements.push({
-        id: 'languages_3',
-        title: 'Polyglot in Progress',
-        description: `Learning ${uniqueLanguages.size} languages`,
+        id: 'subjects_3',
+        title: 'Multi-Subject Explorer',
+        description: `Learning ${uniqueSubjects.size} subjects`,
         icon: '🌍',
         unlocked: true,
-        category: 'Language Diversity'
+        category: 'Course Diversity'
       })
     }
     
@@ -570,7 +570,7 @@ export function Dashboard() {
           return {
             id: enrollment.id,
             name: enrollment.name || enrollment.title || 'Unknown Course', // Fallback to title if name doesn't exist
-            language: enrollment.language,
+            language: (enrollment as any).subject ?? enrollment.language,
             flag: enrollment.flag,
             level: enrollment.level,
             progress: progressPercentage,
@@ -875,7 +875,7 @@ export function Dashboard() {
             font-size: 14px;
             color: #9ca3af;
           ">
-            Global Language Training Center
+            Global Learning Center
           </div>
         </div>
       `
@@ -915,8 +915,8 @@ export function Dashboard() {
       pdf.setProperties({
         title: `Certificate - ${course.name}`,
         subject: 'Course Completion Certificate',
-        author: 'Global Language Training Center',
-        creator: 'Global Language Training Center'
+        author: 'Global Learning Center',
+        creator: 'Global Learning Center'
       })
       
       // Generate filename

@@ -43,6 +43,11 @@ export function calculateProgress(completed: number, total: number): number {
 }
 
 export function getLanguageColor(language: string): string {
+  return getSubjectColor(language)
+}
+
+/** Color class for subject/course badges (languages, math, programming, etc.) */
+export function getSubjectColor(subject: string): string {
   const colors: Record<string, string> = {
     tagalog: 'lang-tagalog',
     english: 'lang-english',
@@ -52,8 +57,12 @@ export function getLanguageColor(language: string): string {
     spanish: 'lang-spanish',
     french: 'lang-french',
     german: 'lang-german',
+    mathematics: 'lang-english',
+    science: 'lang-korean',
+    programming: 'lang-japanese',
+    business: 'lang-chinese',
   }
-  return colors[language.toLowerCase()] || 'bg-gray-100 text-gray-800'
+  return colors[subject.toLowerCase()] || 'bg-gray-100 text-gray-800'
 }
 
 export function getLevelColor(level: string): string {

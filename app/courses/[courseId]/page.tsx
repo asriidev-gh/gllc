@@ -1701,7 +1701,7 @@ const CourseLearningPage = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 space-y-4 md:space-y-0">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{course.name}</h1>
-                  <p className="text-gray-600">{course.language} • {course.level}</p>
+                  <p className="text-gray-600">{(course as any).subject ?? course.language} • {course.level}</p>
                 </div>
                 
                 <div className="flex items-center space-x-4 md:space-x-6 text-sm md:text-base">
@@ -1812,8 +1812,8 @@ const CourseLearningPage = () => {
                           <span className="font-medium">{course.level}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Language:</span>
-                          <span className="font-medium">{course.language}</span>
+                          <span className="text-gray-600">Subject:</span>
+                          <span className="font-medium">{(course as any).subject ?? course.language}</span>
                         </div>
                       </div>
                     </div>
@@ -1826,7 +1826,7 @@ const CourseLearningPage = () => {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{course.instructor}</p>
-                          <p className="text-sm text-gray-600">Language Expert</p>
+                          <p className="text-sm text-gray-600">Course Instructor</p>
                         </div>
                       </div>
                     </div>
@@ -2436,7 +2436,7 @@ const CourseLearningPage = () => {
                   <p className="text-gray-600 mb-4">{course.description}</p>
                   <div className="flex justify-center space-x-8 text-sm text-gray-500">
                     <span>Level: {course.level}</span>
-                    <span>Language: {course.language}</span>
+                    <span>Subject: {(course as any).subject ?? course.language}</span>
                     <span>Lessons: {progress.totalLessons}</span>
                   </div>
                 </div>

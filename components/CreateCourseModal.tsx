@@ -8,7 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 
 interface CreateCourseFormData {
   title: string
-  language: string
+  subject: string
   level: string
   description: string
   status: 'draft' | 'active' | 'archived'
@@ -20,12 +20,17 @@ interface CreateCourseModalProps {
   onCourseCreated: (course: any) => void
 }
 
-const languages = [
-  { value: 'english', label: 'English' },
-  { value: 'spanish', label: 'Spanish' },
-  { value: 'tagalog', label: 'Tagalog' },
-  { value: 'korean', label: 'Korean' },
-  { value: 'japanese', label: 'Japanese' }
+const subjects = [
+  { value: 'English', label: 'English' },
+  { value: 'Spanish', label: 'Spanish' },
+  { value: 'Tagalog', label: 'Tagalog' },
+  { value: 'Korean', label: 'Korean' },
+  { value: 'Japanese', label: 'Japanese' },
+  { value: 'Mathematics', label: 'Mathematics' },
+  { value: 'Science', label: 'Science' },
+  { value: 'Programming', label: 'Programming' },
+  { value: 'Business', label: 'Business' },
+  { value: 'Other', label: 'Other' }
 ]
 
 const levels = [
@@ -48,7 +53,7 @@ export const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   const { t } = useLanguage()
   const [formData, setFormData] = useState<CreateCourseFormData>({
     title: '',
-    language: 'english',
+    subject: 'English',
     level: 'beginner',
     description: '',
     status: 'draft'
@@ -104,7 +109,7 @@ export const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
   const handleClose = () => {
     setFormData({
       title: '',
-      language: 'english',
+      subject: 'English',
       level: 'beginner',
       description: '',
       status: 'draft'
@@ -187,21 +192,21 @@ export const CreateCourseModal: React.FC<CreateCourseModalProps> = ({
                 )}
               </div>
 
-              {/* Language and Level Row */}
+              {/* Subject and Level Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Language */}
+                {/* Subject */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {t('teacher.createCourse.fields.language') || 'Language'}
+                    {t('teacher.createCourse.fields.subject') || 'Subject'}
                   </label>
                   <select
-                    value={formData.language}
-                    onChange={(e) => handleInputChange('language', e.target.value)}
+                    value={formData.subject}
+                    onChange={(e) => handleInputChange('subject', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    {languages.map((lang) => (
-                      <option key={lang.value} value={lang.value}>
-                        {lang.label}
+                    {subjects.map((subj) => (
+                      <option key={subj.value} value={subj.value}>
+                        {subj.label}
                       </option>
                     ))}
                   </select>

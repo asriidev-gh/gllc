@@ -57,7 +57,7 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
       const newEnrollment = {
         id: course.id,
         name: course.name,
-        language: course.language,
+        language: course.subject ?? (course as any).language,
         flag: course.flag,
         level: course.level,
         progress: 0,

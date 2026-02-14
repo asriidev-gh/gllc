@@ -1,14 +1,16 @@
 'use client'
 
-import React, { useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import Swal from 'sweetalert2'
 import { 
   ArrowLeft, ArrowRight, Save, Plus, Trash2, Image as ImageIcon,
   Star, Tag as TagIcon, BookOpen, Clock, Upload, ChevronUp, ChevronDown
 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useCoursesStore } from '@/stores'
+import type { Course as StoreCourse } from '@/stores/coursesStore'
 
 type CourseLevel = 'beginner' | 'intermediate' | 'advanced'
 type CourseStatus = 'draft' | 'active' | 'inactive'
@@ -38,7 +40,6 @@ interface CourseFormState {
   thumbnailDataUrl?: string
   totalLessons: number
   totalDurationMinutes: number
-  language: string
   instructorName: string
   isWithCertificate: boolean
   isWithFinalAssessment: boolean
@@ -55,7 +56,6 @@ const initialState: CourseFormState = {
   thumbnailDataUrl: undefined,
   totalLessons: 0,
   totalDurationMinutes: 0,
-  language: 'English',
   instructorName: '',
   isWithCertificate: false,
   isWithFinalAssessment: false,
@@ -77,34 +77,81 @@ const statuses: { value: CourseStatus; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
 ]
 
-const teachingLanguages = [
-  'English',
-  'Spanish',
-  'Tagalog',
-  'Korean',
-  'Japanese',
-]
+const getFlagForSubject = (_subject: string): string => '🌍'
 
-const getFlagForLanguage = (language: string): string => {
-  const flagMap: Record<string, string> = {
-    'English': '🇺🇸',
-    'Spanish': '🇪🇸',
-    'Tagalog': '🇵🇭',
-    'Korean': '🇰🇷',
-    'Japanese': '🇯🇵'
+function mapCourseToForm(course: StoreCourse): CourseFormState {
+  const level = course.level ? (course.level.toLowerCase() as CourseLevel) : 'beginner'
+  const status: CourseStatus =
+    course.status === 'active' || course.status === 'draft' || course.status === 'inactive'
+      ? course.status
+      : 'draft'
+  const categories: CategoryForm[] =
+    course.contents && course.contents.length > 0
+      ? course.contents.map(sec => ({
+          id: sec.id,
+          name: sec.name,
+          lessons: (sec.lessons || []).map(l => ({
+            id: l.id,
+            name: l.name,
+            description: l.description ?? '',
+            durationMinutes: Number(l.durationMinutes) || 0,
+            videoUrl: l.videoUrl,
+            thumbnailUrl: l.thumbnailUrl
+          }))
+        }))
+      : [
+          { id: crypto.randomUUID(), name: 'Getting Started', lessons: [] },
+          { id: crypto.randomUUID(), name: 'Basic Fundamentals', lessons: [] }
+        ]
+  const totalFromContents = categories.reduce(
+    (acc, c) => ({
+      lessons: acc.lessons + c.lessons.length,
+      minutes: acc.minutes + c.lessons.reduce((s, l) => s + (Number(l.durationMinutes) || 0), 0)
+    }),
+    { lessons: 0, minutes: 0 }
+  )
+  const durationMinutesFromStore =
+    typeof course.duration === 'string'
+      ? Number.parseInt(course.duration.replace(/\D/g, ''), 10) || 0
+      : 0
+  return {
+    title: course.title,
+    description: course.description ?? '',
+    tags: Array.isArray(course.category) ? course.category : [],
+    level,
+    status,
+    stars: course.rating ?? 0,
+    thumbnailDataUrl: course.image,
+    // Prefer stored totals so saved values show correctly when re-opening for edit
+    totalLessons: (course.lessons ?? totalFromContents.lessons) || 0,
+    totalDurationMinutes: durationMinutesFromStore || totalFromContents.minutes || 0,
+    instructorName: course.instructor ?? '',
+    isWithCertificate: course.includesCertificate ?? false,
+    isWithFinalAssessment: course.includesFinalAssessment ?? false,
+    categories
   }
-  return flagMap[language] || '🌍'
 }
 
 export default function CreateCoursePage(): JSX.Element {
   const { t } = useLanguage()
   const router = useRouter()
-  const { addCourse } = useCoursesStore()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('edit')
+  const { courses, addCourse, updateCourse } = useCoursesStore()
+  const editCourse = editId ? courses.find(c => c.id === editId) : null
+  const hasPrefilledRef = useRef(false)
   const [step, setStep] = useState<1 | 2>(1)
   const [form, setForm] = useState<CourseFormState>(initialState)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [tagInput, setTagInput] = useState<string>('')
+
+  useEffect(() => {
+    if (editCourse && !hasPrefilledRef.current) {
+      setForm(mapCourseToForm(editCourse))
+      hasPrefilledRef.current = true
+    }
+  }, [editCourse])
 
   const derivedTotals = useMemo(() => {
     const totalLessons = form.categories.reduce((sum, c) => sum + c.lessons.length, 0)
@@ -145,7 +192,6 @@ export default function CreateCoursePage(): JSX.Element {
     const newErrors: Record<string, string> = {}
     if (!form.title.trim()) newErrors.title = 'Course title is required'
     if (!form.description.trim()) newErrors.description = 'Course description is required'
-    if (!form.language.trim()) newErrors.language = 'Teaching language is required'
     if (!form.instructorName.trim()) newErrors.instructorName = 'Instructor name is required'
     if (form.stars < 0 || form.stars > 5) newErrors.stars = 'Stars must be between 0 and 5'
     setErrors(newErrors)
@@ -270,37 +316,79 @@ export default function CreateCoursePage(): JSX.Element {
   }
 
   const handleSubmit = async () => {
-    // Derive totals for storage/preview
-    const { totalLessons, totalDurationMinutes } = derivedTotals
+    const { totalLessons: derivedLessons, totalDurationMinutes: derivedDuration } = derivedTotals
+    // Prefer manual form values when set (> 0), so saved totals match what the user entered
+    const totalLessons = form.totalLessons > 0 ? form.totalLessons : derivedLessons
+    const totalDurationMinutes = form.totalDurationMinutes > 0 ? form.totalDurationMinutes : derivedDuration
     const payload: CourseFormState = {
       ...form,
       totalLessons,
       totalDurationMinutes,
     }
-    // Simulate save
-    await new Promise(r => setTimeout(r, 600))
-    // Map to CoursesStore.Course shape and persist
-    const storeCourse = {
-      id: `course_${Date.now()}`,
-      title: payload.title,
-      description: payload.description,
-      language: payload.language,
-      level: (payload.level.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'),
-      duration: `${payload.totalDurationMinutes || totalDurationMinutes} mins`,
-      lessons: payload.totalLessons || totalLessons,
-      instructor: payload.instructorName,
-      price: 0,
-      image: payload.thumbnailDataUrl,
-      category: payload.tags,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      students: 0,
-      rating: payload.stars,
-      features: payload.categories.map(cat => cat.name),
-      flag: getFlagForLanguage(payload.language)
+    try {
+      await new Promise(r => setTimeout(r, 600))
+      const contents = payload.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name.trim() || cat.name,
+        lessons: (cat.lessons || []).map(l => ({
+          id: l.id,
+          name: l.name,
+          description: l.description ?? '',
+          durationMinutes: Number(l.durationMinutes) || 0,
+          videoUrl: l.videoUrl,
+          thumbnailUrl: l.thumbnailUrl
+        }))
+      }))
+      const isEditing = Boolean(editId && editCourse)
+      const storeCourse = {
+        id: isEditing ? editId! : `course_${Date.now()}`,
+        title: payload.title,
+        description: payload.description,
+        subject: editCourse?.subject ?? 'General',
+        level: (payload.level.toUpperCase() as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'),
+        duration: `${payload.totalDurationMinutes ?? 0} mins`,
+        lessons: payload.totalLessons ?? 0,
+        instructor: payload.instructorName,
+        price: editCourse?.price ?? 0,
+        image: payload.thumbnailDataUrl,
+        category: payload.tags,
+        createdAt: isEditing ? editCourse!.createdAt : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        students: isEditing ? (editCourse!.students ?? 0) : 0,
+        rating: payload.stars,
+        features: payload.categories.map(cat => cat.name),
+        flag: getFlagForSubject(editCourse?.subject ?? 'General'),
+        contents,
+        status: (payload.status === 'active' ? 'active' : payload.status === 'inactive' ? 'inactive' : 'draft'),
+        includesCertificate: payload.isWithCertificate,
+        includesFinalAssessment: payload.isWithFinalAssessment
+      }
+      if (isEditing) {
+        updateCourse(editId!, storeCourse)
+        await Swal.fire({
+          icon: 'success',
+          title: 'Course updated',
+          text: 'Your course has been updated successfully.',
+          confirmButtonColor: '#2563eb'
+        })
+      } else {
+        addCourse(storeCourse)
+        await Swal.fire({
+          icon: 'success',
+          title: 'Course created',
+          text: 'Your course has been created successfully.',
+          confirmButtonColor: '#2563eb'
+        })
+      }
+      router.push('/dashboard')
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: editId ? 'Could not update course' : 'Could not create course',
+        text: err instanceof Error ? err.message : 'Something went wrong. Please try again.',
+        confirmButtonColor: '#2563eb'
+      })
     }
-    addCourse(storeCourse)
-    router.push('/courses')
   }
 
   const Header = (
@@ -308,7 +396,7 @@ export default function CreateCoursePage(): JSX.Element {
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <BookOpen className="w-6 h-6 text-blue-600" />
-          <h1 className="text-xl font-semibold text-gray-900">Create Course</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{editId ? 'Edit Course' : 'Create Course'}</h1>
         </div>
         <div className="flex items-center space-x-2">
           {step === 2 && (
@@ -329,7 +417,7 @@ export default function CreateCoursePage(): JSX.Element {
               </>
             ) : (
               <>
-                <Save className="w-4 h-4 mr-2" /> Save Course
+                <Save className="w-4 h-4 mr-2" /> {editId ? 'Update Course' : 'Save Course'}
               </>
             )}
           </button>
@@ -491,21 +579,6 @@ export default function CreateCoursePage(): JSX.Element {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Teaching Language</label>
-                      <select
-                        value={form.language}
-                        onChange={e => updateField('language', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                          errors.language ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      >
-                        {teachingLanguages.map(l => (
-                          <option key={l} value={l}>{l}</option>
-                        ))}
-                      </select>
-                      {errors.language && <p className="text-sm text-red-600 mt-1">{errors.language}</p>}
-                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Instructor Name</label>
                       <input
@@ -781,7 +854,6 @@ export default function CreateCoursePage(): JSX.Element {
             <div className="bg-white rounded-xl shadow-sm border p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Meta</h3>
               <div className="space-y-2 text-sm text-gray-700">
-                <div>Language: <span className="text-gray-600">{form.language || '-'}</span></div>
                 <div>Instructor: <span className="text-gray-600">{form.instructorName || '-'}</span></div>
                 <div>Tags: <span className="text-gray-600">{form.tags.length ? form.tags.join(', ') : '-'}</span></div>
                 <div>Status: <span className="text-gray-600">{form.status}</span></div>
