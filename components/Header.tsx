@@ -36,6 +36,9 @@ export function Header() {
   // Check if we're on the dashboard page
   const isOnDashboard = pathname === '/dashboard'
 
+  // Sign up in header is only for students (prospective); show only on student-facing public pages
+  const isStudentFacingPage = ['/', '/courses', '/about', '/contact'].includes(pathname)
+
   // Check if we're on any user workspace page (dashboard, profile, settings, achievements for students only, course learning)
   const isOnUserWorkspace = ['/dashboard', '/profile', '/settings', '/assessment'].includes(pathname) || 
     (user?.role === 'STUDENT' && pathname === '/achievements') || 
@@ -232,13 +235,15 @@ export function Header() {
                     <LogIn className="w-4 h-4" />
                     <span>{t('header.signIn')}</span>
                   </Button>
-                  <Button
-                    onClick={() => setShowSignupForm(true)}
-                    className="flex items-center space-x-2"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>{t('header.signUp')}</span>
-                  </Button>
+                  {isStudentFacingPage && (
+                    <Button
+                      onClick={() => setShowSignupForm(true)}
+                      className="flex items-center space-x-2"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>{t('header.signUp')}</span>
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -374,12 +379,14 @@ export function Header() {
                     >
                       {t('header.signIn')}
                     </Button>
-                    <Button
-                      onClick={() => setShowSignupForm(true)}
-                      className="w-full justify-center"
-                    >
-                      {t('header.signUp')}
-                    </Button>
+                    {isStudentFacingPage && (
+                      <Button
+                        onClick={() => setShowSignupForm(true)}
+                        className="w-full justify-center"
+                      >
+                        {t('header.signUp')}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -390,7 +397,13 @@ export function Header() {
 
       {/* Auth Modals */}
       {showSignupForm && (
-        <SignupForm />
+        <SignupForm
+          onClose={() => setShowSignupForm(false)}
+          onSwitchToLogin={() => {
+            setShowSignupForm(false)
+            setShowLoginForm(true)
+          }}
+        />
       )}
 
       {showLoginForm && (
