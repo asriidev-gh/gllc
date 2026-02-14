@@ -2,6 +2,14 @@
 
 import React, { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  flexRender,
+  type ColumnDef,
+  type ColumnFiltersState,
+} from '@tanstack/react-table'
 import { 
   BookOpen, 
   Users, 
@@ -139,6 +147,175 @@ export const TeacherDashboard: React.FC = () => {
     return courses.filter(course => course.status === activeFilter)
   }, [courses, activeFilter])
 
+  const canCreateCourse = hasPermission('create_courses')
+  const canEditCourse = hasPermission('edit_courses')
+  const canDeleteCourse = hasPermission('delete_courses')
+
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+
+  const coursesColumns = useMemo<ColumnDef<Course>[]>(() => [
+    {
+      id: 'title',
+      accessorKey: 'title',
+      header: () => (t('teacher.dashboard.courses.course') || 'Course'),
+      cell: ({ row }) => (
+        <button
+          type="button"
+          onClick={() => openCourseDetails(row.original.id)}
+          className="text-left hover:opacity-80 transition-opacity"
+        >
+          <div className="text-sm font-medium text-gray-900 dark:text-white">{row.original.title}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{row.original.level}</div>
+        </button>
+      ),
+      filterFn: 'includesString',
+    },
+    {
+      id: 'students',
+      accessorKey: 'students',
+      header: () => (t('teacher.dashboard.courses.students') || 'Students'),
+      cell: ({ getValue }) => <span className="text-sm text-gray-900 dark:text-gray-100">{getValue() as number}</span>,
+    },
+    {
+      id: 'instructor',
+      accessorKey: 'instructor',
+      header: () => (t('teacher.dashboard.courses.instructor') || 'Instructor'),
+      cell: ({ getValue }) => <span className="text-sm text-gray-900 dark:text-gray-100">{getValue() as string}</span>,
+      filterFn: 'includesString',
+    },
+    {
+      id: 'status',
+      accessorKey: 'status',
+      header: () => (t('teacher.dashboard.courses.status') || 'Status'),
+      cell: ({ row }) => {
+        const course = row.original
+        return (
+          <div className="inline-flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+            {editingStatusCourseId === course.id ? (
+              <select
+                autoFocus
+                value={course.status}
+                onChange={(e) => {
+                  const newStatus = e.target.value as Course['status']
+                  updateCourse(course.id, { status: newStatus })
+                  setEditingStatusCourseId(null)
+                }}
+                onBlur={() => setEditingStatusCourseId(null)}
+                className="text-xs font-medium rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white py-1.5 pl-2 pr-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="active">{t('teacher.dashboard.filters.active') || 'Active'}</option>
+                <option value="draft">{t('teacher.dashboard.filters.draft') || 'Draft'}</option>
+                <option value="inactive">{t('teacher.dashboard.filters.inactive') || 'Inactive'}</option>
+                <option value="archived">{t('teacher.dashboard.filters.archived') || 'Archived'}</option>
+              </select>
+            ) : (
+              <button
+                type="button"
+                onClick={() => canEditCourse && setEditingStatusCourseId(course.id)}
+                className="inline-flex items-center gap-1.5 group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                title={canEditCourse ? (t('teacher.dashboard.courses.editStatus') || 'Edit status') : undefined}
+              >
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(course.status)}`}>
+                  {course.status}
+                </span>
+                {canEditCourse && <Edit className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0" />}
+              </button>
+            )}
+          </div>
+        )
+      },
+      filterFn: 'equalsString',
+    },
+    {
+      id: 'price',
+      accessorKey: 'price',
+      header: () => (t('teacher.dashboard.courses.price') || 'Price'),
+      cell: ({ row }) => {
+        const p = row.original.price
+        return (
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            {p != null && p > 0 ? `$${p.toFixed(2)}` : 'Free'}
+          </span>
+        )
+      },
+    },
+    {
+      id: 'createdAt',
+      accessorKey: 'createdAt',
+      header: () => (t('teacher.dashboard.courses.createdAt') || 'Created at'),
+      cell: ({ getValue }) => <span className="text-sm text-gray-900 dark:text-gray-100">{(getValue() as string) || '—'}</span>,
+    },
+    {
+      id: 'tags',
+      accessorKey: 'tags',
+      header: () => (t('teacher.dashboard.courses.tags') || 'Tags'),
+      cell: ({ row }) => (
+        <div className="flex flex-wrap gap-1 max-w-[180px]">
+          {row.original.tags.length > 0 ? (
+            row.original.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+              >
+                {tag}
+              </span>
+            ))
+          ) : (
+            <span className="text-gray-400 dark:text-gray-500">—</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: () => (t('teacher.dashboard.courses.actions') || 'Actions'),
+      cell: ({ row }) => {
+        const course = row.original
+        return (
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              onClick={() => openCourseDetails(course.id)}
+              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+              title={t('teacher.dashboard.courses.viewDetails') || 'View details'}
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            {canEditCourse && (
+              <button
+                type="button"
+                onClick={() => router.push(`/courses/create?edit=${course.id}`)}
+                className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                title={t('teacher.dashboard.courses.editCourse') || 'Edit course'}
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+            )}
+            {canDeleteCourse && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setCourseToDelete({ id: course.id, title: course.title }) }}
+                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                title={t('teacher.dashboard.courses.deleteCourse') || 'Delete course'}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )
+      },
+    },
+  ], [t, canEditCourse, canDeleteCourse, editingStatusCourseId, updateCourse])
+
+  const coursesTable = useReactTable({
+    data: filteredCourses,
+    columns: coursesColumns,
+    state: { columnFilters },
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  })
+
   const selectedCourse: StoreCourse | undefined = selectedCourseId
     ? storeCourses.find(c => c.id === selectedCourseId)
     : undefined
@@ -176,10 +353,6 @@ export const TeacherDashboard: React.FC = () => {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
     }
   }
-
-  const canCreateCourse = hasPermission('create_courses')
-  const canEditCourse = hasPermission('edit_courses')
-  const canDeleteCourse = hasPermission('delete_courses')
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -450,150 +623,87 @@ export const TeacherDashboard: React.FC = () => {
               ))}
             </div>
 
-            {/* Courses List */}
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            {/* Courses List (TanStack Table with header filters) */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800">
+                    {/* Header row */}
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.course') || 'Course'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.students') || 'Students'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.instructor') || 'Instructor'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.status') || 'Status'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.price') || 'Price'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.createdAt') || 'Created at'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.tags') || 'Tags'}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        {t('teacher.dashboard.courses.actions') || 'Actions'}
-                      </th>
+                      {coursesTable.getHeaderGroups()[0]?.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                        >
+                          {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        </th>
+                      ))}
+                    </tr>
+                    {/* Filter row */}
+                    <tr className="bg-gray-100/80 dark:bg-gray-700/50">
+                      {coursesTable.getHeaderGroups()[0]?.headers.map((header) => {
+                        const colId = header.column.id
+                        const col = header.column
+                        const filterValue = col.getFilterValue() as string | undefined
+                        return (
+                          <th key={header.id} className="px-4 py-2">
+                            {colId === 'title' && (
+                              <input
+                                type="text"
+                                value={filterValue ?? ''}
+                                onChange={(e) => col.setFilterValue(e.target.value || undefined)}
+                                placeholder={t('teacher.dashboard.courses.filterByCourse') || 'Filter...'}
+                                className="w-full min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            )}
+                            {colId === 'instructor' && (
+                              <input
+                                type="text"
+                                value={filterValue ?? ''}
+                                onChange={(e) => col.setFilterValue(e.target.value || undefined)}
+                                placeholder={t('teacher.dashboard.courses.filterByInstructor') || 'Filter...'}
+                                className="w-full min-w-[90px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            )}
+                            {colId === 'status' && (
+                              <select
+                                value={filterValue ?? ''}
+                                onChange={(e) => col.setFilterValue(e.target.value || undefined)}
+                                className="w-full min-w-[90px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                <option value="">{t('teacher.dashboard.courses.filterAll') || 'All'}</option>
+                                <option value="active">{t('teacher.dashboard.filters.active') || 'Active'}</option>
+                                <option value="draft">{t('teacher.dashboard.filters.draft') || 'Draft'}</option>
+                                <option value="inactive">{t('teacher.dashboard.filters.inactive') || 'Inactive'}</option>
+                                <option value="archived">{t('teacher.dashboard.filters.archived') || 'Archived'}</option>
+                              </select>
+                            )}
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredCourses.map((course) => (
-                      <tr key={course.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => openCourseDetails(course.id)}
-                            className="text-left hover:opacity-80 transition-opacity"
-                          >
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">{course.title}</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">{course.level}</div>
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {course.students}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {course.instructor}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                          {editingStatusCourseId === course.id ? (
-                            <select
-                              autoFocus
-                              value={course.status}
-                              onChange={(e) => {
-                                const newStatus = e.target.value as Course['status']
-                                updateCourse(course.id, { status: newStatus })
-                                setEditingStatusCourseId(null)
-                              }}
-                              onBlur={() => setEditingStatusCourseId(null)}
-                              className="text-xs font-medium rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white py-1.5 pl-2 pr-6 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              <option value="active">{t('teacher.dashboard.filters.active') || 'Active'}</option>
-                              <option value="draft">{t('teacher.dashboard.filters.draft') || 'Draft'}</option>
-                              <option value="inactive">{t('teacher.dashboard.filters.inactive') || 'Inactive'}</option>
-                              <option value="archived">{t('teacher.dashboard.filters.archived') || 'Archived'}</option>
-                            </select>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => canEditCourse && setEditingStatusCourseId(course.id)}
-                              className="inline-flex items-center gap-1.5 group focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
-                              title={canEditCourse ? (t('teacher.dashboard.courses.editStatus') || 'Edit status') : undefined}
-                            >
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(course.status)}`}>
-                                {course.status}
-                              </span>
-                              {canEditCourse && (
-                                <Edit className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 shrink-0" />
-                              )}
-                            </button>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
-                          {course.price != null && course.price > 0 ? `$${course.price.toFixed(2)}` : 'Free'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {course.createdAt || '—'}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                          <div className="flex flex-wrap gap-1 max-w-[180px]">
-                            {course.tags.length > 0 ? (
-                              course.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                >
-                                  {tag}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-gray-400 dark:text-gray-500">—</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button
-                              type="button"
-                              onClick={() => openCourseDetails(course.id)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title={t('teacher.dashboard.courses.viewDetails') || 'View details'}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {canEditCourse && (
-                              <button
-                                type="button"
-                                onClick={() => router.push(`/courses/create?edit=${course.id}`)}
-                                className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
-                                title={t('teacher.dashboard.courses.editCourse') || 'Edit course'}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            )}
-                            {canDeleteCourse && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setCourseToDelete({ id: course.id, title: course.title })
-                                }}
-                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                title={t('teacher.dashboard.courses.deleteCourse') || 'Delete course'}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
+                    {coursesTable.getRowModel().rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={coursesTable.getAllColumns().length} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          {t('teacher.dashboard.courses.noResults') || 'No courses match your filters.'}
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      coursesTable.getRowModel().rows.map((row) => (
+                        <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          {row.getVisibleCells().map((cell) => (
+                            <td
+                              key={cell.id}
+                              className={`px-4 py-3 text-sm ${cell.column.id === 'tags' ? '' : 'whitespace-nowrap'}`}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
