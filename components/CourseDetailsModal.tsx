@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield, Play, Flag, Target } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useCoursesStore } from '@/stores'
+import { useLanguage } from '@/contexts/LanguageContext'
 import SignupForm from './SignupForm'
 import { LoginForm } from './LoginForm'
 
@@ -21,6 +22,7 @@ interface CourseDetailsModalProps {
     description: string
     price: string
     originalPrice?: string
+    currency?: string
     totalLessons: number
     duration: string
     rating: number
@@ -32,80 +34,70 @@ interface CourseDetailsModalProps {
     lifetimeAccess: boolean
     mobileAccess: boolean
     communityAccess: boolean
+    requirements?: string[]
+    /** When true, course is free only for premium members */
+    freeForPremiumOnly?: boolean
   }
 }
 
 export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsModalProps) {
   const router = useRouter()
+  const { t } = useLanguage()
   const { user, isAuthenticated } = useAuthStore()
+  const { enrollInCourse } = useCoursesStore()
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [enrollmentStep, setEnrollmentStep] = useState<'details' | 'processing' | 'success'>('details')
   const [showSignupForm, setShowSignupForm] = useState(false)
   const [showLoginForm, setShowLoginForm] = useState(false)
 
+  const priceNum = parseFloat(course.price) || 0
+  const isPaid = priceNum > 0
+  const freeForPremiumOnly = Boolean(course.freeForPremiumOnly)
+  const isPremiumUser = Boolean(user && (user.membership === 'premium member' || user.membership === 'vip member'))
+  const canEnrollInCourse = !isPaid && (freeForPremiumOnly ? isPremiumUser : true)
+
   const handleEnroll = async () => {
-    console.log('=== ENROLLMENT ATTEMPT ===')
-    console.log('isAuthenticated:', isAuthenticated)
-    console.log('user:', user)
-    console.log('Course data received:', course)
-    console.log('Course properties:', Object.keys(course))
-    console.log('course.name:', course.name)
-    
-    if (!isAuthenticated) {
-      console.log('User not authenticated, showing signup form')
-      // Show signup form instead of alert
+    if (!isAuthenticated || !user) {
       setShowSignupForm(true)
       return
     }
-
-    console.log('User is authenticated, proceeding with enrollment...')
 
     setIsEnrolling(true)
     setEnrollmentStep('processing')
 
     try {
-      // Simulate enrollment process
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Save to localStorage
-      const existingEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
-      const newEnrollment = {
-        id: course.id,
-        name: course.name,
-        title: course.name, // Use name as title for compatibility
-        language: course.subject ?? (course as any).language,
-        flag: course.flag,
-        level: course.level,
-        progress: 0,
-        totalLessons: course.totalLessons,
-        completedLessons: 0,
-        currentLesson: 1,
-        rating: course.rating,
-        lastAccessed: 'Just now',
-        timeSpent: '0h 0m',
-        certificate: course.certificate,
-        enrolledAt: new Date().toISOString(),
-        price: 'FREE' // Changed to FREE
-      }
-      
-      console.log('New enrollment data being saved:', newEnrollment)
+      // Save to store (persisted db) first
+      await enrollInCourse(course.id, user.id)
 
-      // Check if already enrolled
-      const isAlreadyEnrolled = existingEnrollments.some((enrollment: any) => enrollment.id === course.id)
-
-      if (isAlreadyEnrolled) {
-        alert('You are already enrolled in this course!')
-        onClose()
-        return
+      // Also sync to localStorage (user-scoped so dashboard shows only this student's completed lessons)
+      const storageKey = user?.id ? `enrolled_courses_${user.id}` : 'enrolled_courses'
+      const existingEnrollments = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses') || '[]')
+      const isAlreadyInLocal = existingEnrollments.some((e: any) => e.id === course.id)
+      if (!isAlreadyInLocal) {
+        const newEnrollment = {
+          id: course.id,
+          name: course.name,
+          title: course.name,
+          language: course.subject ?? (course as any).language,
+          flag: course.flag,
+          level: course.level,
+          progress: 0,
+          totalLessons: course.totalLessons,
+          completedLessons: 0,
+          currentLesson: 1,
+          rating: course.rating,
+          lastAccessed: 'Just now',
+          timeSpent: '0h 0m',
+          certificate: course.certificate,
+          enrolledAt: new Date().toISOString(),
+          price: 'FREE'
+        }
+        localStorage.setItem(storageKey, JSON.stringify([...existingEnrollments, newEnrollment]))
       }
 
-      // Add new enrollment
-      const updatedEnrollments = [...existingEnrollments, newEnrollment]
-      localStorage.setItem('enrolled_courses', JSON.stringify(updatedEnrollments))
-
-      console.log('Course enrolled successfully:', newEnrollment)
-      console.log('All enrollments after adding:', updatedEnrollments)
-      console.log('Course ID being used for redirect:', course.id)
+      console.log('Course enrolled successfully (saved to store and localStorage):', course.name)
 
       // Show success
       setEnrollmentStep('success')
@@ -197,17 +189,16 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">What You'll Learn</h3>
-                    <div className="space-y-3">
-                      {course.features.map((feature, index) => (
-                        <div key={index} className="flex items-center space-x-3">
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                          <span className="text-gray-700">{feature}</span>
-                        </div>
-                      ))}
+                  {course.requirements?.length ? (
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4">Requirements</h3>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1">
+                        {course.requirements.map((req, i) => (
+                          <li key={i}>{req}</li>
+                        ))}
+                      </ul>
                     </div>
-                  </div>
+                  ) : null}
                 </div>
 
                 {/* Course Features */}
@@ -240,46 +231,61 @@ export function CourseDetailsModal({ isOpen, onClose, course }: CourseDetailsMod
                   </div>
                 </div>
 
-                {/* Pricing */}
-                <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-                  <div className="text-center">
-                    <h3 className="text-2xl font-bold text-green-900 mb-2">Course Access</h3>
-                    <div className="text-4xl font-bold text-green-600 mb-2">
-                      FREE
-                    </div>
-                    <div className="text-lg text-green-700 font-medium">
-                      All lessons unlocked
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enrollment Button */}
-                <div className="pt-4">
-                  <Button
-                    onClick={handleEnroll}
-                    disabled={isEnrolling}
-                    className="w-full py-4 text-lg font-semibold bg-green-600 hover:bg-green-700"
-                  >
-                    {isEnrolling ? (
+                {/* Enrollment / Purchase Button (only for students or guests) */}
+                {(user?.role === 'STUDENT' || !user) && (
+                  <div className="pt-4">
+                    {isPaid ? (
                       <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                        Processing Enrollment...
+                        <Button
+                          disabled
+                          className="w-full py-4 text-lg font-semibold bg-gray-400 cursor-not-allowed"
+                        >
+                          Purchase – Payment coming soon
+                        </Button>
+                        <p className="text-center mt-2 text-sm text-gray-500">
+                          This course requires payment. Check back later for payment options.
+                        </p>
+                      </>
+                    ) : canEnrollInCourse ? (
+                      <>
+                        <Button
+                          onClick={handleEnroll}
+                          disabled={isEnrolling}
+                          className="w-full py-4 text-lg font-semibold bg-green-600 hover:bg-green-700"
+                        >
+                          {isEnrolling ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                              Processing Enrollment...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-5 h-5 mr-2" />
+                              {isAuthenticated ? 'Enroll in Course' : 'Sign in to Enroll in Course'}
+                            </>
+                          )}
+                        </Button>
+                        <div className="text-center mt-4">
+                          <div className="flex items-center justify-center space-x-2 text-sm text-green-600">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>{freeForPremiumOnly ? 'Free for premium members' : 'Free access to all course content'}</span>
+                          </div>
+                        </div>
                       </>
                     ) : (
-                      <>
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        {isAuthenticated ? 'Get Free Access' : 'Sign Up for Free Access'}
-                      </>
+                      <Button
+                        onClick={() => {
+                          onClose()
+                          router.push('/profile?upgrade=1')
+                        }}
+                        className="w-full py-4 text-lg font-semibold bg-primary-600 hover:bg-primary-700 text-white"
+                      >
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        {t('profile.page.upgradeMembership') || 'Upgrade to lifetime membership'}
+                      </Button>
                     )}
-                  </Button>
-
-                  <div className="text-center mt-4">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-green-600">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Free access to all course content</span>
-                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 

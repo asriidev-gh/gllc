@@ -35,7 +35,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useCoursesStore } from '@/stores'
+import type { CourseSectionContent } from '@/stores'
 import { Header } from '@/components/Header'
 import toast from 'react-hot-toast'
 import { recordLearningActivity } from '@/lib/learningActivity'
@@ -138,11 +139,48 @@ interface AssessmentQuestion {
   correctAnswer: number
 }
 
+/** Returns YouTube embed URL if the given URL is YouTube, otherwise null. Supports watch, Shorts, youtu.be, and embed. */
+function getYouTubeEmbedUrl(url: string | undefined): string | null {
+  if (!url || typeof url !== 'string') return null
+  const trimmed = url.trim()
+  const watchMatch = trimmed.match(/(?:youtube\.com\/watch\?)(?:.*&)?v=([a-zA-Z0-9_-]{11})/)
+  if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}?rel=0`
+  const youtuBeMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/)
+  if (youtuBeMatch) return `https://www.youtube.com/embed/${youtuBeMatch[1]}?rel=0`
+  const shortsMatch = trimmed.match(/(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/)
+  if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}?rel=0`
+  if (trimmed.includes('youtube.com/embed/')) {
+    const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/)
+    if (embedMatch) return `https://www.youtube.com/embed/${embedMatch[1]}?rel=0`
+  }
+  return null
+}
+
+/** Returns Google Drive embed (preview) URL if the given URL is a Drive file link, otherwise null. */
+function getGoogleDriveEmbedUrl(url: string | undefined): string | null {
+  if (!url || typeof url !== 'string') return null
+  const trimmed = url.trim()
+  // drive.google.com/file/d/FILE_ID/view... or /open?id=FILE_ID
+  const fileMatch = trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+  if (fileMatch) return `https://drive.google.com/file/d/${fileMatch[1]}/preview`
+  const openMatch = trimmed.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/)
+  if (openMatch) return `https://drive.google.com/file/d/${openMatch[1]}/preview`
+  return null
+}
+
+/** Returns embed URL for iframe (YouTube or Google Drive), or null for direct video. */
+function getVideoEmbedUrl(url: string | undefined): string | null {
+  return getYouTubeEmbedUrl(url) ?? getGoogleDriveEmbedUrl(url) ?? null
+}
+
 const CourseLearningPage = () => {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
+  const { courses: storeCourses } = useCoursesStore()
   const courseId = params.courseId as string
+  const isStaff = user?.role === 'SUPERADMIN' || user?.role === 'ADMIN' || user?.role === 'TEACHER'
+  const isStudent = user?.role === 'STUDENT'
   
   // Constants
   const COMPLETION_THRESHOLD = 90 // Percentage of video that must be watched to complete lesson
@@ -240,24 +278,27 @@ const CourseLearningPage = () => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   
-  // Handle lesson changes and video loading
+  // Handle lesson changes and video loading (only for direct video URLs; YouTube/Drive use iframe)
+  const embedUrl = currentLesson ? getVideoEmbedUrl(currentLesson.videoUrl) : null
   useEffect(() => {
-    if (currentLesson && videoRef.current) {
+    if (currentLesson && videoRef.current && !getVideoEmbedUrl(currentLesson.videoUrl)) {
       console.log(`Lesson changed to: ${currentLesson.title}`)
       console.log(`Video URL: ${currentLesson.videoUrl}`)
       
-      // Reset video states for new lesson
       setCurrentTime(0)
       setDuration(0)
       setVideoProgress(0)
       setIsPlaying(false)
       
-      // Load the new video
       if (videoRef.current.src !== currentLesson.videoUrl) {
-        console.log('Updating video source')
         videoRef.current.src = currentLesson.videoUrl
-        videoRef.current.load() // Force video to reload
+        videoRef.current.load()
       }
+    } else if (currentLesson && getVideoEmbedUrl(currentLesson.videoUrl)) {
+      setCurrentTime(0)
+      setDuration(0)
+      setVideoProgress(0)
+      setIsPlaying(false)
     }
   }, [currentLesson])
   
@@ -419,20 +460,12 @@ const CourseLearningPage = () => {
     console.log('Course details page - Authentication state:', isAuthenticated)
     console.log('Course details page - Course ID:', courseId)
     
-    // Add a small delay to ensure authentication state is properly loaded
+    // Allow viewing course contents without logging in; load course data for everyone
     const timer = setTimeout(() => {
-      console.log('Course details page - Delayed auth check:', isAuthenticated)
-      
-      if (!isAuthenticated) {
-        console.log('Course details page - User not authenticated, redirecting to login')
-        toast.error('Please sign in to access course content')
-        router.push(`/login?redirect=/courses/${courseId}`)
-        return
-      }
-
-      console.log('Course details page - User authenticated, loading course data')
       loadCourseData()
-      loadUserData()
+      if (isAuthenticated) {
+        loadUserData()
+      }
     }, 100)
 
     return () => clearTimeout(timer)
@@ -457,6 +490,68 @@ const CourseLearningPage = () => {
     try {
       setIsLoading(true)
       console.log('Loading course data for courseId:', courseId)
+
+      // Prefer store as source of truth for course details (saved title, description, contents)
+      const storeCourse = storeCourses?.find((c: { id: string }) => c.id === courseId)
+      if (storeCourse) {
+        const courseData = {
+          id: storeCourse.id,
+          name: storeCourse.title,
+          title: storeCourse.title,
+          language: storeCourse.subject,
+          level: storeCourse.level,
+          totalLessons: storeCourse.lessons ?? 0,
+          description: storeCourse.description ?? '',
+          duration: storeCourse.duration,
+          instructor: storeCourse.instructor,
+          rating: storeCourse.rating,
+          features: storeCourse.features ?? [],
+          requirements: storeCourse.requirements ?? [],
+          includesFinalAssessment: storeCourse.includesFinalAssessment ?? false,
+          includesCertificate: storeCourse.includesCertificate ?? false,
+          category: Array.isArray(storeCourse.category) ? storeCourse.category : []
+        }
+        setCourse(courseData)
+        const existingProgress = loadExistingProgress()
+        const savedProgress = existingProgress.lessonProgress || {}
+        if (storeCourse.contents?.length) {
+          setTopicsFromStoreContents(storeCourse.contents, savedProgress)
+        } else {
+          generateMockTopics(courseData)
+        }
+        if (user?.email) {
+          const userProgressKey = `user_course_progress_${user.email}`
+          const userProgress = localStorage.getItem(userProgressKey)
+          if (userProgress) {
+            const progressData = JSON.parse(userProgress)
+            if (progressData[courseId]?.assessmentCompleted) {
+              setProgress(prev => ({
+                ...prev,
+                assessmentCompleted: progressData[courseId].assessmentCompleted,
+                assessmentDate: progressData[courseId].assessmentDate,
+                finalScore: progressData[courseId].assessmentScore
+              }))
+            }
+          }
+        }
+        setIsLoading(false)
+        return
+      }
+
+      // Not in store: for guests they can only view store (public) courses
+      if (!isAuthenticated) {
+        toast.error('Course not found')
+        router.push('/courses')
+        setIsLoading(false)
+        return
+      }
+      if (isStaff) {
+        toast.error('Course not found')
+        router.push('/courses')
+        setIsLoading(false)
+        return
+      }
+
       const savedEnrollments = localStorage.getItem('enrolled_courses')
       console.log('Saved enrollments:', savedEnrollments)
       
@@ -467,10 +562,21 @@ const CourseLearningPage = () => {
         console.log('Found course data:', courseData)
         
         if (courseData) {
-          setCourse(courseData)
-          generateMockTopics(courseData)
+          const storeCourseForContents = storeCourses?.find((c: { id: string }) => c.id === courseId)
+          setCourse({
+            ...courseData,
+            includesFinalAssessment: storeCourseForContents?.includesFinalAssessment ?? false,
+            includesCertificate: storeCourseForContents?.includesCertificate ?? false,
+            category: Array.isArray(storeCourseForContents?.category) ? storeCourseForContents.category : (Array.isArray(courseData.category) ? courseData.category : [])
+          })
+          const existingProgress = loadExistingProgress()
+          const savedProgress = existingProgress.lessonProgress || {}
+          if (storeCourseForContents?.contents?.length) {
+            setTopicsFromStoreContents(storeCourseForContents.contents, savedProgress)
+          } else {
+            generateMockTopics(courseData)
+          }
           
-          // Load assessment results if they exist
           if (user?.email) {
             const userProgressKey = `user_course_progress_${user.email}`
             const userProgress = localStorage.getItem(userProgressKey)
@@ -492,9 +598,15 @@ const CourseLearningPage = () => {
           router.push('/courses')
         }
       } else {
-        console.log('No enrollments found in localStorage')
-        toast.error('No enrollments found')
-        router.push('/courses')
+        // Not in store and no enrollments: for guests, course not found; for staff already handled above
+        if (!isAuthenticated) {
+          toast.error('Course not found')
+          router.push('/courses')
+        } else {
+          console.log('No enrollments found in localStorage')
+          toast.error('No enrollments found')
+          router.push('/courses')
+        }
       }
     } catch (error) {
       console.error('Error loading course:', error)
@@ -632,6 +744,58 @@ const CourseLearningPage = () => {
       console.log('Updated user course progress:', userProgress[courseId])
     } catch (error) {
       console.error('Error updating user course progress:', error)
+    }
+  }
+
+  /** Build topics and progress from store course contents (saved curriculum) */
+  const setTopicsFromStoreContents = (contents: CourseSectionContent[], savedProgress: Record<string, { isWatched?: boolean }>) => {
+    let lessonOrder = 0
+    const topicsFromStore: CourseTopic[] = contents.map((section, sectionIndex) => ({
+      id: section.id,
+      title: section.name,
+      description: '',
+      order: sectionIndex + 1,
+      lessons: (section.lessons || []).map((lesson) => {
+        lessonOrder += 1
+        const durationMin = lesson.durationMinutes ?? 0
+        const durationStr = durationMin >= 60
+          ? `${Math.floor(durationMin / 60)}:${String(durationMin % 60).padStart(2, '0')}`
+          : durationMin > 0
+            ? `0:${String(durationMin).padStart(2, '0')}`
+            : '0:00'
+        return {
+          id: lesson.id,
+          title: lesson.name,
+          summary: lesson.description ?? '',
+          duration: durationStr,
+          videoUrl: lesson.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+          thumbnail: lesson.thumbnailUrl || '/api/placeholder/300/200',
+          isWatched: savedProgress[lesson.id]?.isWatched ?? false,
+          order: lessonOrder,
+          resources: [],
+          comments: []
+        }
+      })
+    }))
+    setTopics(topicsFromStore)
+    const firstLesson = topicsFromStore[0]?.lessons?.[0]
+    if (firstLesson) setCurrentLesson(firstLesson)
+    const totalLessons = topicsFromStore.reduce((sum, t) => sum + t.lessons.length, 0)
+    const completedLessons = topicsFromStore.reduce(
+      (sum, t) => sum + t.lessons.filter((l) => l.isWatched).length,
+      0
+    )
+    setProgress((prev) => ({
+      ...prev,
+      totalLessons,
+      completedLessons,
+      totalDuration: totalLessons ? `${Math.ceil(totalLessons * 10 / 60)}h ${(totalLessons * 10) % 60}m` : '0h 0m',
+      watchedDuration: `${Math.floor(completedLessons * 10)}m`,
+      isCompleted: totalLessons > 0 && completedLessons >= totalLessons,
+      completionDate: totalLessons > 0 && completedLessons >= totalLessons ? new Date().toISOString() : undefined
+    }))
+    if (user?.email) {
+      updateCourseProgressForDashboard(courseId, totalLessons, completedLessons, totalLessons > 0 && completedLessons >= totalLessons)
     }
   }
 
@@ -1333,14 +1497,24 @@ const CourseLearningPage = () => {
     }
   }
 
-  if (!course || !isAuthenticated) {
+  if (!course) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <LoadingSpinner size="lg" className="mx-auto mb-4" />
+            <p className="text-gray-600">Loading course...</p>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Restricted</h1>
-          <p className="text-gray-600 mb-6">Please sign in to access this course content.</p>
-          <Button onClick={() => router.push('/login')}>
-            Sign In
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h1>
+          <p className="text-gray-600 mb-6">This course may be private or no longer available.</p>
+          <Button onClick={() => router.push('/courses')}>
+            Back to courses
           </Button>
         </div>
       </div>
@@ -1350,6 +1524,14 @@ const CourseLearningPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
+      {!isAuthenticated && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center justify-center gap-2 text-sm text-blue-800">
+          <span>You&apos;re viewing course contents. Sign in to enroll and save your progress.</span>
+          <Button variant="outline" size="sm" onClick={() => router.push(`/login?redirect=/courses/${courseId}`)}>
+            Sign in
+          </Button>
+        </div>
+      )}
       
       {/* Loading State */}
       {isLoading && (
@@ -1388,7 +1570,7 @@ const CourseLearningPage = () => {
             <div 
               className="aspect-video relative cursor-pointer"
               onClick={(e) => {
-                // Only toggle play/pause if clicking on the video area, not on controls
+                if (embedUrl) return
                 if (e.target === e.currentTarget || e.target === videoRef.current) {
                   togglePlayPause()
                 }
@@ -1403,6 +1585,32 @@ const CourseLearningPage = () => {
                 resetMouseOverState()
               }}
             >
+              {embedUrl ? (
+                <>
+                  <iframe
+                    key={currentLesson?.id}
+                    src={embedUrl}
+                    title={currentLesson?.title ?? 'Lesson video'}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 md:p-4">
+                    {isStudent && currentLesson && !currentLesson.isWatched && (
+                      <Button
+                        onClick={() => {
+                          markLessonAsWatched(currentLesson.id, false)
+                          toast.success('Lesson completed!')
+                        }}
+                        className="bg-green-500 hover:bg-green-600 text-white border-0"
+                      >
+                        Mark lesson complete
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+              <>
               {/* Video Loading Indicator */}
               {duration <= 0 && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
@@ -1484,13 +1692,11 @@ const CourseLearningPage = () => {
                   console.log('Completion threshold:', COMPLETION_THRESHOLD)
                   setIsPlaying(false)
                   
-                  // Only mark as completed if user watched at least the completion threshold
-                  if (currentLesson && videoProgress >= COMPLETION_THRESHOLD) {
-                    console.log('Auto-completing lesson due to sufficient progress')
+                  // Only mark as completed for students when watched at least the completion threshold
+                  if (isStudent && currentLesson && videoProgress >= COMPLETION_THRESHOLD) {
                     markLessonAsWatched(currentLesson.id, false)
                     toast.success('Lesson completed! Great job!')
-                  } else if (currentLesson) {
-                    console.log('Lesson not auto-completed due to insufficient progress')
+                  } else if (isStudent && currentLesson) {
                     toast(`Please watch at least ${COMPLETION_THRESHOLD}% of the lesson to mark it as completed`, { icon: 'ℹ️' })
                   }
                 }}
@@ -1535,8 +1741,8 @@ const CourseLearningPage = () => {
                       </div>
                     )}
                     
-                    {/* Mark Complete button for mobile */}
-                    {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                    {/* Mark Complete button for mobile - students only */}
+                    {isStudent && currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
                       <Button
                         onClick={() => {
                           keepControlsVisible()
@@ -1572,8 +1778,8 @@ const CourseLearningPage = () => {
                         </div>
                       )}
                       
-                      {/* Manual Mark as Completed Button - Desktop only */}
-                      {currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
+                      {/* Manual Mark as Completed Button - Desktop only, students only */}
+                      {isStudent && currentLesson && !currentLesson.isWatched && videoProgress >= COMPLETION_THRESHOLD && (
                         <Button
                           onClick={() => {
                             keepControlsVisible()
@@ -1692,6 +1898,8 @@ const CourseLearningPage = () => {
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
           </div>
 
@@ -1776,21 +1984,17 @@ const CourseLearningPage = () => {
                     <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Course</h2>
                     <p className="text-gray-700 mb-6">{course.description}</p>
                     
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">What You'll Learn</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                      {course.features?.map((feature: string, index: number) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                          <span className="text-gray-700">{feature}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Requirements</h3>
                     <ul className="list-disc list-inside text-gray-700 space-y-1 mb-6">
-                      <li>No prior experience required</li>
-                      <li>Basic computer skills</li>
-                      <li>Dedication to learn</li>
+                      {(course as any).requirements?.length
+                        ? (course as any).requirements.map((req: string, i: number) => <li key={i}>{req}</li>)
+                        : (
+                          <>
+                            <li key="0">No prior experience required</li>
+                            <li key="1">Basic computer skills</li>
+                            <li key="2">Dedication to learn</li>
+                          </>
+                          )}
                     </ul>
                   </div>
                   
@@ -1811,9 +2015,21 @@ const CourseLearningPage = () => {
                           <span className="text-gray-600">Level:</span>
                           <span className="font-medium">{course.level}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Subject:</span>
-                          <span className="font-medium">{(course as any).subject ?? course.language}</span>
+                        <div className="flex flex-col gap-1.5">
+                          <span className="text-gray-600">Course Tags:</span>
+                          <span className="font-medium">
+                            {Array.isArray((course as any).category) && (course as any).category.length > 0 ? (
+                              <span className="flex flex-wrap gap-1">
+                                {(course as any).category.map((tag: string, i: number) => (
+                                  <span key={i} className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">—</span>
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1856,15 +2072,17 @@ const CourseLearningPage = () => {
                               <Download className="w-4 h-4 mr-2" />
                               View Certificate
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              className="w-full"
-                              size="sm"
-                              onClick={() => setShowAssessmentModal(true)}
-                            >
-                              <Target className="w-4 h-4 mr-2" />
-                              Take Final Assessment
-                            </Button>
+                            {(course as { includesFinalAssessment?: boolean }).includesFinalAssessment && (
+                              <Button 
+                                variant="outline" 
+                                className="w-full"
+                                size="sm"
+                                onClick={() => setShowAssessmentModal(true)}
+                              >
+                                <Target className="w-4 h-4 mr-2" />
+                                Take Final Assessment
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -1894,7 +2112,8 @@ const CourseLearningPage = () => {
                       )}
                     </div>
                     
-                    {/* Assessment Section */}
+                    {/* Assessment Section - only when course includes final assessment */}
+                    {(course as { includesFinalAssessment?: boolean }).includesFinalAssessment && (
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="font-semibold text-gray-900 mb-3">Final Assessment</h3>
                       {progress.assessmentCompleted ? (
@@ -1987,6 +2206,7 @@ const CourseLearningPage = () => {
                         </div>
                       )}
                     </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2319,8 +2539,8 @@ const CourseLearningPage = () => {
                           </div>
                         </button>
                         
-                        {/* Mark as Completed Button */}
-                        {!lesson.isWatched && (
+                        {/* Mark as Completed Button - students only */}
+                        {isStudent && !lesson.isWatched && (
                           <div className="flex justify-end">
                             <Button
                               onClick={() => markLessonAsWatched(lesson.id, true)}
@@ -2369,13 +2589,15 @@ const CourseLearningPage = () => {
             </div>
             
             <div className="flex justify-center space-x-4">
-              <Button 
-                onClick={() => setShowAssessmentModal(true)}
-                className="bg-primary-600 hover:bg-primary-700"
-              >
-                <Target className="w-4 h-4 mr-2" />
-                Take Final Assessment
-              </Button>
+              {(course as { includesFinalAssessment?: boolean }).includesFinalAssessment && (
+                <Button 
+                  onClick={() => setShowAssessmentModal(true)}
+                  className="bg-primary-600 hover:bg-primary-700"
+                >
+                  <Target className="w-4 h-4 mr-2" />
+                  Take Final Assessment
+                </Button>
+              )}
               <Button 
                 variant="outline"
                 onClick={() => setShowCompletionModal(false)}

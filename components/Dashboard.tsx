@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { 
   BookOpen, 
-  Bug,
   Play, 
   Clock, 
   Star, 
@@ -26,11 +25,10 @@ import {
   Heart,
   Languages,
   Lightbulb,
-  RefreshCw,
-  RotateCcw
+  RefreshCw
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useCoursesStore } from '@/stores'
 import toast from 'react-hot-toast'
 import { recordLearningActivity as recordLearningActivityUtil, getRecentActivities } from '@/lib/learningActivity'
 import { TeacherDashboard } from './TeacherDashboard'
@@ -50,17 +48,23 @@ interface EnrolledCourse {
   lastAccessed: string
   timeSpent: string
   certificate?: boolean
+  /** Course thumbnail (uploaded image from create flow) */
+  image?: string
   // Enhanced progress properties
   isCompleted?: boolean
   assessmentScore?: number | null
   assessmentCompleted?: boolean
   completionDate?: string
+  /** Whether course has a final assessment (from store includesFinalAssessment) */
+  includesFinalAssessment?: boolean
 }
 
 interface DashboardStats {
   totalCourses: number
   totalLessons: number
   completedLessons: number
+  completedCourses: number
+  certificatesEarned: number
   totalTimeSpent: string
   averageRating: number
   streakDays: number
@@ -69,6 +73,7 @@ interface DashboardStats {
 
 export function Dashboard() {
   const { user, isAuthenticated, getDashboardUrl } = useAuthStore()
+  const { courses: storeCourses, getEnrolledCourses, getEnrollment, enrollInCourse, removeEnrollment } = useCoursesStore()
   const { t } = useLanguage()
   const router = useRouter()
 
@@ -105,6 +110,8 @@ export function Dashboard() {
     totalCourses: 0,
     totalLessons: 0,
     completedLessons: 0,
+    completedCourses: 0,
+    certificatesEarned: 0,
     totalTimeSpent: '0h 0m',
     averageRating: 0,
     streakDays: 0,
@@ -122,6 +129,7 @@ export function Dashboard() {
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [showAssessmentHistory, setShowAssessmentHistory] = useState(false)
   const [selectedCourseForModal, setSelectedCourseForModal] = useState<EnrolledCourse | null>(null)
+  const [enrolledCoursesTab, setEnrolledCoursesTab] = useState<'unfinished' | 'completed'>('unfinished')
 
   // Role-based dashboard routing (teacher and admin share same dashboard layout; admin sees all courses and all students)
   // Return teacher dashboard as soon as we know user is teacher/admin/superadmin (after all hooks)
@@ -500,130 +508,154 @@ export function Dashboard() {
     }
   }
 
+  const getEnrolledCoursesStorageKey = () =>
+    user?.id ? `enrolled_courses_${user.id}` : 'enrolled_courses'
+
   const loadEnrolledCourses = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // Clean up any corrupted progress data first
+    await new Promise(resolve => setTimeout(resolve, 300))
     cleanupCourseProgressData()
-    
-    // Load real enrolled courses from localStorage
-    const savedEnrollments = localStorage.getItem('enrolled_courses')
+
     let courses: EnrolledCourse[] = []
-    
-    if (savedEnrollments) {
-      try {
-        const enrollments = JSON.parse(savedEnrollments)
-        console.log('Raw enrollments from localStorage:', enrollments)
-        
-        // Load enhanced progress data for each course
+
+    // Prefer store (persisted db) for enrollments - only current user's enrollments
+    if (user?.id) {
+      const storeCourses = getEnrolledCourses(user.id)
+      if (storeCourses.length > 0) {
         const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
-        const userProgress = localStorage.getItem(userProgressKey)
+        const userProgress = typeof window !== 'undefined' ? localStorage.getItem(userProgressKey) : null
         const progressData = userProgress ? JSON.parse(userProgress) : {}
-        
-        courses = enrollments.map((enrollment: any) => {
-          console.log('Processing enrollment:', enrollment)
-          console.log('Enrollment properties:', Object.keys(enrollment))
-          console.log('enrollment.name:', enrollment.name)
-          console.log('enrollment.title:', enrollment.title)
-          
-          // Get enhanced progress data for this course
-          const courseProgress = progressData[enrollment.id] || {}
-          const totalLessons = courseProgress.totalLessons || enrollment.totalLessons || 0
-          const completedLessons = courseProgress.completedLessons || enrollment.completedLessons || 0
-          const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
-          // Determine completion status: only if explicitly marked as completed OR if there are actual lessons and all are done
-          let isCompleted = courseProgress.isCompleted || (totalLessons > 0 && completedLessons > 0 && completedLessons >= totalLessons)
-          
-          // If course is completed but no completion date, set it to now
-          let completionDate = courseProgress.completionDate
-          if (isCompleted && !completionDate && completedLessons > 0) {
-            completionDate = new Date().toISOString()
-            console.log('Course completed but no date, setting to now:', completionDate)
-          }
-          
-          // Additional safety check: if no lessons have been started, course cannot be completed
-          if (completedLessons === 0) {
-            isCompleted = false
-            completionDate = undefined
-            console.log('Course has no completed lessons, marking as not completed')
-          }
-          const assessmentScore = courseProgress.assessmentScore || null
-          const assessmentCompleted = courseProgress.assessmentCompleted || false
-          
-          console.log('Course progress data:', {
-            courseId: enrollment.id,
-            totalLessons,
-            completedLessons,
-            progressPercentage,
-            isCompleted,
-            courseProgress,
-            enrollment: {
-              id: enrollment.id,
-              name: enrollment.name,
-              title: enrollment.title,
-              totalLessons: enrollment.totalLessons,
-              completedLessons: enrollment.completedLessons
-            }
-          })
-          
-          // Calculate actual time spent based on lesson progress
-          let actualTimeSpent = '0h 0m'
+        courses = storeCourses.map((course) => {
+          const enrollment = getEnrollment(course.id, user.id)
+          const totalLessons = course.lessons ?? 0
+          const completedFromStore = Array.isArray(enrollment?.completedLessons)
+            ? new Set(enrollment.completedLessons).size
+            : (typeof enrollment?.completedLessons === 'number' ? enrollment.completedLessons : 0)
+          const progressPercentage = enrollment?.progress ?? (totalLessons > 0 ? Math.round((completedFromStore / totalLessons) * 100) : 0)
+          const courseProgress = progressData[course.id] || {}
+          const totalFromProgress = courseProgress.totalLessons ?? totalLessons
+          const completedFromProgressRaw = courseProgress.completedLessons
+          const completedFromProgress = typeof completedFromProgressRaw === 'number'
+            ? completedFromProgressRaw
+            : Array.isArray(completedFromProgressRaw)
+              ? completedFromProgressRaw.length
+              : completedFromStore
+          const completedLessons = completedFromProgress ?? completedFromStore
+          const progressPct = totalFromProgress > 0 ? Math.round((completedLessons / totalFromProgress) * 100) : progressPercentage
+          const isCompleted = courseProgress.isCompleted ?? (totalFromProgress > 0 && completedLessons >= totalFromProgress)
+          let timeSpent = '0h 0m'
           if (completedLessons > 0) {
-            // Each lesson is approximately 15 minutes (based on course structure)
             const totalMinutes = completedLessons * 15
-            const hours = Math.floor(totalMinutes / 60)
-            const minutes = totalMinutes % 60
-            actualTimeSpent = `${hours}h ${minutes}m`
+            timeSpent = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
           }
-          
-          // Final validation: ensure course data is consistent
-          const finalIsCompleted = isCompleted && completedLessons > 0
-          const finalCompletionDate = finalIsCompleted ? completionDate : undefined
-          
-          console.log('Final course data:', {
-            courseId: enrollment.id,
-            name: enrollment.name || enrollment.title,
-            totalLessons,
-            completedLessons,
-            isCompleted: finalIsCompleted,
-            completionDate: finalCompletionDate
-          })
-          
           return {
-            id: enrollment.id,
-            name: enrollment.name || enrollment.title || 'Unknown Course', // Fallback to title if name doesn't exist
-            language: (enrollment as any).subject ?? enrollment.language,
-            flag: enrollment.flag,
-            level: enrollment.level,
-            progress: progressPercentage,
-            totalLessons,
+            id: course.id,
+            name: course.title || 'Unknown Course',
+            language: course.subject ?? '',
+            flag: (course as any).flag ?? '',
+            level: course.level ?? '',
+            progress: progressPct,
+            totalLessons: totalFromProgress || totalLessons,
             completedLessons,
-            currentLesson: finalIsCompleted ? totalLessons : (enrollment.currentLesson || 1),
-            rating: enrollment.rating,
-            lastAccessed: enrollment.lastAccessed || 'Just now',
-            timeSpent: actualTimeSpent,
-            certificate: enrollment.certificate || false,
-            // Enhanced progress data
-            isCompleted: finalIsCompleted,
-            assessmentScore,
-            assessmentCompleted,
-            completionDate: finalCompletionDate
+            currentLesson: isCompleted ? (totalFromProgress || totalLessons) : (courseProgress.currentLesson ?? 1),
+            rating: course.rating ?? 0,
+            lastAccessed: enrollment?.lastAccessedAt ? new Date(enrollment.lastAccessedAt).toLocaleDateString() : 'Just now',
+            timeSpent,
+            certificate: (course as any).certificate ?? (course as any).includesCertificate ?? false,
+            image: course.image,
+            isCompleted: !!isCompleted,
+            assessmentScore: courseProgress.assessmentScore ?? null,
+            assessmentCompleted: courseProgress.assessmentCompleted ?? false,
+            completionDate: courseProgress.completionDate,
+            includesFinalAssessment: (course as any).includesFinalAssessment ?? false
           }
         })
-        
-        console.log('Processed courses for dashboard with enhanced progress:', courses)
-      } catch (error) {
-        console.error('Error loading enrolled courses:', error)
-        courses = []
       }
     }
-    
+
+    // Fall back to localStorage (e.g. legacy enrollments) and sync to store so they persist
+    if (courses.length === 0 && typeof window !== 'undefined' && user?.id) {
+      const storageKey = getEnrolledCoursesStorageKey()
+      const savedEnrollments = localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses')
+      if (savedEnrollments) {
+        try {
+          const enrollments = JSON.parse(savedEnrollments)
+          for (const e of enrollments) {
+            if (e.id) {
+              try {
+                await enrollInCourse(e.id, user.id)
+              } catch (_) {
+                // already enrolled or course missing
+              }
+            }
+          }
+        } catch (_) {
+          /* ignore */
+        }
+      }
+    }
+
+    if (courses.length === 0 && typeof window !== 'undefined' && user?.id) {
+      const storageKey = getEnrolledCoursesStorageKey()
+      const savedEnrollments = localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses')
+      if (savedEnrollments) {
+        try {
+          const enrollments = JSON.parse(savedEnrollments)
+          const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
+          const userProgress = localStorage.getItem(userProgressKey)
+          const progressData = userProgress ? JSON.parse(userProgress) : {}
+          const storeCoursesList = storeCourses ?? []
+          courses = enrollments.map((enrollment: any) => {
+            const storeCourse = storeCoursesList.find((c: { id: string }) => c.id === enrollment.id)
+            const courseProgress = progressData[enrollment.id] || {}
+            const totalLessons = courseProgress.totalLessons || enrollment.totalLessons || 0
+            const rawCompleted = courseProgress.completedLessons ?? enrollment.completedLessons ?? 0
+            const completedLessons = typeof rawCompleted === 'number'
+              ? rawCompleted
+              : Array.isArray(rawCompleted)
+                ? new Set(rawCompleted).size
+                : 0
+            const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+            const isCompleted = courseProgress.isCompleted ?? (totalLessons > 0 && completedLessons >= totalLessons)
+            let timeSpent = '0h 0m'
+            if (completedLessons > 0) {
+              const totalMinutes = completedLessons * 15
+              timeSpent = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+            }
+            return {
+              id: enrollment.id,
+              name: enrollment.name || enrollment.title || 'Unknown Course',
+              language: (enrollment as any).subject ?? enrollment.language,
+              flag: enrollment.flag,
+              level: enrollment.level,
+              progress: progressPercentage,
+              totalLessons,
+              completedLessons,
+              currentLesson: isCompleted ? totalLessons : (enrollment.currentLesson || 1),
+              rating: enrollment.rating ?? 0,
+              lastAccessed: enrollment.lastAccessed || 'Just now',
+              timeSpent,
+              certificate: enrollment.certificate || (storeCourse as any)?.includesCertificate || false,
+              image: storeCourse?.image ?? enrollment.image,
+              isCompleted: !!isCompleted,
+              assessmentScore: courseProgress.assessmentScore ?? null,
+              assessmentCompleted: courseProgress.assessmentCompleted ?? false,
+              completionDate: courseProgress.completionDate,
+              includesFinalAssessment: (storeCourse as any)?.includesFinalAssessment ?? (enrollment as any).includesFinalAssessment ?? false
+            }
+          })
+        } catch (error) {
+          console.error('Error loading enrolled courses:', error)
+        }
+      }
+    }
+
     setEnrolledCourses(courses)
     
-    // Calculate stats from enhanced data
-    const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0)
-    const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0)
+    // Calculate stats only from logged-in user's enrolled courses and progress
+    const totalLessons = user?.id ? courses.reduce((sum, course) => sum + course.totalLessons, 0) : 0
+    const completedLessons = user?.id ? courses.reduce((sum, course) => sum + course.completedLessons, 0) : 0
+    const completedCourses = user?.id ? courses.filter(c => c.isCompleted === true || c.progress >= 100).length : 0
+    const certificatesEarned = user?.id ? courses.filter(c => (c.isCompleted === true || c.progress >= 100) && c.certificate).length : 0
     const totalTimeSpent = courses.reduce((sum, course) => {
       const [hours, minutes] = course.timeSpent.split('h ')
       return sum + parseInt(hours) + parseInt(minutes) / 60
@@ -640,6 +672,8 @@ export function Dashboard() {
       totalCourses: courses.length,
       totalLessons,
       completedLessons,
+      completedCourses,
+      certificatesEarned,
       totalTimeSpent: `${Math.floor(totalTimeSpent)}h ${Math.round((totalTimeSpent % 1) * 60)}m`,
       averageRating: Math.round(averageRating * 10) / 10,
       streakDays,
@@ -652,113 +686,38 @@ export function Dashboard() {
 
 
 
-  // Function to debug course progress data
-  const debugCourseProgress = (courseId: string) => {
-    try {
-      console.log('=== DEBUGGING COURSE PROGRESS ===')
-      console.log('Course ID:', courseId)
-      
-      // Check enrollment data
-      const savedEnrollments = localStorage.getItem('enrolled_courses')
-      if (savedEnrollments) {
-        const enrollments = JSON.parse(savedEnrollments)
-        const enrollment = enrollments.find((e: any) => e.id === courseId)
-        console.log('Enrollment data:', enrollment)
-      }
-      
-      // Check user progress data
-      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
-      const userProgress = localStorage.getItem(userProgressKey)
-      if (userProgress) {
-        const progressData = JSON.parse(userProgress)
-        const courseProgress = progressData[courseId]
-        console.log('User progress data:', courseProgress)
-      }
-      
-      // Check course-specific progress
-      const courseProgress = localStorage.getItem(`course_progress_${courseId}`)
-      if (courseProgress) {
-        console.log('Course-specific progress:', JSON.parse(courseProgress))
-      }
-      
-      console.log('=== END DEBUG ===')
-    } catch (error) {
-      console.error('Error debugging course progress:', error)
-    }
-  }
-
-  // Function to reset a specific course's progress
-  const resetCourseProgress = (courseId: string) => {
-    try {
-      // Reset progress data for this course
-      const userProgressKey = `user_course_progress_${user?.email || 'anonymous'}`
-      const userProgress = localStorage.getItem(userProgressKey)
-      if (userProgress) {
-        const progressData = JSON.parse(userProgress)
-        if (progressData[courseId]) {
-          // Reset completion status but keep basic structure
-          progressData[courseId] = {
-            ...progressData[courseId],
-            isCompleted: false,
-            completionDate: undefined,
-            completedLessons: 0,
-            assessmentCompleted: false,
-            assessmentScore: null,
-            assessmentDate: undefined,
-            finalScore: undefined,
-            // Clear all lesson progress to reset lesson locks
-            lessons: {},
-            lastUpdated: new Date().toISOString()
-          }
-          localStorage.setItem(userProgressKey, JSON.stringify(progressData))
-        }
-      }
-      
-      // Remove course-specific progress (lesson states: isWatched, isSkipped)
-      localStorage.removeItem(`course_progress_${courseId}`)
-      
-      // Refresh the courses list
-      loadEnrolledCourses()
-      
-      // Redirect to course page with reset parameter to force lesson lock reset
-      router.push(`/courses/${courseId}?reset=true`)
-      
-      toast.success('Course progress reset successfully')
-    } catch (error) {
-      console.error('Error resetting course progress:', error)
-      toast.error('Failed to reset course progress')
-    }
-  }
-
   // Function to unenroll from a specific course
   const unenrollFromCourse = (courseId: string) => {
     try {
-      // Get current enrollments
-      const savedEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
-      
-      // Find the course name before removing it
-      const courseToRemove = savedEnrollments.find((enrollment: any) => enrollment.id === courseId)
-      const courseName = courseToRemove?.name || 'Unknown Course'
-      
-      // Remove the specific course
+      // Get course name from current state or localStorage before removing
+      const currentCourse = enrolledCourses.find(c => c.id === courseId)
+      const courseName = currentCourse?.name || (() => {
+        const savedEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
+        const e = savedEnrollments.find((enrollment: any) => enrollment.id === courseId)
+        return e?.name || 'Unknown Course'
+      })()
+
+      // Remove from store (source of truth for enrolled list) so loadEnrolledCourses won't bring it back
+      if (user?.id) {
+        removeEnrollment(courseId, user.id)
+      }
+
+      // Keep localStorage in sync (user-scoped so only this student's enrollments are updated)
+      const storageKey = user?.id ? `enrolled_courses_${user.id}` : 'enrolled_courses'
+      const savedEnrollments = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses') || '[]')
       const updatedEnrollments = savedEnrollments.filter((enrollment: any) => enrollment.id !== courseId)
-      
-      // Save back to localStorage
-      localStorage.setItem('enrolled_courses', JSON.stringify(updatedEnrollments))
-      
-      // Update local state
+      localStorage.setItem(storageKey, JSON.stringify(updatedEnrollments))
+
+      // Update local state immediately so UI updates without waiting for loadEnrolledCourses
       setEnrolledCourses(prev => prev.filter(course => course.id !== courseId))
-      
-      // Recalculate stats
+
+      // Recalculate stats (will now read from store without this course)
       loadEnrolledCourses()
-      
+
       // Record unenrollment activity
       recordLearningActivity('course_unenrollment', courseName)
-      
-      // Show success toast
+
       toast.success(`Successfully unenrolled from ${courseName}`)
-      
-      console.log(`Unenrolled from course ${courseId}`)
     } catch (error) {
       console.error('Error unenrolling from course:', error)
       toast.error('Failed to unenroll from course. Please try again.')
@@ -1072,6 +1031,11 @@ export function Dashboard() {
     return 'bg-red-500'
   }
 
+  const isCourseCompleted = (c: EnrolledCourse) => c.isCompleted === true || c.progress >= 100
+  const unfinishedCourses = useMemo(() => enrolledCourses.filter(c => !isCourseCompleted(c)), [enrolledCourses])
+  const completedCourses = useMemo(() => enrolledCourses.filter(c => isCourseCompleted(c)), [enrolledCourses])
+  const coursesToShow = enrolledCoursesTab === 'unfinished' ? unfinishedCourses : completedCourses
+
   // Load recent activity from learning activity data
   const loadRecentActivity = () => {
     if (!user?.email) return
@@ -1337,15 +1301,28 @@ export function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl p-6 shadow-sm border"
+            className="bg-white rounded-xl p-6 shadow-sm border cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => {
+              setEnrolledCoursesTab('completed')
+              document.getElementById('enrolled-courses-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setEnrolledCoursesTab('completed')
+                document.getElementById('enrolled-courses-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
           >
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.completedLessons')}</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.completedLessons}</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.completedCourses')}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.completedCourses}</p>
               </div>
             </div>
           </motion.div>
@@ -1375,17 +1352,18 @@ export function Dashboard() {
           >
             <div className="flex items-center">
               <div className="p-2 bg-yellow-100 rounded-lg">
-                <Star className="w-6 h-6 text-yellow-600" />
+                <Award className="w-6 h-6 text-yellow-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.avgRating')}</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.averageRating}</p>
+                <p className="text-sm font-medium text-gray-600">{t('dashboard.stats.certificatesEarned')}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.certificatesEarned}</p>
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - hidden for students */}
+        {user?.role !== 'STUDENT' && (
         <div className="mb-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.quickActions.title')}</h2>
@@ -1433,9 +1411,10 @@ export function Dashboard() {
             </div>
           </div>
         </div>
+        )}
 
                 {/* Enrolled Courses */}
-        <div className="bg-white rounded-xl shadow-sm border">
+        <div id="enrolled-courses-section" className="bg-white rounded-xl shadow-sm border">
           <div className="px-4 md:px-6 py-4 border-b border-gray-200">
             <div className="flex flex-col md:flex-row md:items-center justify-between space-y-3 md:space-y-0">
               <div>
@@ -1454,6 +1433,33 @@ export function Dashboard() {
                 {t('dashboard.enrolledCourses.browseMore')}
               </Button>
             </div>
+            {/* Tabs: Unfinished | Completed */}
+            {enrolledCourses.length > 0 && (
+              <nav className="flex space-x-1 mt-4 pt-2 border-t border-gray-100" aria-label="Enrolled courses tabs">
+                <button
+                  type="button"
+                  onClick={() => setEnrolledCoursesTab('unfinished')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    enrolledCoursesTab === 'unfinished'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  {t('dashboard.enrolledCourses.tabs.unfinished') || 'Unfinished'} ({unfinishedCourses.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnrolledCoursesTab('completed')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    enrolledCoursesTab === 'completed'
+                      ? 'bg-primary-100 text-primary-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  {t('dashboard.enrolledCourses.tabs.completed') || 'Completed'} ({completedCourses.length})
+                </button>
+              </nav>
+            )}
           </div>
           
           <div className="p-4 md:p-6">
@@ -1477,9 +1483,23 @@ export function Dashboard() {
                   </p>
                 </div>
               </div>
+            ) : coursesToShow.length === 0 ? (
+              <div className="text-center py-8 md:py-12">
+                <BookOpen className="w-12 h-12 md:w-16 md:h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">
+                  {enrolledCoursesTab === 'unfinished'
+                    ? (t('dashboard.enrolledCourses.tabs.noUnfinished') || 'No unfinished courses')
+                    : (t('dashboard.enrolledCourses.tabs.noCompleted') || 'No completed courses yet')}
+                </h3>
+                <p className="text-sm md:text-base text-gray-600">
+                  {enrolledCoursesTab === 'unfinished'
+                    ? (t('dashboard.enrolledCourses.tabs.noUnfinishedSubtitle') || 'Complete lessons to see them here.')
+                    : (t('dashboard.enrolledCourses.tabs.noCompletedSubtitle') || 'Finish a course to see it here.')}
+                </p>
+              </div>
             ) : (
               <div className="space-y-4 md:space-y-6">
-                {enrolledCourses.map((course, index) => (
+                {coursesToShow.map((course, index) => (
                   <motion.div
                     key={course.id}
                     initial={{ opacity: 0, x: -20 }}
@@ -1489,7 +1509,13 @@ export function Dashboard() {
                   >
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between space-y-4 lg:space-y-0">
                       <div className="flex items-start space-x-3 md:space-x-4">
-                        <div className="text-3xl md:text-4xl flex-shrink-0">{course.flag}</div>
+                        <div className="w-14 h-14 md:w-16 md:h-16 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                          {course.image ? (
+                            <img src={course.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-2xl md:text-3xl">{course.flag || '📚'}</span>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0 mb-2">
                             <h3 className="text-base md:text-lg font-semibold text-gray-900">{course.name}</h3>
@@ -1554,39 +1580,41 @@ export function Dashboard() {
                               </div>
                             )}
                             
-                            {/* Assessment Status */}
-                            {course.assessmentCompleted ? (
-                              <button
-                                onClick={() => showAssessment(course)}
-                                className="flex items-center space-x-2 text-xs md:text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
-                                title="Click to view assessment details"
-                              >
-                                <Target className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
-                                <span className="text-blue-700 font-medium">Assessment: {course.assessmentScore}%</span>
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  (course.assessmentScore || 0) >= 70 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
-                                </span>
-                              </button>
-                            ) : course.isCompleted && course.certificate ? (
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200 space-y-2 sm:space-y-0">
-                                <div className="flex items-center space-x-2 text-xs md:text-sm">
-                                  <Target className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" />
-                                  <span className="text-yellow-700 font-medium">{t('dashboard.courseStatus.assessmentNotTaken')}</span>
-                                </div>
-                                <Button
-                                  onClick={() => takeAssessment(course)}
-                                  size="sm"
-                                  className="bg-yellow-600 hover:bg-yellow-700 text-white border-0 w-full sm:w-auto"
+                            {/* Assessment Status - only when course has assessment */}
+                            {course.includesFinalAssessment && (
+                              course.assessmentCompleted ? (
+                                <button
+                                  onClick={() => showAssessment(course)}
+                                  className="flex items-center space-x-2 text-xs md:text-sm hover:bg-blue-50 p-2 rounded-lg transition-colors cursor-pointer w-full text-left"
+                                  title="Click to view assessment details"
                                 >
-                                  <Target className="w-3 h-3 mr-1" />
-                                  {t('dashboard.courseStatus.takeAssessment')}
-                                </Button>
-                              </div>
-                            ) : null}
+                                  <Target className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
+                                  <span className="text-blue-700 font-medium">Assessment: {course.assessmentScore}%</span>
+                                  <span className={`px-2 py-1 text-xs rounded-full ${
+                                    (course.assessmentScore || 0) >= 70 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {(course.assessmentScore || 0) >= 70 ? 'Passed' : 'Not Passed'}
+                                  </span>
+                                </button>
+                              ) : course.isCompleted && course.certificate ? (
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 rounded-lg bg-yellow-50 border border-yellow-200 space-y-2 sm:space-y-0">
+                                  <div className="flex items-center space-x-2 text-xs md:text-sm">
+                                    <Target className="w-3 h-3 md:w-4 md:h-4 text-yellow-600" />
+                                    <span className="text-yellow-700 font-medium">{t('dashboard.courseStatus.assessmentNotTaken')}</span>
+                                  </div>
+                                  <Button
+                                    onClick={() => takeAssessment(course)}
+                                    size="sm"
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white border-0 w-full sm:w-auto"
+                                  >
+                                    <Target className="w-3 h-3 mr-1" />
+                                    {t('dashboard.courseStatus.takeAssessment')}
+                                  </Button>
+                                </div>
+                              ) : null
+                            )}
                             
                             {/* Lesson Progress Details */}
                             <div className="flex flex-col space-y-1 md:flex-row md:items-center md:space-y-0 md:space-x-4 text-xs text-gray-600">
@@ -1613,55 +1641,38 @@ export function Dashboard() {
                         <Button
                           onClick={() => continueLearning(course)}
                           className={`w-full lg:w-auto px-4 md:px-6 py-2 ${
-                            course.isCompleted && course.certificate
+                            course.isCompleted && course.certificate && course.includesFinalAssessment
                               ? 'bg-green-600 hover:bg-green-700' 
                               : 'bg-primary-600 hover:bg-primary-700'
                           }`}
                         >
-                          {course.isCompleted && course.certificate ? (
-                                                          <>
-                                <Target className="w-4 h-4 mr-2" />
-                                {t('dashboard.courseCard.takeAssessment')}
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-4 h-4 mr-2" />
-                                {t('dashboard.courseCard.continue')}
-                              </>
-                            )}
+                          {course.isCompleted && course.certificate && course.includesFinalAssessment ? (
+                            <>
+                              <Target className="w-4 h-4 mr-2" />
+                              {t('dashboard.courseCard.takeAssessment')}
+                            </>
+                          ) : course.isCompleted ? (
+                            <>
+                              <Play className="w-4 h-4 mr-2" />
+                              {t('dashboard.courseCard.retakeCourse')}
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-4 h-4 mr-2" />
+                              {t('dashboard.courseCard.continue')}
+                            </>
+                          )}
                         </Button>
-                        
-                        {/* Secondary Action Buttons - Mobile Grid */}
-                        <div className="grid grid-cols-2 gap-2 lg:flex lg:flex-col lg:space-y-2">
-                          <Button
-                            onClick={() => debugCourseProgress(course.id)}
-                            variant="outline"
-                            className="px-3 md:px-4 py-2 text-xs md:text-sm text-blue-600 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors"
-                            title="Debug course progress data (check console)"
-                          >
-                            <Bug className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                            <span className="hidden sm:inline">Debug</span>
-                          </Button>
-                          <Button
-                            onClick={() => resetCourseProgress(course.id)}
-                            variant="outline"
-                            className="px-3 md:px-4 py-2 text-xs md:text-sm text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-colors"
-                            title="Reset course progress (keeps enrollment)"
-                          >
-                            <RotateCcw className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                            <span className="hidden sm:inline">Reset</span>
-                          </Button>
-                        </div>
                         
                         {/* Unenroll Button - Full Width on Mobile */}
                         <Button
                           onClick={() => showUnenrollConfirmation(course)}
                           variant="outline"
                           className="w-full lg:w-auto px-3 md:px-4 py-2 text-xs md:text-sm text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400 transition-colors"
-                          title="Remove this course from your enrolled courses"
+                          title={t('dashboard.courseCard.unenrollConfirm.title')}
                         >
                           <X className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                          {t('dashboard.courseCard.removeCourse')}
+                          {t('dashboard.courseCard.unenrollCourse')}
                         </Button>
                       </div>
                     </div>
@@ -1735,7 +1746,8 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity - hidden for students (shown on Settings page instead) */}
+        {user?.role !== 'STUDENT' && (
         <div className="mt-8 bg-white rounded-xl shadow-sm border">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.recentActivity.title')}</h2>
@@ -1807,6 +1819,7 @@ export function Dashboard() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Certificate Modal */}
@@ -1827,52 +1840,88 @@ export function Dashboard() {
               </div>
             </div>
             
-            {/* Certificate Content */}
+            {/* Certificate Content - same layout as course details certificate */}
             <div className="p-8">
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-8 text-center">
-                <div className="text-6xl mb-4">🏆</div>
-                <h1 className="text-3xl font-bold text-gray-800 mb-2">
-                  {t('common.certificateOfCompletion')}
-                </h1>
-                <p className="text-lg text-gray-600 mb-6">
-                  This is to certify that
-                </p>
-                <h2 className="text-2xl font-bold text-blue-600 mb-4">
-                  {selectedCourseForModal.name}
-                </h2>
-                <p className="text-lg text-gray-600 mb-6">
-                  has successfully completed the course
-                </p>
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                  {selectedCourseForModal.name}
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  with a final score of <span className="font-semibold text-green-600">
-                    {selectedCourseForModal.assessmentScore || 'N/A'}%
-                  </span>
-                </p>
-                <div className="text-sm text-gray-500">
-                  Completed on: {selectedCourseForModal.completionDate ? 
-                    new Date(selectedCourseForModal.completionDate).toLocaleDateString() : 
-                    'Date not available'
-                  }
+              <div className="border-8 border-double border-gray-300 rounded-lg p-8 bg-gradient-to-br from-yellow-50 to-orange-50 relative overflow-hidden">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-yellow-400 to-orange-400 opacity-10 rounded-full -translate-x-16 -translate-y-16" aria-hidden />
+                <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-tl from-blue-400 to-purple-400 opacity-10 rounded-full translate-x-20 translate-y-20" aria-hidden />
+                
+                {/* Certificate Header */}
+                <div className="text-center mb-8">
+                  <div className="w-24 h-24 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <Award className="w-12 h-12 text-white" />
+                  </div>
+                  <h1 className="text-4xl font-serif text-gray-800 mb-2">{t('common.certificateOfCompletion')}</h1>
+                  <p className="text-lg text-gray-600">This is to certify that</p>
+                </div>
+                
+                {/* Student Name */}
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2 border-b-2 border-gray-300 pb-2">
+                    {user?.name || 'Student Name'}
+                  </h2>
+                  <p className="text-lg text-gray-600">has successfully completed the course</p>
+                </div>
+                
+                {/* Course Details */}
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-blue-800 mb-2">{selectedCourseForModal.name}</h3>
+                  <div className="flex justify-center space-x-8 text-sm text-gray-500 flex-wrap gap-2">
+                    <span>Level: {selectedCourseForModal.level}</span>
+                    <span>Subject: {selectedCourseForModal.language}</span>
+                    <span>Lessons: {selectedCourseForModal.totalLessons}</span>
+                  </div>
+                </div>
+                
+                {/* Completion Details */}
+                <div className="text-center mb-8">
+                  <p className="text-gray-600 mb-2">Completed on</p>
+                  <p className="text-xl font-semibold text-gray-800">
+                    {selectedCourseForModal.completionDate
+                      ? new Date(selectedCourseForModal.completionDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                      : new Date().toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                    }
+                  </p>
+                </div>
+                
+                {/* Signature Section */}
+                <div className="flex justify-between items-end mt-12">
+                  <div className="text-center">
+                    <div className="w-32 h-0.5 bg-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Course Instructor</p>
+                    <p className="font-semibold text-gray-800">Global Learning Center</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-32 h-0.5 bg-gray-400 mb-2" />
+                    <p className="text-sm text-gray-600">Platform Director</p>
+                    <p className="font-semibold text-gray-800">Global Language Training Center</p>
+                  </div>
                 </div>
               </div>
               
               {/* Action Buttons */}
-              <div className="flex justify-center space-x-4 mt-6">
-                <Button 
-                  onClick={() => setShowCertificateModal(false)}
-                  variant="outline"
-                >
-                  {t('common.close')}
-                </Button>
+              <div className="flex justify-center space-x-4 mt-8">
                 <Button 
                   onClick={() => downloadCertificatePDF(selectedCourseForModal)}
-                  className="bg-primary-600 hover:bg-primary-700"
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   {t('common.downloadCertificate')}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowCertificateModal(false)}
+                >
+                  {t('common.close')}
                 </Button>
               </div>
             </div>
@@ -1978,16 +2027,16 @@ export function Dashboard() {
       {showUnenrollConfirm && courseToUnenroll && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.courseCard.removeConfirm.title')}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('dashboard.courseCard.unenrollConfirm.title')}</h3>
             <p className="text-gray-700 mb-6">
-              {t('dashboard.courseCard.removeConfirm.message')}
+              {t('dashboard.courseCard.unenrollConfirm.message')}
             </p>
             <div className="flex justify-center space-x-3">
               <Button variant="outline" onClick={() => setShowUnenrollConfirm(false)}>
-                {t('dashboard.courseCard.removeConfirm.cancel')}
+                {t('dashboard.courseCard.unenrollConfirm.cancel')}
               </Button>
               <Button variant="destructive" onClick={confirmUnenroll}>
-                {t('dashboard.courseCard.removeConfirm.confirm')}
+                {t('dashboard.courseCard.unenrollConfirm.confirm')}
               </Button>
             </div>
           </div>

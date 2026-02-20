@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 export default function TestAuthPage() {
   const { user, isAuthenticated, isLoading, login, logout, register, clearAuth, checkAuthStatus, createDemoUser } = useAuthStore()
   const { courses, enrollments, fetchCourses, enrollInCourse } = useCoursesStore()
-  const { profile, updateProfile } = useUserStore()
+  const profile = useUserStore((s) => (user?.id ? s.getProfile(user.id) : null))
 
   const testLogin = async () => {
     try {
@@ -319,7 +319,7 @@ export default function TestAuthPage() {
               <p><strong>User:</strong> {user ? JSON.stringify(user, null, 2) : 'None'}</p>
               <p><strong>Courses:</strong> {courses.length}</p>
               <p><strong>Enrollments:</strong> {enrollments.length}</p>
-              <p><strong>Profile:</strong> {profile ? 'Present' : 'None'}</p>
+              <p><strong>Profile:</strong> {profile ? 'Present' : 'None'} (per user)</p>
             </div>
           </div>
 

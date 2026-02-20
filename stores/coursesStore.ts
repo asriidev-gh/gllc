@@ -27,7 +27,13 @@ export interface Course {
   duration: string
   lessons: number
   instructor: string
+  /** User id of the teacher who created the course (for ownership filtering) */
+  instructorId?: string
   price: number
+  /** Currency code when price > 0 (e.g. USD, EUR) */
+  currency?: string
+  /** When true and price is 0, course is free only for premium users */
+  freeForPremiumOnly?: boolean
   image?: string
   category: string[]
   createdAt: string
@@ -44,6 +50,8 @@ export interface Course {
   includesCertificate?: boolean
   /** Whether course includes a final assessment */
   includesFinalAssessment?: boolean
+  /** Prerequisites/requirements (e.g. "No prior experience required") */
+  requirements?: string[]
 }
 
 export interface Enrollment {
@@ -69,6 +77,7 @@ export interface CoursesState {
   updateCourse: (courseId: string, updates: Partial<Course>) => void
   deleteCourse: (courseId: string) => void
   enrollInCourse: (courseId: string, userId: string) => Promise<Enrollment>
+  removeEnrollment: (courseId: string, userId: string) => void
   updateProgress: (enrollmentId: string, lessonId: string, progress: number) => void
   getEnrolledCourses: (userId: string) => Course[]
   getEnrollment: (courseId: string, userId: string) => Enrollment | null
@@ -148,8 +157,15 @@ export const useCoursesStore = create<CoursesState>()(
             }
           ]
           
-          set({ courses: mockCourses, isLoading: false })
-          return mockCourses
+          set((state) => {
+            const existingIds = new Set(state.courses.map((c) => c.id))
+            const newCourses = mockCourses.filter((c) => !existingIds.has(c.id))
+            return {
+              courses: [...state.courses, ...newCourses],
+              isLoading: false
+            }
+          })
+          return get().courses
         } catch (error) {
           set({ isLoading: false })
           throw error
@@ -215,6 +231,15 @@ export const useCoursesStore = create<CoursesState>()(
         }))
         
         return newEnrollment
+      },
+
+      // Remove enrollment (unenroll)
+      removeEnrollment: (courseId: string, userId: string) => {
+        set(state => ({
+          enrollments: state.enrollments.filter(
+            e => !(e.courseId === courseId && e.userId === userId)
+          )
+        }))
       },
 
       // Update progress

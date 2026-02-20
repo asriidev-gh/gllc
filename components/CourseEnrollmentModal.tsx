@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, CheckCircle, Star, Clock, Users, BookOpen, CreditCard, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useCoursesStore } from '@/stores'
 
 interface CourseEnrollmentModalProps {
   isOpen: boolean
@@ -29,12 +29,12 @@ interface CourseEnrollmentModalProps {
 export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollmentModalProps) {
   const router = useRouter()
   const { user, isAuthenticated } = useAuthStore()
+  const { enrollInCourse } = useCoursesStore()
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [enrollmentStep, setEnrollmentStep] = useState<'confirm' | 'processing' | 'success'>('confirm')
 
   const handleEnroll = async () => {
-    if (!isAuthenticated) {
-      // Redirect to signup/login
+    if (!isAuthenticated || !user) {
       alert('Please sign up or log in to access this course.')
       onClose()
       return
@@ -44,48 +44,37 @@ export function CourseEnrollmentModal({ isOpen, onClose, course }: CourseEnrollm
     setEnrollmentStep('processing')
 
     try {
-      // Simulate enrollment process
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // In real app, this would:
-      // 1. Call backend API to create enrollment
-      // 2. Add course to user's enrolled courses
-      // 3. Grant access to course content
-      
-      // For now, save to localStorage
-      const existingEnrollments = JSON.parse(localStorage.getItem('enrolled_courses') || '[]')
-      const newEnrollment = {
-        id: course.id,
-        name: course.name,
-        language: course.subject ?? (course as any).language,
-        flag: course.flag,
-        level: course.level,
-        progress: 0,
-        totalLessons: course.totalLessons,
-        completedLessons: 0,
-        currentLesson: 1,
-        rating: course.rating,
-        lastAccessed: 'Just now',
-        timeSpent: '0h 0m',
-        certificate: false,
-        enrolledAt: new Date().toISOString(),
-        price: 'FREE' // Changed to FREE
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Save to store (persisted db) first
+      await enrollInCourse(course.id, user.id)
+
+      // Also sync to localStorage (user-scoped so dashboard shows only this student's completed lessons)
+      const storageKey = user?.id ? `enrolled_courses_${user.id}` : 'enrolled_courses'
+      const existingEnrollments = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses') || '[]')
+      const isAlreadyInLocal = existingEnrollments.some((e: any) => e.id === course.id)
+      if (!isAlreadyInLocal) {
+        const newEnrollment = {
+          id: course.id,
+          name: course.name,
+          language: course.subject ?? (course as any).language,
+          flag: course.flag,
+          level: course.level,
+          progress: 0,
+          totalLessons: course.totalLessons,
+          completedLessons: 0,
+          currentLesson: 1,
+          rating: course.rating,
+          lastAccessed: 'Just now',
+          timeSpent: '0h 0m',
+          certificate: false,
+          enrolledAt: new Date().toISOString(),
+          price: 'FREE'
+        }
+        localStorage.setItem(storageKey, JSON.stringify([...existingEnrollments, newEnrollment]))
       }
       
-      // Check if already enrolled
-      const isAlreadyEnrolled = existingEnrollments.some((enrollment: any) => enrollment.id === course.id)
-      
-      if (isAlreadyEnrolled) {
-        alert('You are already enrolled in this course!')
-        onClose()
-        return
-      }
-      
-      // Add new enrollment
-      const updatedEnrollments = [...existingEnrollments, newEnrollment]
-      localStorage.setItem('enrolled_courses', JSON.stringify(updatedEnrollments))
-      
-      console.log('Course enrolled successfully:', newEnrollment)
+      console.log('Course enrolled successfully (saved to store and localStorage):', course.name)
       
       // Show success
       setEnrollmentStep('success')

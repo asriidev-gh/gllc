@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   useReactTable,
@@ -34,8 +34,10 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useCoursesStore } from '@/stores/coursesStore'
+import { useUserStore } from '@/stores/userStore'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 import { CreateCourseModal } from './CreateCourseModal'
 import type { Course as StoreCourse } from '@/stores/coursesStore'
 
@@ -47,8 +49,23 @@ interface Course {
   instructor: string
   status: 'active' | 'draft' | 'inactive' | 'archived'
   price: number
+  /** Currency code when price > 0 (e.g. USD, PHP) */
+  currency?: string
   createdAt: string
   tags: string[]
+}
+
+type CourseColumnDef = ColumnDef<Course>[]
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', JPY: '¥', INR: '₹', AUD: 'A$', CAD: 'C$',
+  CHF: 'Fr', CNY: '¥', MXN: 'MX$', PHP: '₱'
+}
+
+function formatPrice(price: number, currencyCode?: string): string {
+  if (price == null || price <= 0) return 'Free'
+  const symbol = (currencyCode && CURRENCY_SYMBOLS[currencyCode]) || '$'
+  return `${symbol}${Number(price).toFixed(2)}`
 }
 
 interface Student {
@@ -56,14 +73,22 @@ interface Student {
   name: string
   email: string
   enrolledCourses: number
-  progress: number
+  memberSince: string
   lastActive: string
+  membership?: string
 }
+
+const MEMBERSHIP_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: 'new - no membership', labelKey: 'admin.students.membership.nonMember' },
+  { value: 'premium member', labelKey: 'admin.students.membership.premiumMember' },
+  { value: 'vip member', labelKey: 'admin.students.membership.vipMember' }
+]
 
 export const TeacherDashboard: React.FC = () => {
   const { t } = useLanguage()
-  const { user, hasPermission, registeredUsers, setUserPassword, updateUserStatusAndRemarks, createUserAsAdmin, updateUserRole } = useAuthStore()
+  const { user, hasPermission, registeredUsers, setUserPassword, updateUserStatusAndRemarks, createUserAsAdmin, updateUserRole, updateUserMembership, syncRegisteredUsersFromStorage } = useAuthStore()
   const { courses: storeCourses, addCourse, deleteCourse, updateCourse, enrollments } = useCoursesStore()
+  const profilesByUserId = useUserStore((s) => s.profilesByUserId)
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'analytics' | 'users'>('overview')
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'draft' | 'inactive'>('all')
@@ -71,6 +96,28 @@ export const TeacherDashboard: React.FC = () => {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [courseToDelete, setCourseToDelete] = useState<{ id: string; title: string } | null>(null)
   const [editingStatusCourseId, setEditingStatusCourseId] = useState<string | null>(null)
+  const [studentsFilterByCourseId, setStudentsFilterByCourseId] = useState<string | null>(null)
+  const [coursesFilterByStudentId, setCoursesFilterByStudentId] = useState<string | null>(null)
+  const [studentsFilterByTeacherId, setStudentsFilterByTeacherId] = useState<string | null>(null)
+  const [studentsMembershipFilter, setStudentsMembershipFilter] = useState<string>('all')
+  const [studentsSearchQuery, setStudentsSearchQuery] = useState('')
+  const [showPaymentProofModal, setShowPaymentProofModal] = useState(false)
+  const [paymentProofDataUrl, setPaymentProofDataUrl] = useState<string | null>(null)
+
+  const isProofImage = (dataUrl: string) => /^data:image\//i.test(dataUrl)
+  const isProofPdf = (dataUrl: string) => /^data:application\/pdf/i.test(dataUrl)
+  const getPaymentStatusClass = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+      case 'approved':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
+      case 'rejected':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+      default:
+        return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+    }
+  }
 
   // Normalize stored status (persisted courses may have been saved before status existed, or with different casing)
   const normalizeStatus = (s: unknown): Course['status'] => {
@@ -80,52 +127,81 @@ export const TeacherDashboard: React.FC = () => {
     return 'active'
   }
 
-  // Map store courses (from create course flow) to dashboard Course shape
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
+
+  // When admin opens Students tab, ensure we have latest from persisted storage (rehydration can lag)
+  useEffect(() => {
+    if (isAdmin && activeTab === 'students' && typeof window !== 'undefined') {
+      syncRegisteredUsersFromStorage()
+    }
+  }, [isAdmin, activeTab, syncRegisteredUsersFromStorage])
+
+  // For teachers: only courses they created (instructorId === user.id, or legacy: instructor name matches). For admin: all courses.
+  const coursesForCurrentUser = useMemo(() => {
+    if (isAdmin) return storeCourses
+    const uid = user?.id
+    const teacherName = (user?.name ?? '').trim().toLowerCase()
+    if (!uid && !teacherName) return []
+    return storeCourses.filter((c) => {
+      if (c.instructorId) return c.instructorId === uid
+      // Legacy courses without instructorId: match by instructor name
+      const inv = (c.instructor ?? '').trim().toLowerCase()
+      return inv === teacherName
+    })
+  }, [storeCourses, user?.id, user?.name, isAdmin])
+
+  // Teacher's course IDs: used for student filtering (only students enrolled in this teacher's courses)
+  const teacherCourseIds = useMemo(
+    () => coursesForCurrentUser.map((c) => c.id),
+    [coursesForCurrentUser]
+  )
+
+  // Map store courses to dashboard Course shape; students count from enrollments
   const courses: Course[] = useMemo(() => {
-    return storeCourses.map(c => ({
+    const enrollmentCountByCourseId: Record<string, number> = {}
+    ;(enrollments || []).forEach((e) => {
+      enrollmentCountByCourseId[e.courseId] = (enrollmentCountByCourseId[e.courseId] ?? 0) + 1
+    })
+    return coursesForCurrentUser.map(c => ({
       id: c.id,
       title: c.title,
       level: c.level ? c.level.charAt(0) + c.level.slice(1).toLowerCase() : '—',
-      students: c.students ?? 0,
+      students: enrollmentCountByCourseId[c.id] ?? c.students ?? 0,
       instructor: c.instructor ?? '—',
       status: normalizeStatus(c.status),
       price: c.price ?? 0,
+      currency: c.currency,
       createdAt: c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : '',
       tags: Array.isArray(c.category) ? c.category : []
     }))
-  }, [storeCourses])
+  }, [coursesForCurrentUser, enrollments])
 
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERADMIN'
-
-  // Teacher's course IDs (admin: all courses; teacher: only courses they created)
-  const teacherCourseIds = useMemo(
-    () =>
-      isAdmin
-        ? storeCourses.map((c) => c.id)
-        : storeCourses.filter((c) => c.instructor === user?.name).map((c) => c.id),
-    [storeCourses, user?.name, isAdmin]
-  )
-
-  // Students: admin = all registered students (any enrollment); teacher = only enrolled in their courses
+  // Students: admin = all registered students; teacher = anyone enrolled in their courses (from enrollments + registeredUsers)
   const students: Student[] = useMemo(() => {
     const enrollmentsInScope = isAdmin
       ? (enrollments || [])
       : (enrollments || []).filter((e) => teacherCourseIds.includes(e.courseId))
-    const list = isAdmin
-      ? (registeredUsers || []).filter((u) => u.role === 'STUDENT')
-      : (registeredUsers || []).filter((u) => {
-          const enrolledStudentIds = Array.from(new Set(enrollmentsInScope.map((e) => e.userId)))
-          return u.role === 'STUDENT' && enrolledStudentIds.includes(u.id)
-        })
+    const enrolledUserIds = Array.from(new Set(enrollmentsInScope.map((e) => e.userId)))
+    const userById = new Map((registeredUsers || []).map((u) => [u.id, u]))
+    let list: Array<{ id: string; name: string; email: string; createdAt?: string; membership?: string }>
+    if (isAdmin) {
+      list = (registeredUsers || [])
+        .filter((u) => u.role === 'STUDENT')
+        .map((u) => ({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt, membership: u.membership }))
+    } else {
+      list = []
+      for (const uid of enrolledUserIds) {
+        const u = userById.get(uid)
+        if (u && u.role === 'STUDENT') {
+          list.push({ id: u.id, name: u.name, email: u.email, createdAt: u.createdAt, membership: u.membership })
+        } else if (!list.some((x) => x.id === uid)) {
+          list.push({ id: uid, name: 'Unknown', email: '—' })
+        }
+      }
+    }
     return list.map((u) => {
       const userEnrollments = enrollmentsInScope.filter((e) => e.userId === u.id)
       const enrolledCourses = userEnrollments.length
-      const progress =
-        enrolledCourses > 0
-          ? Math.round(
-              userEnrollments.reduce((sum, e) => sum + e.progress, 0) / enrolledCourses
-            )
-          : 0
       const lastAccessed = userEnrollments
         .map((e) => e.lastAccessedAt)
         .filter(Boolean)
@@ -136,16 +212,67 @@ export const TeacherDashboard: React.FC = () => {
         : u.createdAt
         ? new Date(u.createdAt).toISOString().split('T')[0]
         : '—'
+      const memberSince = u.createdAt
+        ? new Date(u.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+        : '—'
       return {
         id: u.id,
         name: u.name,
         email: u.email,
         enrolledCourses,
-        progress,
+        memberSince,
         lastActive,
+        membership: u.membership ?? 'new - no membership',
       }
     })
   }, [registeredUsers, enrollments, teacherCourseIds, isAdmin])
+
+  // When viewing Students tab with a course filter, show only students enrolled in that course
+  const enrollmentsInScopeForFilter = useMemo(
+    () =>
+      isAdmin ? (enrollments || []) : (enrollments || []).filter((e) => teacherCourseIds.includes(e.courseId)),
+    [enrollments, teacherCourseIds, isAdmin]
+  )
+  const filteredStudents = useMemo(() => {
+    let out = students
+    if (studentsFilterByCourseId) {
+      out = out.filter((s) =>
+        enrollmentsInScopeForFilter.some(
+          (e) => e.userId === s.id && e.courseId === studentsFilterByCourseId
+        )
+      )
+    } else if (studentsFilterByTeacherId) {
+      const teacher = (registeredUsers || []).find((u) => u.id === studentsFilterByTeacherId)
+      const teacherName = (teacher?.name ?? '').trim().toLowerCase()
+      const teacherCourseIds = new Set(
+        storeCourses
+          .filter((c) => (c.instructor ?? '').trim().toLowerCase() === teacherName)
+          .map((c) => c.id)
+      )
+      const enrolledUserIds = new Set(
+        (enrollments || []).filter((e) => teacherCourseIds.has(e.courseId)).map((e) => e.userId)
+      )
+      out = out.filter((s) => enrolledUserIds.has(s.id))
+    }
+    if (studentsMembershipFilter !== 'all') {
+      out = out.filter((s) => (s.membership ?? 'new - no membership') === studentsMembershipFilter)
+    }
+    if (studentsSearchQuery.trim()) {
+      const q = studentsSearchQuery.trim().toLowerCase()
+      out = out.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
+      )
+    }
+    return out
+  }, [students, studentsFilterByCourseId, studentsFilterByTeacherId, studentsMembershipFilter, studentsSearchQuery, enrollmentsInScopeForFilter, registeredUsers, storeCourses, enrollments])
+
+  const membershipCounts = useMemo(() => {
+    const nonMember = students.filter((s) => (s.membership ?? 'new - no membership') === 'new - no membership').length
+    const premium = students.filter((s) => (s.membership ?? '') === 'premium member').length
+    const vip = students.filter((s) => (s.membership ?? '') === 'vip member').length
+    return { nonMember, premium, vip }
+  }, [students])
 
   // Navigation functions for stats cards
   const navigateToCourses = () => {
@@ -196,13 +323,22 @@ export const TeacherDashboard: React.FC = () => {
     return courses.filter(course => course.status === activeFilter)
   }, [courses, activeFilter])
 
+  // When viewing Courses tab with a student filter, show only courses that student is enrolled in
+  const coursesForTable = useMemo(() => {
+    if (!coursesFilterByStudentId) return filteredCourses
+    const enrolledCourseIds = new Set(
+      (enrollments || []).filter((e) => e.userId === coursesFilterByStudentId).map((e) => e.courseId)
+    )
+    return filteredCourses.filter((c) => enrolledCourseIds.has(c.id))
+  }, [filteredCourses, coursesFilterByStudentId, enrollments])
+
   const canCreateCourse = hasPermission('create_courses')
   const canEditCourse = hasPermission('edit_courses')
   const canDeleteCourse = hasPermission('delete_courses')
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
-  const coursesColumns = useMemo<ColumnDef<Course>[]>(() => [
+  const coursesColumns = useMemo(() => ([
     {
       id: 'title',
       accessorKey: 'title',
@@ -223,7 +359,24 @@ export const TeacherDashboard: React.FC = () => {
       id: 'students',
       accessorKey: 'students',
       header: () => (t('teacher.dashboard.courses.students') || 'Students'),
-      cell: ({ getValue }) => <span className="text-sm text-gray-900 dark:text-gray-100">{getValue() as number}</span>,
+      cell: ({ row, getValue }) => {
+        const count = getValue() as number
+        const courseId = row.original.id
+        return (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setStudentsFilterByCourseId(courseId)
+              setActiveTab('students')
+            }}
+            className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+            title={t('teacher.dashboard.courses.viewStudentsForCourse') || 'View students for this course'}
+          >
+            {count}
+          </button>
+        )
+      },
     },
     {
       id: 'instructor',
@@ -281,9 +434,10 @@ export const TeacherDashboard: React.FC = () => {
       header: () => (t('teacher.dashboard.courses.price') || 'Price'),
       cell: ({ row }) => {
         const p = row.original.price
+        const currency = row.original.currency
         return (
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            {p != null && p > 0 ? `$${p.toFixed(2)}` : 'Free'}
+            {formatPrice(p, currency)}
           </span>
         )
       },
@@ -324,6 +478,14 @@ export const TeacherDashboard: React.FC = () => {
           <div className="flex space-x-2">
             <button
               type="button"
+              onClick={() => router.push(`/courses/${course.id}`)}
+              className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+              title={t('teacher.dashboard.courses.preview') || 'Preview'}
+            >
+              <PlayCircle className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => openCourseDetails(course.id)}
               className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
               title={t('teacher.dashboard.courses.viewDetails') || 'View details'}
@@ -354,10 +516,10 @@ export const TeacherDashboard: React.FC = () => {
         )
       },
     },
-  ], [t, canEditCourse, canDeleteCourse, editingStatusCourseId, updateCourse])
+  ] as CourseColumnDef), [t, canEditCourse, canDeleteCourse, editingStatusCourseId, updateCourse])
 
   const coursesTable = useReactTable({
-    data: filteredCourses,
+    data: coursesForTable,
     columns: coursesColumns,
     state: { columnFilters },
     onColumnFiltersChange: setColumnFilters,
@@ -416,6 +578,14 @@ export const TeacherDashboard: React.FC = () => {
   const [changePasswordError, setChangePasswordError] = useState('')
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const allUsers = useMemo(() => registeredUsers || [], [registeredUsers])
+
+  // Admin must not see Super Admin filter; reset if they had it selected
+  useEffect(() => {
+    if (user?.role === 'ADMIN' && usersRoleFilter === 'SUPERADMIN') {
+      setUsersRoleFilter('all')
+    }
+  }, [user?.role, usersRoleFilter])
+
   const filteredUsers = useMemo(() => {
     let list = allUsers
     if (usersRoleFilter !== 'all') {
@@ -435,6 +605,32 @@ export const TeacherDashboard: React.FC = () => {
     return list
   }, [allUsers, usersRoleFilter, usersStatusFilter, usersNameFilter, usersEmailFilter])
 
+  // Per-teacher: count of distinct students enrolled in courses taught by that teacher (instructor name match)
+  const studentCountByTeacherId = useMemo(() => {
+    const out: Record<string, number> = {}
+    const teachers = allUsers.filter((u) => u.role === 'TEACHER')
+    for (const t of teachers) {
+      const teacherName = (t.name ?? '').trim().toLowerCase()
+      const courseIds = new Set(
+        storeCourses.filter((c) => (c.instructor ?? '').trim().toLowerCase() === teacherName).map((c) => c.id)
+      )
+      const userIds = new Set(
+        (enrollments || []).filter((e) => courseIds.has(e.courseId)).map((e) => e.userId)
+      )
+      out[t.id] = userIds.size
+    }
+    return out
+  }, [allUsers, storeCourses, enrollments])
+
+  // Per-student: count of enrolled courses
+  const enrolledCoursesCountByStudentId = useMemo(() => {
+    const out: Record<string, number> = {}
+    ;(enrollments || []).forEach((e) => {
+      out[e.userId] = (out[e.userId] ?? 0) + 1
+    })
+    return out
+  }, [enrollments])
+
   const formatDateTime = (iso: string | null | undefined) => {
     if (!iso) return '—'
     try {
@@ -445,7 +641,7 @@ export const TeacherDashboard: React.FC = () => {
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
       case 'draft': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
@@ -454,7 +650,7 @@ export const TeacherDashboard: React.FC = () => {
     }
   }
 
-  return (
+  const dashboardContent = (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
@@ -490,6 +686,11 @@ export const TeacherDashboard: React.FC = () => {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
+                  {isAdmin && tab.id === 'students' && membershipCounts.nonMember > 0 && (
+                    <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title={t('admin.students.nonMemberCountTitle') || 'Non-members needing attention'}>
+                      {membershipCounts.nonMember}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -678,10 +879,28 @@ export const TeacherDashboard: React.FC = () => {
             className="space-y-6"
           >
             {/* Course Actions */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {t('teacher.dashboard.courses.title') || 'My Courses'}
               </h2>
+              {coursesFilterByStudentId && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t('teacher.dashboard.courses.filteredByStudent') || 'Showing courses for'}:{' '}
+                    <strong className="text-gray-900 dark:text-white">
+                      {students.find((s) => s.id === coursesFilterByStudentId)?.name ?? coursesFilterByStudentId}
+                    </strong>
+                    {' '}({coursesForTable.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCoursesFilterByStudentId(null)}
+                    className="text-sm px-2 py-1 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {t('teacher.dashboard.courses.clearFilter') || 'Clear filter'}
+                  </button>
+                </div>
+              )}
               {canCreateCourse && (
                 <button 
                   onClick={() => {
@@ -818,60 +1037,237 @@ export const TeacherDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
-            <h2 className="text-xl font-semibold text-gray-900">
-              {t('teacher.dashboard.students.title') || 'My Students'}
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {t('teacher.dashboard.students.title') || 'My Students'}
+              </h2>
+              {isAdmin && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder={t('admin.students.filterPlaceholder') || 'Filter by name or email...'}
+                    value={studentsSearchQuery}
+                    onChange={(e) => setStudentsSearchQuery(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white min-w-[180px]"
+                  />
+                  <select
+                    value={studentsMembershipFilter}
+                    onChange={(e) => setStudentsMembershipFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="all">{t('admin.students.filterAll') || 'All memberships'}</option>
+                    {MEMBERSHIP_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {t(opt.labelKey) || opt.value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {studentsFilterByCourseId && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t('teacher.dashboard.students.filteredByCourse') || 'Showing students enrolled in'}:{' '}
+                    <strong className="text-gray-900 dark:text-white">
+                      {courses.find((c) => c.id === studentsFilterByCourseId)?.title ?? studentsFilterByCourseId}
+                    </strong>
+                    {' '}({filteredStudents.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStudentsFilterByCourseId(null)}
+                    className="text-sm px-2 py-1 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {t('teacher.dashboard.students.clearFilter') || 'Clear filter'}
+                  </button>
+                </div>
+              )}
+              {studentsFilterByTeacherId && !studentsFilterByCourseId && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {t('teacher.dashboard.students.filteredByTeacher') || 'Showing students for teacher'}:{' '}
+                    <strong className="text-gray-900 dark:text-white">
+                      {(registeredUsers || []).find((u) => u.id === studentsFilterByTeacherId)?.name ?? studentsFilterByTeacherId}
+                    </strong>
+                    {' '}({filteredStudents.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setStudentsFilterByTeacherId(null)}
+                    className="text-sm px-2 py-1 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {t('teacher.dashboard.students.clearFilter') || 'Clear filter'}
+                  </button>
+                </div>
+              )}
+            </div>
 
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            {isAdmin && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
+                  onClick={() => setStudentsMembershipFilter('new - no membership')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setStudentsMembershipFilter('new - no membership')}
+                >
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {t('admin.students.membership.nonMember') || 'non member'}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{membershipCounts.nonMember}</p>
+                </div>
+                <div
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
+                  onClick={() => setStudentsMembershipFilter('premium member')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setStudentsMembershipFilter('premium member')}
+                >
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {t('admin.students.membership.premiumMember') || 'premium member'}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{membershipCounts.premium}</p>
+                </div>
+                <div
+                  className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
+                  onClick={() => setStudentsMembershipFilter('vip member')}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && setStudentsMembershipFilter('vip member')}
+                >
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {t('admin.students.membership.vipMember') || 'vip member'}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{membershipCounts.vip}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('teacher.dashboard.students.name') || 'Name'}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('teacher.dashboard.students.email') || 'Email'}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('teacher.dashboard.students.courses') || 'Courses'}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {t('teacher.dashboard.students.progress') || 'Progress'}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('teacher.dashboard.students.memberSince') || 'Member Since'}
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('teacher.dashboard.students.lastActive') || 'Last Active'}
                       </th>
+                      {isAdmin && (
+                        <>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {t('admin.students.paymentStatus') || 'Payment Status'}
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {t('admin.students.action') || 'Action'}
+                          </th>
+                        </>
+                      )}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {students.map((student) => (
-                      <tr key={student.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.enrolledCourses}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div
-                                className="bg-green-600 h-2 rounded-full"
-                                style={{ width: `${student.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-gray-900">{student.progress}%</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {student.lastActive}
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 7 : 5} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                          {studentsFilterByCourseId
+                            ? (t('teacher.dashboard.students.noStudentsInCourse') || 'No students enrolled in this course.')
+                            : studentsFilterByTeacherId
+                            ? (t('teacher.dashboard.students.noStudentsForTeacher') || 'No students for this teacher.')
+                            : (t('teacher.dashboard.students.noStudents') || 'No students yet.')}
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredStudents.map((student) => (
+                        <tr key={student.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">{student.name}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {student.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCoursesFilterByStudentId(student.id)
+                                setActiveTab('courses')
+                              }}
+                              className="font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                              title={t('teacher.dashboard.students.viewCoursesForStudent') || 'View courses for this student'}
+                            >
+                              {student.enrolledCourses}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {student.memberSince}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {student.lastActive}
+                          </td>
+                          {isAdmin && (
+                            <React.Fragment>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {(() => {
+                                  const p = profilesByUserId?.[student.id] as any
+                                  const status: string = p?.paymentValidationStatus ?? 'none'
+                                  const proof: string | undefined = p?.paymentProofDataUrl
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ' + getPaymentStatusClass(status)}
+                                      >
+                                        {t(`profile.page.paymentStatus.${status}`) || status}
+                                      </span>
+                                      {proof ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPaymentProofDataUrl(proof)
+                                            setShowPaymentProofModal(true)
+                                          }}
+                                          className="text-primary-600 hover:underline text-sm"
+                                        >
+                                          {t('profile.page.viewUploadedProof') || 'View uploaded proof'}
+                                        </button>
+                                      ) : (
+                                        <span className="text-sm text-gray-400">—</span>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <select
+                                  value={student.membership ?? 'new - no membership'}
+                                  onChange={(e) => {
+                                    const newMembership = e.target.value
+                                    updateUserMembership(student.id, newMembership)
+                                    toast.success(t('admin.students.membershipUpdated') || 'Successfully updated membership')
+                                  }}
+                                  className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                >
+                                  {MEMBERSHIP_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {t(opt.labelKey) || opt.value}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                            </React.Fragment>
+                          )}
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -909,7 +1305,7 @@ export const TeacherDashboard: React.FC = () => {
             <div className="flex flex-wrap gap-2 mb-4">
               {[
                 { key: 'all' as const, label: t('admin.dashboard.users.allRoles') || 'All' },
-                { key: 'SUPERADMIN' as const, label: t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin' },
+                ...(user?.role === 'SUPERADMIN' ? [{ key: 'SUPERADMIN' as const, label: t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin' }] : []),
                 { key: 'ADMIN' as const, label: t('admin.dashboard.users.roleAdmin') || 'Admin' },
                 { key: 'TEACHER' as const, label: t('admin.dashboard.users.roleTeacher') || 'Teacher' },
                 { key: 'STUDENT' as const, label: t('admin.dashboard.users.roleStudent') || 'Student' }
@@ -941,6 +1337,9 @@ export const TeacherDashboard: React.FC = () => {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Email
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        {t('admin.dashboard.users.studentsOrCourses') || 'Students / Courses'}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         {t('admin.dashboard.users.createdAt') || 'Created at'}
@@ -975,7 +1374,9 @@ export const TeacherDashboard: React.FC = () => {
                           className="w-full min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="all">{t('admin.dashboard.users.allRoles') || 'All'}</option>
-                          <option value="SUPERADMIN">{t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin'}</option>
+                          {user?.role === 'SUPERADMIN' && (
+                            <option value="SUPERADMIN">{t('admin.dashboard.users.roleSuperAdmin') || 'Super Admin'}</option>
+                          )}
                           <option value="ADMIN">{t('admin.dashboard.users.roleAdmin') || 'Admin'}</option>
                           <option value="TEACHER">{t('admin.dashboard.users.roleTeacher') || 'Teacher'}</option>
                           <option value="STUDENT">{t('admin.dashboard.users.roleStudent') || 'Student'}</option>
@@ -990,6 +1391,7 @@ export const TeacherDashboard: React.FC = () => {
                           className="w-full min-w-[140px] text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </th>
+                      <th className="px-6 py-2" />
                       <th className="px-6 py-2" />
                       <th className="px-6 py-2" />
                       <th className="px-6 py-2">
@@ -1011,7 +1413,7 @@ export const TeacherDashboard: React.FC = () => {
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <td colSpan={9} className="px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                           {t('admin.dashboard.users.noUsers') || 'No users match the filter.'}
                         </td>
                       </tr>
@@ -1097,6 +1499,36 @@ export const TeacherDashboard: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {u.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                            {u.role === 'TEACHER' ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStudentsFilterByCourseId(null)
+                                  setStudentsFilterByTeacherId(u.id)
+                                  setActiveTab('students')
+                                }}
+                                className="font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                                title={t('admin.dashboard.users.viewStudentsForTeacher') || 'View students for this teacher'}
+                              >
+                                {studentCountByTeacherId[u.id] ?? 0}
+                              </button>
+                            ) : u.role === 'STUDENT' ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCoursesFilterByStudentId(u.id)
+                                  setActiveTab('courses')
+                                }}
+                                className="font-medium text-blue-600 dark:text-blue-400 hover:underline focus:outline-none"
+                                title={t('admin.dashboard.users.viewCoursesForStudent') || 'View courses for this student'}
+                              >
+                                {enrolledCoursesCountByStudentId[u.id] ?? 0}
+                              </button>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                             {formatDateTime(u.createdAt)}
@@ -1688,7 +2120,7 @@ export const TeacherDashboard: React.FC = () => {
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Price</p>
-                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{selectedCourse.price != null && selectedCourse.price > 0 ? `$${selectedCourse.price}` : 'Free'}</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatPrice(selectedCourse.price ?? 0, selectedCourse.currency)}</p>
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                         <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Created</p>
@@ -1790,8 +2222,65 @@ export const TeacherDashboard: React.FC = () => {
               </div>
             </div>
           )}
+          {showPaymentProofModal && paymentProofDataUrl && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowPaymentProofModal(false)
+                setPaymentProofDataUrl(null)
+              }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {t('profile.page.viewUploadedProof') || 'View uploaded proof'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPaymentProofModal(false)
+                      setPaymentProofDataUrl(null)
+                    }}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4 min-h-[300px] flex items-center justify-center bg-gray-100 dark:bg-gray-900">
+                  {isProofImage(paymentProofDataUrl) ? (
+                    <img
+                      src={paymentProofDataUrl}
+                      alt="Payment proof"
+                      className="max-w-full max-h-[70vh] object-contain"
+                    />
+                  ) : isProofPdf(paymentProofDataUrl) ? (
+                    <iframe
+                      src={paymentProofDataUrl}
+                      title="Payment proof"
+                      className="w-full min-h-[70vh] border-0 rounded"
+                    />
+                  ) : (
+                    <p className="text-gray-500">
+                      {t('profile.page.proofViewUnsupported') || 'Preview not available for this file type.'}
+                    </p>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
   )
+  return dashboardContent
 }

@@ -14,6 +14,7 @@ interface FormData {
   email: string
   password: string
   confirmPassword: string
+  promoCode: string
 }
 
 interface FormErrors {
@@ -37,6 +38,7 @@ export default function SignupForm({ onClose, onSwitchToLogin }: SignupFormProps
     email: '',
     password: '',
     confirmPassword: '',
+    promoCode: '',
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
@@ -215,6 +217,21 @@ export default function SignupForm({ onClose, onSwitchToLogin }: SignupFormProps
               <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
             )}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="promoCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {t('auth.signup.promoCodeLabel')} <span className="text-gray-400 font-normal">({t('auth.signup.optional')})</span>
+          </label>
+          <input
+            type="text"
+            id="promoCode"
+            name="promoCode"
+            value={formData.promoCode}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            placeholder={t('auth.signup.promoCodePlaceholder')}
+          />
         </div>
 
         {errors.submit && (

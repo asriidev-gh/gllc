@@ -27,6 +27,8 @@ export interface User {
   status?: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'
   /** Admin notes about the user */
   remarks?: string
+  /** Student membership tier (e.g. "new - no membership") */
+  membership?: string
 }
 
 export interface UserAction {
@@ -48,6 +50,8 @@ export interface AuthState {
   actionLogs: UserAction[]
   /** All registered users (persisted); used e.g. by teacher dashboard to list students */
   registeredUsers: User[]
+  /** Sync registeredUsers from localStorage (used when rehydration may have missed or delayed) */
+  syncRegisteredUsersFromStorage: () => void
   
   // Actions
   login: (email: string, password: string) => Promise<User>
@@ -87,6 +91,8 @@ export interface AuthState {
   setUserPassword: (userId: string, newPassword: string) => Promise<void>
   /** Admin/superadmin: update a user's status and/or remarks */
   updateUserStatusAndRemarks: (userId: string, updates: { status?: 'ACTIVE' | 'INACTIVE' | 'BLOCKED'; remarks?: string }) => void
+  /** Admin/superadmin: update a student's membership (non member, premium member, vip member) */
+  updateUserMembership: (userId: string, membership: string) => void
   /** Admin/superadmin: create a new user (e.g. admin) without logging in as them */
   createUserAsAdmin: (data: { name: string; email: string; password: string; role: 'ADMIN' | 'TEACHER' | 'STUDENT' }) => Promise<User>
 }
@@ -179,6 +185,21 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       actionLogs: [],
       registeredUsers: [],
+      syncRegisteredUsersFromStorage: () => {
+        if (typeof window === 'undefined') return
+        try {
+          const raw = localStorage.getItem('auth-storage')
+          if (!raw) return
+          const parsed = JSON.parse(raw) as { state?: { registeredUsers?: User[] } }
+          const stored = parsed?.state?.registeredUsers
+          if (Array.isArray(stored) && stored.length > 0) {
+            const current = get().registeredUsers || []
+            if (current.length === 0 || current.length < stored.length) {
+              set({ registeredUsers: stored })
+            }
+          }
+        } catch (_) {}
+      },
 
       // Login action
       login: async (email: string, password: string) => {
@@ -232,127 +253,9 @@ export const useAuthStore = create<AuthState>()(
             return user
           }
           
-          // Not in registeredUsers: use demo accounts or create new student
-          let userRole: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'SUPERADMIN' = 'STUDENT'
-          let userName = email.split('@')[0]
-          const isDemoPassword = password === 'password' || password === 'demo123'
-          if (email === 'teacher@example.com' && isDemoPassword) {
-            userRole = 'TEACHER'
-            userName = 'Demo Teacher'
-          } else if (email === 'admin@example.com' && isDemoPassword) {
-            userRole = 'ADMIN'
-            userName = 'Demo Admin'
-          } else if (email === 'superadmin@example.com' && isDemoPassword) {
-            userRole = 'SUPERADMIN'
-            userName = 'Demo Super Admin'
-          } else if (email === 'student@example.com' && isDemoPassword) {
-            userRole = 'STUDENT'
-            userName = 'Demo Student'
-          } else {
-            userRole = 'STUDENT'
-            userName = email.split('@')[0]
-          }
-          
-          console.log('🎭 Demo/new login for role:', userRole)
-          
-          const loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '{}')
-          const userLoginHistory = loginHistory[email] || { count: 0, firstLogin: null, lastLogin: null }
-          const isReturningUser = userLoginHistory.count > 0
-          let savedAvatar = null
-          if (isReturningUser) {
-            const userData = JSON.parse(localStorage.getItem('users') || '{}')
-            savedAvatar = userData[email]?.avatar || null
-          }
-          
-          const now = new Date().toISOString()
-          const user: User = {
-            id: isReturningUser ? userLoginHistory.userId || `user_${Date.now()}` : `user_${Date.now()}`,
-            email,
-            name: userName,
-            role: userRole,
-            age: 25,
-            grade: 'College',
-            school: 'Demo University',
-            interests: ['English', 'Tagalog'],
-            nativeLanguage: 'Filipino',
-            targetLanguages: ['English', 'Tagalog'],
-            avatar: savedAvatar,
-            createdAt: isReturningUser ? userLoginHistory.firstLogin : now,
-            lastLogin: now,
-            status: 'ACTIVE',
-            password: password
-          }
-          
-          const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          console.log('✅ Login successful:', user.email, 'role:', user.role)
-
-          set((s) => ({ ...s, registeredUsers: [...(s.registeredUsers || []), user] }))
-          
-          // Log the login action
-          const actionLog: UserAction = {
-            id: `action_${Date.now()}`,
-            userId: user.id,
-            action: 'LOGIN',
-            details: `User logged in from ${email}`,
-            timestamp: now
-          }
-          
-          // Track login count for returning users
-          const newLoginCount = userLoginHistory.count + 1
-          
-          // Update login history
-          loginHistory[email] = {
-            count: newLoginCount,
-            userId: user.id,
-            firstLogin: userLoginHistory.firstLogin || now,
-            lastLogin: now,
-            email: email
-          }
-          localStorage.setItem('loginHistory', JSON.stringify(loginHistory))
-          
-          set((state) => ({
-            user,
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-            actionLogs: [...state.actionLogs, actionLog]
-          }))
-          
-          const getReturningUserMessage = (name: string, count: number) => {
-            const messages = [
-              `Welcome back, ${name}! This is your ${count}${count === 2 ? 'nd' : count === 3 ? 'rd' : count > 3 ? 'th' : 'st'} time here! 🎉`,
-              `Great to see you again, ${name}! You're becoming a regular! 🌟`,
-              `Welcome back, ${name}! Your dedication to learning is inspiring! 💪`,
-              `Hello again, ${name}! Ready for another amazing learning session? 📚`,
-              `Welcome back, ${name}! You're making great progress! 🚀`
-            ]
-            return messages[(count - 1) % messages.length]
-          }
-          
-          const message = isReturningUser 
-            ? getReturningUserMessage(user.name, newLoginCount)
-            : `Welcome, ${user.name}! We're excited to have you join us! 🌟`
-          
-          console.log('📝 Message Generated:', {
-            isReturningUser,
-            newLoginCount,
-            message
-          })
-          
-          toast.success(message, {
-            duration: 3000,
-            position: 'top-right',
-            style: {
-              background: isReturningUser ? '#3B82F6' : '#8B5CF6',
-              color: '#fff',
-            },
-            iconTheme: {
-              primary: '#fff',
-              secondary: isReturningUser ? '#3B82F6' : '#8B5CF6',
-            },
-          })
-          
-          return user
+          // User not in registeredUsers (db): reject login – only allow existing accounts with correct password
+          set({ isLoading: false })
+          throw new Error('Invalid email or password')
         } catch (error) {
           console.error('❌ Login failed:', error)
           set({ isLoading: false })
@@ -383,7 +286,8 @@ export const useAuthStore = create<AuthState>()(
             avatar: null,
             createdAt: new Date().toISOString(),
             status: 'ACTIVE',
-            remarks: ''
+            remarks: '',
+            membership: 'new - no membership'
           }
           
           const token = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -564,7 +468,8 @@ export const useAuthStore = create<AuthState>()(
           createdAt: new Date().toISOString(),
           lastLogin: new Date().toISOString(),
           status: 'ACTIVE',
-          remarks: ''
+          remarks: '',
+          membership: 'new - no membership'
         }
         
         const demoToken = `demo_token_${Date.now()}`
@@ -662,6 +567,22 @@ export const useAuthStore = create<AuthState>()(
         })
       },
 
+      updateUserMembership: (userId: string, membership: string) => {
+        const { user, registeredUsers } = get()
+        if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN')) return
+        const nextRegistered = (registeredUsers || []).map((u) =>
+          u.id === userId ? { ...u, membership } : u
+        )
+        set((state) => {
+          const next: { registeredUsers: User[]; user?: User } = { registeredUsers: nextRegistered }
+          if (state.user?.id === userId) {
+            const updated = nextRegistered.find((x) => x.id === userId)
+            if (updated) next.user = updated
+          }
+          return next
+        })
+      },
+
       createUserAsAdmin: async (data) => {
         const { user, registeredUsers } = get()
         if (!user || !(user.role === 'ADMIN' || user.role === 'SUPERADMIN')) {
@@ -687,7 +608,8 @@ export const useAuthStore = create<AuthState>()(
           createdAt: new Date().toISOString(),
           status: 'ACTIVE',
           remarks: '',
-          password: data.password
+          password: data.password,
+          ...(data.role === 'STUDENT' ? { membership: 'new - no membership' as const } : {})
         }
         set((state) => ({
           registeredUsers: [...(state.registeredUsers || []), newUser]

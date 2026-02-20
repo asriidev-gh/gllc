@@ -8,7 +8,6 @@ import {
   Clock, 
   Users, 
   Star, 
-  Target,
   Filter,
   Search,
   CheckCircle
@@ -132,6 +131,24 @@ const mockCourses = [
   }
 ]
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', JPY: '¥', INR: '₹', AUD: 'A$', CAD: 'C$',
+  CHF: 'Fr', CNY: '¥', MXN: 'MX$', PHP: '₱'
+}
+
+function formatCoursePrice(price: number, currencyCode?: string): string {
+  if (price <= 0) return 'FREE'
+  const symbol = (currencyCode && CURRENCY_SYMBOLS[currencyCode]) || '$'
+  return `${symbol}${Number(price).toFixed(2)}`
+}
+
+/** Dummy enrollee count for display (stable per course id, not from DB). */
+function getDummyEnrollees(courseId: string): number {
+  let h = 0
+  for (let i = 0; i < courseId.length; i++) h = ((h << 5) - h) + courseId.charCodeAt(i) | 0
+  return 200 + Math.abs(h) % 3800
+}
+
 export default function CoursesPage() {
   const { isAuthenticated, user } = useAuthStore()
   const { enrollInCourse, getEnrollment, courses, fetchCourses } = useCoursesStore()
@@ -139,7 +156,6 @@ export default function CoursesPage() {
   
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLevel, setSelectedLevel] = useState<string>('')
-  const [selectedSubject, setSelectedSubject] = useState<string>('')
   const [showEnrolledOnly, setShowEnrolledOnly] = useState(false)
   const [isCourseDetailsModalOpen, setIsCourseDetailsModalOpen] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<any>(null)
@@ -147,28 +163,29 @@ export default function CoursesPage() {
   const isEnrolledInCourse = (courseId: string): boolean => {
     if (!user) return false
     
-    // Check localStorage directly since CourseDetailsModal saves enrollments there
+    // Prefer store (source of truth, per user)
+    const enrollment = getEnrollment(courseId, user.id)
+    if (enrollment !== null) return true
+    
+    // Check localStorage (user-scoped so only this student's enrollments)
     try {
-      const savedEnrollments = localStorage.getItem('enrolled_courses')
+      const storageKey = user.id ? `enrolled_courses_${user.id}` : 'enrolled_courses'
+      const savedEnrollments = localStorage.getItem(storageKey) || localStorage.getItem('enrolled_courses')
       if (savedEnrollments) {
         const enrollments = JSON.parse(savedEnrollments)
-        const isEnrolled = enrollments.some((enrollment: any) => enrollment.id === courseId)
-        console.log(`Course ${courseId} enrollment status:`, isEnrolled)
-        return isEnrolled
+        return enrollments.some((enrollment: any) => enrollment.id === courseId)
       }
     } catch (error) {
       console.error('Error checking enrollment status:', error)
     }
-    
-    // Fallback to courses store
-    const enrollment = getEnrollment(courseId, user.id)
-    const storeEnrolled = enrollment !== null
-    console.log(`Course ${courseId} store enrollment status:`, storeEnrolled)
-    return storeEnrolled
+    return false
   }
   
-  // Prefer store courses if available, otherwise fall back to mock
-  const list = (courses && courses.length > 0) ? courses : mockCourses
+  // Prefer store courses if available (active only), otherwise fall back to mock
+  const activeCourses = (courses && courses.length > 0)
+    ? courses.filter((c: { status?: string }) => c.status === 'active')
+    : []
+  const list = activeCourses.length > 0 ? activeCourses : mockCourses
 
   const filteredCourses = list.filter(course => {
     const subjectOrLanguage = (course as any).subject ?? (course as any).language
@@ -177,11 +194,19 @@ export default function CoursesPage() {
                          (subjectOrLanguage || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesLevel = !selectedLevel || course.level === selectedLevel
-    const matchesSubject = !selectedSubject || subjectOrLanguage === selectedSubject
     const matchesEnrolled = !showEnrolledOnly || isEnrolledInCourse(course.id)
     
-    return matchesSearch && matchesLevel && matchesSubject && matchesEnrolled
+    return matchesSearch && matchesLevel && matchesEnrolled
   })
+
+  const isPremiumUser = Boolean(user && (user.membership === 'premium member' || user.membership === 'vip member'))
+
+  const canEnrollInCourse = (course: { price?: number; freeForPremiumOnly?: boolean }) => {
+    const price = course.price ?? 0
+    if (price > 0) return false
+    if ((course as any).freeForPremiumOnly) return isPremiumUser
+    return true
+  }
 
   const handleEnroll = async (courseId: string) => {
     if (!isAuthenticated) {
@@ -257,28 +282,31 @@ export default function CoursesPage() {
   }
 
   const handleOpenCourseDetails = (course: any) => {
-    // Transform course data to match CourseDetailsModal expectations
+    const priceNum = typeof course.price === 'number' ? course.price : parseFloat(course.price) || 0
     const transformedCourse = {
       id: course.id,
-      name: course.title, // This will be the course name displayed
-      title: course.title, // Keep both for compatibility
-      language: course.subject ?? (course as any).language,
+      name: course.title,
+      title: course.title,
+      language: course.subject ?? course.language,
       flag: course.flag,
       level: course.level,
       description: course.description,
-      price: course.price.toString(),
+      price: priceNum.toString(),
       originalPrice: course.originalPrice?.toString(),
+      currency: course.currency,
       totalLessons: course.lessons,
       duration: course.duration,
       rating: course.rating,
       students: course.students,
-      features: course.features,
+      features: (Array.isArray(course.category) && course.category.length > 0 ? course.category : course.features) ?? [],
       instructor: course.instructor,
       lastUpdated: '2024',
       certificate: true,
       lifetimeAccess: true,
       mobileAccess: true,
-      communityAccess: true
+      communityAccess: true,
+      requirements: course.requirements,
+      freeForPremiumOnly: Boolean(course.freeForPremiumOnly),
     }
     
     console.log('Original course data:', course)
@@ -294,7 +322,6 @@ export default function CoursesPage() {
     setSelectedCourse(null)
   }
 
-  const subjects = Array.from(new Set(list.map(course => course.subject ?? (course as any).language)))
   const levels = Array.from(new Set(list.map(course => course.level)))
 
   return (
@@ -312,14 +339,11 @@ export default function CoursesPage() {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
             {t('courses.page.subtitle')}
           </p>
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center space-x-2 text-green-700">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center space-x-2 text-blue-700">
               <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">All courses are now FREE with unlocked lessons!</span>
+              <span className="font-medium">Free and paid courses available. Progress is tracked when you watch 90% of the content.</span>
             </div>
-            <p className="text-sm text-green-600 text-center mt-1">
-              Access any lesson at any time. Progress is tracked when you watch 90% of the content.
-            </p>
           </div>
         </motion.div>
 
@@ -342,18 +366,6 @@ export default function CoursesPage() {
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-
-            {/* Subject Filter */}
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">{t('courses.page.filter.subject')}</option>
-              {subjects.map(subject => (
-                <option key={subject} value={subject}>{subject}</option>
-              ))}
-            </select>
 
             {/* Level Filter */}
             <select
@@ -389,7 +401,6 @@ export default function CoursesPage() {
               onClick={() => {
                 setSearchTerm('')
                 setSelectedLevel('')
-                setSelectedLanguage('')
                 setShowEnrolledOnly(false)
               }}
               className="flex items-center justify-center"
@@ -424,9 +435,21 @@ export default function CoursesPage() {
               transition={{ delay: index * 0.1 }}
               className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-lg transition-shadow"
             >
-              {/* Course Image */}
-              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center relative">
-                <div className="text-6xl">{course.flag || '🌍'}</div>
+              {/* Course Image / Header */}
+              <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center relative overflow-hidden">
+                {course.image ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={course.image}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/20" aria-hidden />
+                  </>
+                ) : (
+                  <div className="text-6xl">{course.flag || '🌍'}</div>
+                )}
                 {isEnrolledInCourse(course.id) && (
                   <div className="absolute top-3 right-3 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
                     <CheckCircle className="w-3 h-3 mr-1" />
@@ -469,67 +492,112 @@ export default function CoursesPage() {
                   </div>
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-1" />
-                    {(course.students || 0).toLocaleString()}
+                    {getDummyEnrollees(course.id).toLocaleString()}
                   </div>
                 </div>
 
-                {/* Rating */}
-                <div className="flex items-center mb-4">
-                  <div className="flex items-center">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="ml-1 text-sm font-medium">{course.rating || 0}</span>
-                  </div>
-                  <span className="text-gray-400 text-sm ml-2">
-                    ({(course.students || 0).toLocaleString()} students)
-                  </span>
+                {/* Rating - show filled stars by count (e.g. 3 = 3 filled, 2 empty out of 5) */}
+                <div className="flex items-center gap-0.5 mb-4">
+                  {[1, 2, 3, 4, 5].map((i) => {
+                    const rating = Number(course.rating) || 0
+                    const filledCount = Math.min(5, Math.round(rating))
+                    const filled = i <= filledCount
+                    return (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${filled ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200 fill-gray-200'}`}
+                        aria-hidden
+                      />
+                    )
+                  })}
+                  <span className="ml-1.5 text-sm font-medium text-gray-600">{course.rating ?? 0}</span>
                 </div>
 
-                {/* Features */}
+                {/* Tags (real tag data from course) */}
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-1">
-                    {(course.features || []).slice(0, 2).map((feature, featureIndex) => (
+                    {(Array.isArray(course.category) ? course.category : []).slice(0, 5).map((tag: string, tagIndex: number) => (
                       <span
-                        key={featureIndex}
+                        key={tagIndex}
                         className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md"
                       >
-                        {feature}
+                        {tag}
                       </span>
                     ))}
-                    {(course.features || []).length > 2 && (
+                    {Array.isArray(course.category) && course.category.length > 5 && (
                       <span className="px-2 py-1 bg-gray-50 text-gray-600 text-xs rounded-md">
-                        {t('courses.page.course.moreFeatures').replace('{count}', ((course.features || []).length - 2).toString())}
+                        +{course.category.length - 5}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Price and Enroll/Continue */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-2xl font-bold text-green-600">
-                      FREE
-                    </span>
-                    <span className="text-sm text-green-600 font-medium ml-2">
-                      {t('courses.page.course.allLessonsUnlocked')}
-                    </span>
+                {/* Price and action: Continue (enrolled), Course Details / Enroll / Purchase, or Course Contents (staff) */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    {(course.price ?? 0) > 0 ? (
+                      <span className="text-2xl font-bold text-gray-900">
+                        {formatCoursePrice(course.price ?? 0, course.currency)}
+                      </span>
+                    ) : (course as any).freeForPremiumOnly && !isPremiumUser ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-2xl font-bold text-amber-600">Free for Premium</span>
+                        <span className="text-sm text-amber-600/90">Premium membership required</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-2xl font-bold text-green-600">FREE</span>
+                        <span className="text-sm text-green-600/90">
+                          {t('courses.page.course.allLessonsUnlocked')}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  {isEnrolledInCourse(course.id) ? (
-                                          <Button
-                        onClick={() => handleContinue(course.id)}
+                  {user?.role === 'STUDENT' && isEnrolledInCourse(course.id) ? (
+                    <Button
+                      onClick={() => handleContinue(course.id)}
+                      variant="outline"
+                      className="px-4 py-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100 shrink-0"
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      {t('courses.page.course.continue')}
+                    </Button>
+                  ) : (user?.role === 'SUPERADMIN' || user?.role === 'ADMIN' || user?.role === 'TEACHER') ? (
+                    <Button
+                      onClick={() => router.push(`/courses/${course.id}`)}
+                      variant="outline"
+                      className="px-4 py-2 shrink-0"
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      {t('courses.page.course.courseContents') || 'Course Contents'}
+                    </Button>
+                  ) : (
+                    /* Guest or student not enrolled: Enroll only when canEnrollInCourse (totally free for all, or free-for-premium + premium user) */
+                    (course.price ?? 0) > 0 ? (
+                      <Button
+                        onClick={() => handleOpenCourseDetails(course)}
                         variant="outline"
-                        className="px-4 py-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                        className="px-4 py-2 shrink-0"
+                      >
+                        {formatCoursePrice(course.price ?? 0, course.currency)} – Purchase
+                      </Button>
+                    ) : canEnrollInCourse(course) ? (
+                      <Button
+                        onClick={() => handleOpenCourseDetails(course)}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 shrink-0"
                       >
                         <BookOpen className="w-4 h-4 mr-2" />
-                        {t('courses.page.course.continue')}
+                        {t('courses.page.course.courseDetails') || 'Course Details'}
                       </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleOpenCourseDetails(course)}
-                      className="px-4 py-2 bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      {t('courses.page.course.getFreeAccess')}
-                    </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleOpenCourseDetails(course)}
+                        variant="outline"
+                        className="px-4 py-2 shrink-0"
+                      >
+                        {t('courses.page.course.courseDetails') || 'Course Details'}
+                      </Button>
+                    )
                   )}
                 </div>
               </div>
@@ -553,7 +621,6 @@ export default function CoursesPage() {
               onClick={() => {
                 setSearchTerm('')
                 setSelectedLevel('')
-                setSelectedLanguage('')
               }}
             >
               {t('courses.page.noResults.button')}
@@ -561,26 +628,6 @@ export default function CoursesPage() {
           </motion.div>
         )}
 
-        {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-center text-white"
-        >
-          <h2 className="text-2xl font-bold mb-4">{t('courses.page.cta.title')}</h2>
-          <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-            {t('courses.page.cta.description')}
-          </p>
-          <Button
-            variant="outline"
-            className="bg-white text-blue-600 hover:bg-gray-50"
-            onClick={() => window.location.href = '/assessment'}
-          >
-            <Target className="w-4 h-4 mr-2" />
-              {t('courses.page.cta.button')}
-          </Button>
-        </motion.div>
         </div>
       </div>
 

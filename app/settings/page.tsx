@@ -2,14 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, Bell, Shield, Palette, Globe, Lock, Key, User, Mail, X } from 'lucide-react'
+import { Settings, Bell, Shield, Palette, Globe, Lock, Key, User, Mail, X, Calendar, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Header } from '@/components/Header'
 import { useAuthStore } from '@/stores'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { getRecentActivities } from '@/lib/learningActivity'
 import toast from 'react-hot-toast'
-import { RoleSwitcher } from '@/components/RoleSwitcher'
-
 // Settings interfaces
 interface AppearanceSettings {
   theme: 'light' | 'dark' | 'auto'
@@ -74,6 +73,12 @@ export default function SettingsPage() {
     currency: 'USD'
   })
 
+  // Recent Activity (for students - moved from dashboard)
+  const [recentActivity, setRecentActivity] = useState<Array<{ action: string; details: string; timestamp: string; date: string; displayDate: string }>>([])
+  const [recentActivityDateFilter, setRecentActivityDateFilter] = useState<string>('')
+  const [showAllActivities, setShowAllActivities] = useState(false)
+  const [recentActivityExpanded, setRecentActivityExpanded] = useState(true)
+
   // Load settings from localStorage on component mount
   useEffect(() => {
     const loadSettings = () => {
@@ -98,6 +103,55 @@ export default function SettingsPage() {
     
     loadSettings()
   }, [])
+
+  // Load recent activity for students (moved from dashboard)
+  const loadRecentActivity = () => {
+    if (!user?.email || user?.role !== 'STUDENT') return
+    try {
+      let daysToCheck = 7
+      if (recentActivityDateFilter === '30') daysToCheck = 30
+      else if (recentActivityDateFilter === '90') daysToCheck = 90
+      else if (recentActivityDateFilter === '') daysToCheck = 365
+      const activities = getRecentActivities(user.email, daysToCheck, showAllActivities)
+      setRecentActivity(activities)
+    } catch {
+      setRecentActivity([])
+    }
+  }
+  useEffect(() => {
+    loadRecentActivity()
+  }, [user?.email, user?.role, recentActivityDateFilter, showAllActivities])
+
+  const getActivityIcon = (action: string) => {
+    switch (action) {
+      case 'course_access': return { icon: '🎯', color: 'bg-blue-500' }
+      case 'lesson_completed': return { icon: '✅', color: 'bg-green-500' }
+      case 'lesson_skipped': return { icon: '⏭️', color: 'bg-orange-500' }
+      case 'course_enrollment': return { icon: '📚', color: 'bg-purple-500' }
+      case 'course_unenrollment': return { icon: '🚫', color: 'bg-red-500' }
+      case 'course_completed': return { icon: '🏆', color: 'bg-yellow-500' }
+      case 'achievement_earned': return { icon: '🏅', color: 'bg-amber-500' }
+      case 'assessment_completed': return { icon: '📊', color: 'bg-indigo-500' }
+      case 'profile_updated': return { icon: '👤', color: 'bg-teal-500' }
+      case 'course_study': return { icon: '📖', color: 'bg-emerald-500' }
+      default: return { icon: '📝', color: 'bg-gray-500' }
+    }
+  }
+  const formatActivityDescription = (action: string, details: string) => {
+    switch (action) {
+      case 'course_access': return `Accessed ${details}`
+      case 'lesson_completed': return `Completed ${details}`
+      case 'lesson_skipped': return `Skipped ${details}`
+      case 'course_enrollment': return `Enrolled in ${details}`
+      case 'course_unenrollment': return `Unenrolled from ${details}`
+      case 'course_completed': return `Completed course: ${details}`
+      case 'achievement_earned': return `Earned ${details}`
+      case 'assessment_completed': return `Completed assessment: ${details}`
+      case 'profile_updated': return details
+      case 'course_study': return `Studied ${details}`
+      default: return details
+    }
+  }
 
   // Apply theme changes
   useEffect(() => {
@@ -438,6 +492,101 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Recent Activity - for students only (moved from dashboard), collapsible, before Quick Actions */}
+            {user?.role === 'STUDENT' && (
+            <div className="border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setRecentActivityExpanded(!recentActivityExpanded)}
+                className="w-full p-6 flex items-center justify-between text-left hover:bg-gray-50/50 transition-colors"
+              >
+                <h2 className="text-xl font-semibold text-gray-900">{t('dashboard.recentActivity.title')}</h2>
+                {recentActivityExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500 shrink-0" />
+                )}
+              </button>
+              <AnimatePresence initial={false}>
+                {recentActivityExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-6 pb-6 pt-0">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center space-x-3">
+                          <select
+                            value={recentActivityDateFilter}
+                            onChange={(e) => setRecentActivityDateFilter(e.target.value)}
+                            className="text-sm border border-gray-300 rounded-lg px-3 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="">{t('dashboard.recentActivity.allTime')}</option>
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setShowAllActivities(!showAllActivities)}
+                            className="text-sm text-blue-600 hover:text-blue-700 transition-colors font-medium"
+                          >
+                            {showAllActivities ? 'Show Recent' : t('dashboard.recentActivity.viewAll')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={loadRecentActivity}
+                            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                            title="Refresh recent activity"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      {recentActivity.length > 0 ? (
+                        <div className="space-y-4">
+                          {recentActivity.map((activity, index) => {
+                            const { icon, color } = getActivityIcon(activity.action)
+                            return (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                className="flex items-center space-x-3"
+                              >
+                                <div className={`w-8 h-8 ${color} rounded-full flex items-center justify-center text-white text-sm`}>
+                                  {icon}
+                                </div>
+                                <span className="text-sm text-gray-600 flex-1">
+                                  {formatActivityDescription(activity.action, activity.details)}
+                                </span>
+                                <span className="text-xs text-gray-400">{activity.displayDate}</span>
+                              </motion.div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Calendar className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <p className="text-gray-500">{t('dashboard.recentActivity.noActivity')}</p>
+                          <p className="text-sm text-gray-400 mt-1">{t('dashboard.recentActivity.noActivity.subtitle')}</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            )}
+
             {/* Quick Actions - Always Visible */}
             <div className="p-6 border-t border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">{t('settings.page.quickActions.title')}</h2>
@@ -490,11 +639,6 @@ export default function SettingsPage() {
                   </div>
                 </Button>
               </div>
-            </div>
-
-            {/* Role Switcher - For Demo Purposes */}
-            <div className="p-6 border-t border-gray-200">
-              <RoleSwitcher />
             </div>
 
             {/* Dynamic Settings Sections - Only shown when activated */}

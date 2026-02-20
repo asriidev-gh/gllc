@@ -9,11 +9,12 @@ import {
   Star, Tag as TagIcon, BookOpen, Clock, Upload, ChevronUp, ChevronDown
 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { useCoursesStore } from '@/stores'
+import { useAuthStore, useCoursesStore } from '@/stores'
 import type { Course as StoreCourse } from '@/stores/coursesStore'
 
 type CourseLevel = 'beginner' | 'intermediate' | 'advanced'
 type CourseStatus = 'draft' | 'active' | 'inactive'
+type PricingType = 'totally_free' | 'free_premium' | 'with_payment'
 
 interface LessonForm {
   id: string
@@ -33,10 +34,14 @@ interface CategoryForm {
 interface CourseFormState {
   title: string
   description: string
+  requirements: string[]
   tags: string[]
   level: CourseLevel
   status: CourseStatus
   stars: number
+  pricingType: PricingType
+  price: number
+  currency: string
   thumbnailDataUrl?: string
   totalLessons: number
   totalDurationMinutes: number
@@ -49,10 +54,14 @@ interface CourseFormState {
 const initialState: CourseFormState = {
   title: '',
   description: '',
+  requirements: [],
   tags: [],
   level: 'beginner',
   status: 'draft',
-  stars: 0,
+  stars: 3,
+  pricingType: 'totally_free' as PricingType,
+  price: 0,
+  currency: 'PHP',
   thumbnailDataUrl: undefined,
   totalLessons: 0,
   totalDurationMinutes: 0,
@@ -77,7 +86,26 @@ const statuses: { value: CourseStatus; label: string }[] = [
   { value: 'inactive', label: 'Inactive' },
 ]
 
+const currencies: { code: string; label: string; symbol: string }[] = [
+  { code: 'USD', label: 'USD ($)', symbol: '$' },
+  { code: 'EUR', label: 'EUR (€)', symbol: '€' },
+  { code: 'GBP', label: 'GBP (£)', symbol: '£' },
+  { code: 'JPY', label: 'JPY (¥)', symbol: '¥' },
+  { code: 'INR', label: 'INR (₹)', symbol: '₹' },
+  { code: 'AUD', label: 'AUD ($)', symbol: 'A$' },
+  { code: 'CAD', label: 'CAD ($)', symbol: 'C$' },
+  { code: 'CHF', label: 'CHF (Fr)', symbol: 'Fr' },
+  { code: 'CNY', label: 'CNY (¥)', symbol: '¥' },
+  { code: 'MXN', label: 'MXN ($)', symbol: 'MX$' },
+  { code: 'PHP', label: 'PHP (₱)', symbol: '₱' },
+]
+
 const getFlagForSubject = (_subject: string): string => '🌍'
+
+function formatPriceWithCurrency(price: number, currencyCode: string): string {
+  const c = currencies.find(x => x.code === currencyCode)
+  return c ? `${c.symbol}${Number(price).toFixed(2)}` : `${currencyCode} ${Number(price).toFixed(2)}`
+}
 
 function mapCourseToForm(course: StoreCourse): CourseFormState {
   const level = course.level ? (course.level.toLowerCase() as CourseLevel) : 'beginner'
@@ -114,13 +142,22 @@ function mapCourseToForm(course: StoreCourse): CourseFormState {
     typeof course.duration === 'string'
       ? Number.parseInt(course.duration.replace(/\D/g, ''), 10) || 0
       : 0
+  const rating = course.rating ?? 3
+  const clampedStars = Math.min(5, Math.max(1, typeof rating === 'number' ? rating : 3))
+  const price = course.price ?? 0
+  const pricingType: PricingType =
+    price > 0 ? 'with_payment' : (course.freeForPremiumOnly ? 'free_premium' : 'totally_free')
   return {
     title: course.title,
     description: course.description ?? '',
+    requirements: Array.isArray(course.requirements) ? course.requirements : [],
     tags: Array.isArray(course.category) ? course.category : [],
     level,
     status,
-    stars: course.rating ?? 0,
+    stars: clampedStars,
+    pricingType,
+    price,
+    currency: course.currency ?? 'PHP',
     thumbnailDataUrl: course.image,
     // Prefer stored totals so saved values show correctly when re-opening for edit
     totalLessons: (course.lessons ?? totalFromContents.lessons) || 0,
@@ -137,6 +174,7 @@ export default function CreateCoursePage(): JSX.Element {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams.get('edit')
+  const { user } = useAuthStore()
   const { courses, addCourse, updateCourse } = useCoursesStore()
   const editCourse = editId ? courses.find(c => c.id === editId) : null
   const hasPrefilledRef = useRef(false)
@@ -145,6 +183,7 @@ export default function CreateCoursePage(): JSX.Element {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [tagInput, setTagInput] = useState<string>('')
+  const [requirementInput, setRequirementInput] = useState<string>('')
 
   useEffect(() => {
     if (editCourse && !hasPrefilledRef.current) {
@@ -183,8 +222,28 @@ export default function CreateCoursePage(): JSX.Element {
       e.preventDefault()
       addTag(tagInput)
     } else if (e.key === 'Backspace' && !tagInput && form.tags.length) {
-      // remove last tag on backspace when input empty
       removeTag(form.tags[form.tags.length - 1])
+    }
+  }
+
+  const addRequirement = (value: string) => {
+    const req = value.trim()
+    if (!req) return
+    if (form.requirements.includes(req)) return
+    updateField('requirements', [...form.requirements, req])
+    setRequirementInput('')
+  }
+
+  const removeRequirement = (req: string) => {
+    updateField('requirements', form.requirements.filter(r => r !== req))
+  }
+
+  const onRequirementKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addRequirement(requirementInput)
+    } else if (e.key === 'Backspace' && !requirementInput && form.requirements.length) {
+      removeRequirement(form.requirements[form.requirements.length - 1])
     }
   }
 
@@ -193,7 +252,8 @@ export default function CreateCoursePage(): JSX.Element {
     if (!form.title.trim()) newErrors.title = 'Course title is required'
     if (!form.description.trim()) newErrors.description = 'Course description is required'
     if (!form.instructorName.trim()) newErrors.instructorName = 'Instructor name is required'
-    if (form.stars < 0 || form.stars > 5) newErrors.stars = 'Stars must be between 0 and 5'
+    if (form.stars < 1 || form.stars > 5) newErrors.stars = 'Stars must be between 1 and 5'
+    if (form.pricingType === 'with_payment' && (typeof form.price !== 'number' || form.price <= 0)) newErrors.price = 'Please enter a valid price (greater than 0) when course is with payment'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -349,9 +409,13 @@ export default function CreateCoursePage(): JSX.Element {
         duration: `${payload.totalDurationMinutes ?? 0} mins`,
         lessons: payload.totalLessons ?? 0,
         instructor: payload.instructorName,
-        price: editCourse?.price ?? 0,
+        instructorId: isEditing ? (editCourse?.instructorId ?? user?.id) : (user?.id ?? undefined),
+        price: payload.pricingType === 'with_payment' ? (payload.price ?? 0) : 0,
+        ...(payload.pricingType === 'with_payment' ? { currency: payload.currency ?? 'PHP' } : {}),
+        freeForPremiumOnly: payload.pricingType === 'free_premium',
         image: payload.thumbnailDataUrl,
         category: payload.tags,
+        requirements: payload.requirements?.length ? payload.requirements : undefined,
         createdAt: isEditing ? editCourse!.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         students: isEditing ? (editCourse!.students ?? 0) : 0,
@@ -469,6 +533,36 @@ export default function CreateCoursePage(): JSX.Element {
                     {errors.description && <p className="text-sm text-red-600 mt-1">{errors.description}</p>}
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Requirements</label>
+                    <div className="w-full border border-gray-300 rounded-lg px-2 py-1 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+                      <div className="flex flex-wrap gap-2">
+                        {form.requirements.map(req => (
+                          <span key={req} className="inline-flex items-center bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 rounded">
+                            <span className="text-xs font-medium">{req}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeRequirement(req)}
+                              className="ml-1 text-emerald-600 hover:text-emerald-900"
+                              aria-label={`Remove requirement ${req}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          value={requirementInput}
+                          onChange={e => setRequirementInput(e.target.value)}
+                          onKeyDown={onRequirementKeyDown}
+                          onBlur={() => addRequirement(requirementInput)}
+                          className="flex-1 min-w-[160px] px-2 py-1 outline-none"
+                          placeholder="e.g. No prior experience required"
+                        />
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-1">Press Enter or comma to add. Shown as a bullet list in course details.</p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1 inline-flex items-center">
@@ -535,20 +629,76 @@ export default function CreateCoursePage(): JSX.Element {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1 inline-flex items-center">
-                        <Star className="w-4 h-4 mr-1 text-yellow-500" /> Stars (0-5)
+                        <Star className="w-4 h-4 mr-1 text-yellow-500" /> Stars (1-5)
                       </label>
                       <input
                         type="number"
-                        min={0}
+                        min={1}
                         max={5}
                         value={form.stars}
-                        onChange={e => updateField('stars', Number(e.target.value))}
+                        onChange={e => updateField('stars', Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                           errors.stars ? 'border-red-500' : 'border-gray-300'
                         }`}
                       />
                       {errors.stars && <p className="text-sm text-red-600 mt-1">{errors.stars}</p>}
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Pricing</label>
+                      <div className="flex flex-wrap gap-3">
+                        {[
+                          { value: 'totally_free' as const, label: 'Totally Free' },
+                          { value: 'free_premium' as const, label: 'Free For Premium Users only' },
+                          { value: 'with_payment' as const, label: 'With Payment' },
+                        ].map(opt => (
+                          <label key={opt.value} className="inline-flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="pricingType"
+                              value={opt.value}
+                              checked={form.pricingType === opt.value}
+                              onChange={() => {
+                                updateField('pricingType', opt.value)
+                                if (opt.value !== 'with_payment') updateField('price', 0)
+                              }}
+                              className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700">{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    {form.pricingType === 'with_payment' && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+                        <div className="flex gap-2">
+                          <select
+                            value={form.currency}
+                            onChange={e => updateField('currency', e.target.value)}
+                            className="w-32 shrink-0 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            {currencies.map(c => (
+                              <option key={c.code} value={c.code}>{c.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={form.price || ''}
+                            onChange={e => updateField('price', Number(e.target.value) || 0)}
+                            className={`flex-1 min-w-0 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                              errors.price ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                            placeholder="e.g. 29.99"
+                          />
+                        </div>
+                        {errors.price && <p className="text-sm text-red-600 mt-1">{errors.price}</p>}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -858,6 +1008,7 @@ export default function CreateCoursePage(): JSX.Element {
                 <div>Tags: <span className="text-gray-600">{form.tags.length ? form.tags.join(', ') : '-'}</span></div>
                 <div>Status: <span className="text-gray-600">{form.status}</span></div>
                 <div>Stars: <span className="text-gray-600">{form.stars}</span></div>
+                <div>Price: <span className="text-gray-600">{form.pricingType === 'totally_free' ? 'Totally Free' : form.pricingType === 'free_premium' ? 'Free for Premium Users only' : (form.price > 0 ? formatPriceWithCurrency(form.price, form.currency) : '—')}</span></div>
                 <div>Lessons: <span className="text-gray-600">{derivedTotals.totalLessons || form.totalLessons}</span></div>
               </div>
             </div>

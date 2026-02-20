@@ -230,41 +230,6 @@ export function LanguagesSection() {
           ))}
         </div>
 
-        {/* Additional Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
-          <div className="bg-gradient-to-r from-primary-600 to-secondary-600 rounded-2xl p-8 text-white">
-            <h3 className="text-2xl font-bold mb-4">
-              {t('languages.assessment.title')}
-            </h3>
-            <p className="text-primary-100 max-w-2xl mx-auto mb-6">
-              {t('languages.assessment.description')}
-            </p>
-                          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="bg-white text-primary-600 hover:bg-gray-50"
-                  onClick={() => setIsAssessmentOpen(true)}
-                >
-                  {t('languages.assessment.takeAssessment')}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="border-white text-white hover:bg-white hover:text-primary-600 transition-colors"
-                  onClick={() => setShowAllCourses(true)}
-                >
-                  {t('languages.assessment.viewAllCourses')}
-                </Button>
-              </div>
-          </div>
-        </motion.div>
       </div>
 
       {/* Assessment Modal */}

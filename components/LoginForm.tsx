@@ -30,10 +30,8 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
+    // Clear field and form-level errors when user types
+    setErrors(prev => ({ ...prev, [field]: '', form: '' }))
   }
 
   const validateForm = () => {
@@ -80,7 +78,8 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
       
     } catch (error) {
       console.error('Login failed:', error)
-      alert('Login failed. Please check your email and password and try again.')
+      const message = error instanceof Error ? error.message : 'Invalid email or password'
+      setErrors({ form: message })
     } finally {
       setIsSubmitting(false)
     }
@@ -169,6 +168,12 @@ export function LoginForm({ onClose, onSwitchToSignup, courseName, onSuccess }: 
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
               )}
             </div>
+
+            {errors.form && (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 text-sm">
+                {errors.form}
+              </div>
+            )}
 
             {/* Forgot Password Link */}
             <div className="text-right">

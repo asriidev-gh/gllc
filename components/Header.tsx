@@ -13,8 +13,6 @@ import {
   BookOpen,
   Trophy,
   Settings,
-  GraduationCap,
-  Shield,
   Crown
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -26,7 +24,7 @@ import { useAuthStore } from '@/stores'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export function Header() {
-  const { isAuthenticated, user, logout, createDemoUser } = useAuthStore()
+  const { isAuthenticated, user, logout } = useAuthStore()
   const { t } = useLanguage()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showSignupForm, setShowSignupForm] = useState(false)
@@ -46,10 +44,6 @@ export function Header() {
 
   const handleLogout = () => {
     logout()
-  }
-
-  const handleDemoUser = () => {
-    createDemoUser()
   }
 
   return (
@@ -91,42 +85,6 @@ export function Header() {
                 <LanguageSelector />
               </div>
               
-              {/* Demo/Debug buttons - Only show when not authenticated */}
-              {!isAuthenticated && (
-                <>
-                  {/* Demo Button */}
-                  <button
-                    onClick={handleDemoUser}
-                    className="text-xs px-2 py-1 bg-green-200 text-green-600 rounded hover:bg-green-300"
-                  >
-                    {t('header.tryDemo')}
-                  </button>
-                  
-                  {/* Debug Button - Remove in production */}
-                  <button
-                    onClick={() => {
-                      console.log('=== DEBUG: AUTH STATE ===')
-                      console.log('isAuthenticated:', isAuthenticated)
-                      console.log('user:', user)
-                      console.log('localStorage auth_token:', localStorage.getItem('auth_token'))
-                      console.log('localStorage user_data:', localStorage.getItem('user_data'))
-                      console.log('=== DEBUG END ===')
-                    }}
-                    className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                  >
-                    {t('header.debugAuth')}
-                  </button>
-                  
-                  {/* Test Auth Page Link */}
-                  <Link 
-                    href="/test-auth"
-                    className="text-xs px-2 py-1 bg-blue-200 text-blue-600 rounded hover:bg-blue-300"
-                  >
-                    {t('header.testAuthPage')}
-                  </Link>
-                </>
-              )}
-              
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">
                   {/* Dashboard button - Show when on user workspace pages (profile, settings, achievements for students only) */}
@@ -150,24 +108,6 @@ export function Header() {
                   )}
 
                   {/* Role-based navigation */}
-                  {user?.role === 'TEACHER' && (
-                    <Link href="/dashboard">
-                      <Button variant="outline" className="flex items-center space-x-2">
-                        <GraduationCap className="w-4 h-4" />
-                        <span>{t('header.teacherDashboard') || 'Teacher Dashboard'}</span>
-                      </Button>
-                    </Link>
-                  )}
-
-                  {user?.role === 'ADMIN' && (
-                    <Link href="/dashboard">
-                      <Button variant="outline" className="flex items-center space-x-2">
-                        <Shield className="w-4 h-4" />
-                        <span>{t('header.adminDashboard') || 'Admin Dashboard'}</span>
-                      </Button>
-                    </Link>
-                  )}
-
                   {user?.role === 'SUPERADMIN' && (
                     <Link href="/dashboard">
                       <Button variant="outline" className="flex items-center space-x-2">
@@ -318,42 +258,6 @@ export function Header() {
                   <ThemeToggle />
                   <LanguageSelector />
                 </div>
-                
-                {/* Demo/Debug buttons - Only show when not authenticated */}
-                {!isAuthenticated && (
-                  <>
-                    {/* Demo Button */}
-                    <button
-                      onClick={handleDemoUser}
-                      className="w-full text-center text-xs px-2 py-1 bg-green-200 text-green-600 rounded hover:bg-green-300 mb-2"
-                    >
-                      {t('header.tryDemo')}
-                    </button>
-                    
-                    {/* Debug Button - Remove in production */}
-                    <button
-                      onClick={() => {
-                        console.log('=== DEBUG: AUTH STATE (MOBILE) ===')
-                        console.log('isAuthenticated:', isAuthenticated)
-                        console.log('user:', user)
-                        console.log('localStorage auth_token:', localStorage.getItem('auth_token'))
-                        console.log('localStorage user_data:', localStorage.getItem('user_data'))
-                        console.log('=== DEBUG END ===')
-                      }}
-                      className="w-full text-xs px-2 py-1 bg-gray-200 text-gray-300 mb-2"
-                    >
-                      {t('header.debugAuth')}
-                    </button>
-                    
-                    {/* Test Auth Page Link */}
-                    <Link 
-                      href="/test-auth"
-                      className="block w-full text-center text-xs px-2 py-1 bg-blue-200 text-blue-600 rounded hover:bg-blue-300 mb-2"
-                    >
-                      {t('header.testAuthPage')}
-                    </Link>
-                  </>
-                )}
                 
                 {isAuthenticated ? (
                   <div className="space-y-2">
